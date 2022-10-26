@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+cache/
+
+inputs/
+
+R/4.2/
+

@@ -50,15 +50,18 @@ defineModule(sim, list(
       objectName = "table6", objectClass = "dataframe",
       desc = "Proportion model parameters similar to Boudewyn et al 2007,
       but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha",
-      sourceURL = INSERT WBI/Carbon/LandRCBM/filename
-        # this is for the vol/ha, will eventuall have an NFIS link for these,
-        #for now on WBI/Carbon drive,"https://nfi.nfis.org/resources/biomass_models/appendix2_table6.csv"
+      sourceURL = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc/view?usp=sharing"
+        #the link below is for the vol/ha - based proportion, will eventually
+        #have an NFIS link for the biomass-based ones. For now, I put a copy of
+        #the biomass-basedones provided by Paul boudewyn on the WBI/Carbon drive
+        #(FOR-Cast). for now on WBI/Carbon
+        #drive,"https://nfi.nfis.org/resources/biomass_models/appendix2_table6.csv"
     ),
     expectsInput(
       objectName = "table7", objectClass = "dataframe",
       desc = "Caps on proportion models similar to  Boudewyn et al 2007,
       but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha",
-      sourceURL = INSERT WBI/Carbon/LandRCBM/filename
+      sourceURL = "https://drive.google.com/file/d/16nQgTGW2p_IYF_Oavcc7WbWbgWl5uywt/view?usp=sharing"
       # this is for the vol/ha, will eventuall have an NFIS link for these,
       #for now on WBI/Carbon drive,"https://nfi.nfis.org/resources/biomass_models/appendix2_table7.csv"
     ),
@@ -81,7 +84,22 @@ defineModule(sim, list(
               for now, sitting in the WBI/Carbon/LandrCBM folder",
       sourceURL = INSERT LINK HERE
 
-    )
+    ),
+    expectsInput(objectName = "gcMeta",
+                 objectClass = "dataframe",
+                 desc = "Provides equivalent between provincial boundaries,
+                 CBM-id for provincial boundaries and CBM-spatial unit ids",
+                 sourceURL = NA),
+    expectsInput(objectName = "gcMetaFile",
+                 objectClass = "character",
+                 desc = "File name and location for the user provided gcMeta dataframe",
+                 sourceURL = "https://drive.google.com/file/d/1YmQ6sNucpEmF8gYkRMocPoeKt2P26ZiX"
+    ),
+    expectsInput(objectName = "canfi_species",
+                 objectClass = "dataframe",
+                 desc = "File containing the possible species in the Boudewyn table - note
+                 that if Boudewyn et al added species, this should be updated. Also note that such an update is very unlikely",
+                 sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo")
 
   ),
   outputObjects = bindrows(

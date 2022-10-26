@@ -1,18 +1,72 @@
 ## install/load required packages
-Rversion <- gsub(".+(4..).+", "\\1", R.version.string)
-rlib <- file.path("R", Rversion)
-# options(repos = c(CRAN = "https://cloud.r-project.org"))
-if (!dir.exists(rlib)) dir.create(rlib, recursive = TRUE); .libPaths(rlib, include.site = FALSE)
 
-### In this section, only load the minimum of packages (Require, SpaDES.install) so all packages can be installed with
-#    correct version numbering. If we load a package too early and it is an older version that what may be required by
-#    a module, then we get an inconsistency
-if (!require("remotes")) {
-  install.packages("remotes")
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+tempDir <- tempdir()
+
+pkgPath <- file.path(tempDir, "packages", version$platform,
+                     paste0(version$major, ".", strsplit(version$minor, "[.]")[[1]][1]))
+dir.create(pkgPath, recursive = TRUE)
+.libPaths(pkgPath, include.site = FALSE)
+
+if (!require(Require, lib.loc = pkgPath)) {
+  install.packages("Require")
+  library(Require, lib.loc = pkgPath)
 }
-remotes::install_github("PredictiveEcology/Require@development")
+
 library(Require)
-Require("PredictiveEcology/SpaDES.project@transition", require = FALSE)
+##TODO do I need the transition branch??
+#Require("PredictiveEcology/SpaDES.project@transition", require = FALSE)
+
+##TODO Check above flow against the exampleWorkflowReproducible Cerres Barros provided
+##DONE check to here
+
+##TODO need to set paths but not sure about modulePath yet...
+
+## load necessary packages
+
+Require(c("SpaDES", "reproducible"), upgrade = FALSE, install = TRUE)
+### Not sure  if I need the next line - ran it anyway
+Require(c("SpaDES.core (>=1.1.0)", "SpaDES.tools (>= 1.0.0)",
+          "googledrive", 'RCurl', 'XML', "PredictiveEcology/CBMutils"),
+        require = "SpaDES.core", # call `require` only on this package (same as `library`)
+        verbose = 1)
+# NOT WORKING
+Require("PredictiveEcology/CBMutils@development", install = TRUE)
+
+##TODO make sure paths are in place before running the objects
+setPaths(cachePath = "cache",
+         inputPath = "inputs",
+         modulePath = "modules",
+         outputPath = "outputs")
+
+## OBJECTS
+### this function is taken from the Yield module
+fixRTM <- function(x) {
+  x <- raster::raster(x)
+  x[!is.na(x[])] <- 1
+  RIArtm3 <- terra::rast(x)
+  aaa <- terra::focal(RIArtm3, fun = "sum", na.rm = TRUE, w = 5)
+  RIArtm2 <- raster::raster(x)
+  RIArtm2[aaa[] > 0] <- 1
+  RIArtm4 <- terra::rast(RIArtm2)
+  bbb <- terra::focal(RIArtm4, fun = "sum", na.rm = TRUE, w = 5)
+  ccc <- raster::raster(bbb)[] > 0 & !is.na(x[])
+  RIArtm2[ccc] <- 1
+  RIArtm2[!ccc & !is.na(x[])] <- 0
+  sa <- sf::st_as_sf(stars::st_as_stars(RIArtm2), as_points = FALSE, merge = TRUE)
+  sa <- sf::st_buffer(sa, 0)
+  sa <- sf::as_Spatial(sa)
+  return(sa)
+}
+
+##not working
+studyArea <- prepInputs(url = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci/view?usp=sharing",
+                   destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",#Paths$inputPath,
+                   fun = fixRTM, overwrite = TRUE,
+                   filename2 = "RAI_rtm.tif")
+
+
+
 
 ##from Yield not used yet####################################################
 
