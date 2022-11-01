@@ -1,24 +1,22 @@
 ## install/load required packages
 
+Rversion <- gsub(".+(4..).+", "\\1", R.version.string)
+rlib <- file.path("R", Rversion)
 options(repos = c(CRAN = "https://cloud.r-project.org"))
-tempDir <- tempdir()
+if (!dir.exists(rlib)) dir.create(rlib, recursive = TRUE); .libPaths(rlib, include.site = FALSE)
 
-pkgPath <- file.path(tempDir, "packages", version$platform,
-                     paste0(version$major, ".", strsplit(version$minor, "[.]")[[1]][1]))
-dir.create(pkgPath, recursive = TRUE)
-.libPaths(pkgPath, include.site = FALSE)
-
-if (!require(Require, lib.loc = pkgPath)) {
-  install.packages("Require")
-  library(Require, lib.loc = pkgPath)
+### In this section, only load the minimum of packages (Require, SpaDES.install) so all packages can be installed with
+#    correct version numbering. If we load a package too early and it is an older version that what may be required by
+#    a module, then we get an inconsistency
+if (!require("remotes")) {
+  install.packages("remotes")
 }
-
+remotes::install_github("PredictiveEcology/Require@f2c791eb05fb0ad99b278619198ef925f85cbb9d")
 library(Require)
-##TODO do I need the transition branch??
-#Require("PredictiveEcology/SpaDES.project@transition", require = FALSE)
+Require(c("PredictiveEcology/SpaDES.project@transition"), require = FALSE)
 
-##TODO Check above flow against the exampleWorkflowReproducible Cerres Barros provided
-##DONE check to here
+
+
 
 ##TODO need to set paths but not sure about modulePath yet...
 
@@ -27,11 +25,16 @@ library(Require)
 Require(c("SpaDES", "reproducible"), upgrade = FALSE, install = TRUE)
 ### Not sure  if I need the next line - ran it anyway
 Require(c("SpaDES.core (>=1.1.0)", "SpaDES.tools (>= 1.0.0)",
-          "googledrive", 'RCurl', 'XML', "PredictiveEcology/CBMutils"),
-        require = "SpaDES.core", # call `require` only on this package (same as `library`)
+          "googledrive", 'RCurl', 'XML', "PredictiveEcology/CBMutils@development",
+          "data.table"), # comes up with an error so added "devtools'
+        #require = "SpaDES.core", # call `require` only on this package (same as `library`)
         verbose = 1)
-# NOT WORKING
-Require("PredictiveEcology/CBMutils@development", install = TRUE)
+
+Require("devtools")
+
+load_all("C:/Celine/github/CBMutils")
+
+
 
 ##TODO make sure paths are in place before running the objects
 setPaths(cachePath = "cache",
@@ -59,11 +62,11 @@ fixRTM <- function(x) {
   return(sa)
 }
 
-##not working
-studyArea <- prepInputs(url = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci/view?usp=sharing",
-                   destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",#Paths$inputPath,
-                   fun = fixRTM, overwrite = TRUE,
-                   filename2 = "RAI_rtm.tif")
+##not working NOT SURE IF NEEDED
+# studyArea <- prepInputs(url = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci/view?usp=sharing",
+#                    destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",#Paths$inputPath,
+#                    fun = fixRTM, overwrite = TRUE,
+#                    filename2 = "RIA_rtm.tif")
 
 
 
