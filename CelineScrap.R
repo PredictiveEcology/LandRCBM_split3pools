@@ -3,8 +3,8 @@
 ## Need packages?
 ###running up to line 39 in global
 
-
-# 1. This is all input data - expectsInputs()
+##############################################################
+# 1. This is all input data - expectsInputs() and .inputObject
     ## Read in two parameter tables
     table6 <- prepInputs(url = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc/view?usp=sharing",
                          fun = "data.table::fread",
@@ -187,7 +187,12 @@
     # pixelGroup
 
     CBM_yieldOut[, id := pixelGroup]
+##############################################################
+# END - 1. This is all input data - expectsInputs() and .inputObject
 
+
+##########################################################
+    #2. Calculating the cumPools
 
     ### three functions are involved:
     # - cumPoolsCreate
@@ -197,16 +202,30 @@
     # the cumPoolsCreate and convertM3biom are different enough to warrant new
     # functions but we should be able to use biomProp
 
+    ##testing with 3 pixelGroups
+    # > unique(CBM_yieldOut[,.(speciesCode,pixelGroup)])
+    # speciesCode pixelGroup
+    # 1:    Betu_pap          1
+    # 2:    Betu_pap          2
+    # 3:    Betu_pap          3
+    # 4:    Pice_gla          2
+    # 5:    Pice_mar          2
+    # 6:    Pice_mar          3
 
 
+    ### Error - I think it is in the counter 1:NROW part
+    DT[,.(V4.Sum=sum(V4)),
+       by=V1][
+    CBM_yieldOut[,.(B.sum = sum(B)), by = c("pixelGroup", "speciesCode")]
+    CBM_yieldOut[,.(B.sum = sum(B)), by = "pixelGroup"]
+    CBM_yieldOut[,.(B.sum = sum(B)), by = "speciesCode"]
 
 
+    cumPools <- cumPoolsCreateAGB(CBM_yieldOut, pixelGroupEco, table6, table7)
 
+    cbmAboveGroundPoolColNames <- "totMerch|fol|other"
+    colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
 
-
-    ### subsetting table6 and table7 to have "BC" only and the right ecozones
-    eco <- unique(ecozone[])
-    eco <- eco[!is.na(eco)]
 
 
 

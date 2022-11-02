@@ -1,10 +1,8 @@
-convertAGB2pools <- function(oneCurve, table6, table7)
-    # meta, gCvalues, spsMatch, ecozones, params6,
-    #                          params7)
-                  {
+convertAGB2pools <- function(oneCurve, table6, table7, counter){
   # oneCurve <- gCvalues[GrowthCurveComponentID == meta$growth_curve_component_id, ]
   # # the Boudewyn models do not deal with 0s
   # oneCurve <- oneCurve[Age != 0,]
+
 
   spec <- as.integer(unique(oneCurve$canfi_species))
 

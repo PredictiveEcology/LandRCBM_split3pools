@@ -1,9 +1,21 @@
 ## install/load required packages
 
-Rversion <- gsub(".+(4..).+", "\\1", R.version.string)
-rlib <- file.path("R", Rversion)
-options(repos = c(CRAN = "https://cloud.r-project.org"))
-if (!dir.exists(rlib)) dir.create(rlib, recursive = TRUE); .libPaths(rlib, include.site = FALSE)
+#Rversion <- gsub(".+(4..).+", "\\1", R.version.string)
+#rlib <- file.path("R", Rversion)
+pkgDir <- file.path(tools::R_user_dir(basename(getwd()), "data"), "packages",
+                    version$platform, getRversion()[, 1:2])
+dir.create(pkgDir, recursive = TRUE, showWarnings = FALSE)
+.libPaths(pkgDir, include.site = FALSE)
+
+# rlib <- file.path(tools::R_user_dir(basename(getwd()), "data"), "packages",
+#                     version$platform, getRversion()[,1:2])
+# options(repos = c(CRAN = "https://cloud.r-project.org"))
+# if (!dir.exists(rlib)) dir.create(rlib, recursive = TRUE); .libPaths(rlib, include.site = FALSE)
+
+## this is a work-around for working from PFC...R cannot connect to URL
+
+options("download.file.method" = "wininet")
+
 
 ### In this section, only load the minimum of packages (Require, SpaDES.install) so all packages can be installed with
 #    correct version numbering. If we load a package too early and it is an older version that what may be required by
@@ -11,30 +23,27 @@ if (!dir.exists(rlib)) dir.create(rlib, recursive = TRUE); .libPaths(rlib, inclu
 if (!require("remotes")) {
   install.packages("remotes")
 }
-remotes::install_github("PredictiveEcology/Require@f2c791eb05fb0ad99b278619198ef925f85cbb9d")
+remotes::install_github("PredictiveEcology/Require@development")
 library(Require)
-Require(c("PredictiveEcology/SpaDES.project@transition"), require = FALSE)
-
-
-
 
 ##TODO need to set paths but not sure about modulePath yet...
 
 ## load necessary packages
 
-Require(c("SpaDES", "reproducible"), upgrade = FALSE, install = TRUE)
+
 ### Not sure  if I need the next line - ran it anyway
-Require(c("SpaDES.core (>=1.1.0)", "SpaDES.tools (>= 1.0.0)",
+Require(c("PredictiveEcology/SpaDES.project@transition", "SpaDES", "reproducible",
+          "SpaDES.core (>=1.1.0)", "SpaDES.tools (>= 1.0.0)",
           "googledrive", 'RCurl', 'XML', "PredictiveEcology/CBMutils@development",
-          "data.table"), # comes up with an error so added "devtools'
-        #require = "SpaDES.core", # call `require` only on this package (same as `library`)
+          "data.table", "devtools"), # comes up with an error so added "devtools'
+        require = c("SpaDES.core", "devtools"), # call `require` only on this package (same as `library`)
         verbose = 1)
 
-Require("devtools")
+#Require("devtools")
 
 load_all("C:/Celine/github/CBMutils")
 
-
+###HERE
 
 ##TODO make sure paths are in place before running the objects
 setPaths(cachePath = "cache",
