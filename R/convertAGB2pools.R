@@ -1,8 +1,4 @@
-convertAGB2pools <- function(oneCurve, table6, table7, counter){
-  # oneCurve <- gCvalues[GrowthCurveComponentID == meta$growth_curve_component_id, ]
-  # # the Boudewyn models do not deal with 0s
-  # oneCurve <- oneCurve[Age != 0,]
-
+convertAGB2pools <- function(oneCurve, table6, table7){
 
   spec <- as.integer(unique(oneCurve$canfi_species))
 
@@ -39,7 +35,7 @@ convertAGB2pools <- function(oneCurve, table6, table7, counter){
   # totalStemWood[which(is.nan(totalStemWood))] <- NA
   # # calculate the 4 proportions that should be returned: proportion for
   # # stemwood, prop for bark, prop for branches, and prop for foliage.
-  pVect <- biomProp(table6 = params6, table7 = params7, vol = oneCurve$B)
+  pVect <- CBMutils::biomProp(table6 = params6, table7 = params7, vol = oneCurve$B)
   # translating this into biomass values for the carbon pools
   # totMerch <- eq1
   # totTree <- totalStemWood / pVect[, 1]

@@ -1,38 +1,30 @@
-cumPoolsCreateAGB <- function(CBM_yieldOut, pixelGroupEco, table6, table7){
-#
-#   fullSpecies, gcMeta, userGcM3,
-#                            stable3, stable4, stable5, stable6, stable7, thisAdmin) {
-
+cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
   counter <- 0L
   cumBiomList <- list()
-  browser()
+  #cumList <- list()
 
-  allInfoAGBin <- merge(CBM_yieldOut,pixelGroupEco, by = "pixelGroup")
+  # matching on species name
+  for (i in 1:length(unique(allInfoAGBin$canfi_species))) {
+    oneSpecies <- allInfoAGBin[canfi_species == unique(CBM_yieldOut$canfi_species)[i], ]
 
-  for (i in 1:length(unique(allInfoAGBin$canfi_species))) { #fullSpecies
-    # matching on species name
-    oneSpecies <- allInfoAGBin[canfi_species == unique(CBM_yieldOut$canfi_species)[i], ]#gcMeta[species == fullSpecies #speciesMeta
-    # for each species name, process one gcID at a time
-browser()
-1:NROW(unique(speciesMeta, on = "gcids")
-       unique(oneSpecies$id)
-    for (j in 1:NROW(unique(oneSpecies, on = "id"))) {#speciesMeta
+## the 1:NROW seems to not work (have not determined why it does not cycle
+## through past the first species
+
+##TODO
+##fix this work around
+  idj <- unique(oneSpecies$id)
+    #for (j in 1:NROW(unique(oneSpecies, on = "id"))) {
+  for(j in 1:length(idj)){
+    #for (l in 1:nrow(oneSpecies[id == idj[j],])) {
       counter <- counter + 1L
-      if(counter == 4){
-        browser()
-      }
+  # this line is for if we are using j in 1:NROW above
+  #    oneCurve <- oneSpecies[id == unique(oneSpecies$id)[j], ] ## check if this works oneSpecies[j,]
 
-            oneCurve <- oneSpecies[id == unique(oneSpecies$id)[j], ] ## check if this works oneSpecies[j,]
-      #ecozone <- meta$ecozones
-      #id <- userGcM3$GrowthCurveComponentID[which(userGcM3$GrowthCurveComponentID == meta$growth_curve_component_id)][-1]
-
+      oneCurve <- oneSpecies[id == idj[j],]
       ## IMPORTANT BOURDEWYN PARAMETERS FOR NOT HANDLE AGE 0 ##
       oneCurve <- oneCurve[which(age>0),]
-      # age <- userGcM3[GrowthCurveComponentID == meta$growth_curve_component_id, Age]
-      # age <- age[which(age>0)]
 
       # series of fncts results in curves of merch, foliage and other (SW or HW)
-
       cumBiom <- as.matrix(convertAGB2pools(oneCurve, table6, table7))
 
       # going from tonnes of biomass/ha to tonnes of carbon/ha here
@@ -47,11 +39,14 @@ browser()
       # [1] "Disturbance"       "Growth1"           "DomTurnover"       "BioTurnover"
       # [5] "OvermatureDecline" "Growth2"           "DomDecay"          "SlowDecay"
       # [9] "SlowMixing"
-      cumBiomList[[counter]] <- data.table(id = oneCurve$id, pixelGroup = oneCurve$pixelGroup,
-                                           age = oneCurve$age, cumBiom)
 
-      # cumPools <- rbind(cumPools, cumBiom)
+      # changed this to not have two things called cumBiomList
+      #cumBiomList[[counter]] <- data.table(id = oneCurve$id, pixelGroup = oneCurve$pixelGroup,
+      #                                     age = oneCurve$age, cumBiom)
+      cumBiomList[[counter]] <- data.table(id = oneCurve$id, pixelGroup = oneCurve$pixelGroup,
+                                       age = oneCurve$age, cumBiom)
     }
+  #cumBiomList <- append(cumBiomList,cumList)
   }
   cumPools <- rbindlist(cumBiomList)
   return(cumPools)

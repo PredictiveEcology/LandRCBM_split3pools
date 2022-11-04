@@ -27,7 +27,7 @@
                                 filename2 = "cbmAdmin.csv")
 
     ## we need the studyArea
-    RIArtm <- prepInputs(url = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci/view?usp=sharing",
+    RIArtm <- Cache(prepInputs, url = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci/view?usp=sharing",
                          destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs")
 
 
@@ -35,32 +35,21 @@
     ###Line below failed
     #installGithubPackage("PredictiveEcology/CBMutils@development")
 
-    ecozone <- CBMutils::prepInputsEcozones(url = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip",
+    ecozone <- Cache(CBMutils::prepInputsEcozones, url = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip",
                      dPath =  "C:/Celine/github/LandRCBM_split3pools/inputs",
                      rasterToMatch = RIArtm)
-
-
-    ## not sure if I need this yet...
-    # cbmAdminThisSA <- cbmAdmin[adminName == "British Columbia", ]
-    #
-    # rows <- match(ecozone[], cbmAdminThisSA$EcoBoundaryID)
-    # ####not sure if it is the spus I want
-    # spatialUnitID <- cbmAdminThisSA[rows,"SpatialUnitID"]
-
-
-
 
     ## canfi_species list
     ##TODO add these canfi species codes to LandR::sppEquivalencies_CA
 
-    canfi_species <- prepInputs(url = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo",
+    canfi_species <- Cache(prepInputs, url = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo",
                                 fun = "data.table::fread",
                                 destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",
                                 filename2 = "canfi_species.csv")
 
     ## these two next tables will be coming from the Yield module
     ## this one is the actual yields
-    CBM_AGB <- prepInputs(url = "https://drive.google.com/file/d/1xxfG-8ZJKPlO5HguHpVtqio5TXdcRGy7",
+    CBM_AGB <- Cache(prepInputs, url = "https://drive.google.com/file/d/1xxfG-8ZJKPlO5HguHpVtqio5TXdcRGy7",
                                 fun = "data.table::fread",
                                 destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",
                                 filename2 = "CBM_AGB.csv")
@@ -69,11 +58,11 @@
     CBM_AGB <- CBM_AGB[,2:6]
 
     ## this is the species matching the Sp1 Sp2 and Sp3 of the previous table
-    CBM_speciesCodes <- prepInputs(url = "https://drive.google.com/file/d/1sVsDoT1E-CDgo2hnCU2pgqV6PpVic2Fe",
+    CBM_speciesCodes <- Cache(prepInputs, url = "https://drive.google.com/file/d/1sVsDoT1E-CDgo2hnCU2pgqV6PpVic2Fe",
                           fun = "data.table::fread",
                           destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",
-                          filename2 = "CBM_speciesCodes.csv"
-                          # , useCache = FALSE
+                          filename2 = "CBM_speciesCodes.csv",
+                          useCache = TRUE
                           )
     ## I have not used cache and it still got cached?? Why? because it is big?
     # Loading object into R
@@ -103,7 +92,8 @@
     ## read-in the pixelGroupMap
     pixelGroupMap <- Cache(prepInputs, url = "https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3",
                          destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",
-                         rasterToMatch = RIArtm)
+                         rasterToMatch = RIArtm,
+                         useCache = TRUE)
 
     ### need to match the pixel groups with the ecozones and juris_id
     ## lines of code to help
@@ -187,12 +177,18 @@
     # pixelGroup
 
     CBM_yieldOut[, id := pixelGroup]
+
+    # adding ecozone column
+    allInfoAGBin <- merge(CBM_yieldOut,pixelGroupEco, by = "pixelGroup")
+
 ##############################################################
 # END - 1. This is all input data - expectsInputs() and .inputObject
 
 
 ##########################################################
-    #2. Calculating the cumPools
+    #2. START processing curves from AGB to 3 pools
+
+    #2.1 Calculating the cumPools
 
     ### three functions are involved:
     # - cumPoolsCreate
@@ -203,7 +199,7 @@
     # functions but we should be able to use biomProp
 
     ##testing with 3 pixelGroups
-    # > unique(CBM_yieldOut[,.(speciesCode,pixelGroup)])
+    # > unique(allInfoAGBin[,.(speciesCode,pixelGroup)])
     # speciesCode pixelGroup
     # 1:    Betu_pap          1
     # 2:    Betu_pap          2
@@ -214,17 +210,72 @@
 
 
     ### Error - I think it is in the counter 1:NROW part
-    DT[,.(V4.Sum=sum(V4)),
-       by=V1][
-    CBM_yieldOut[,.(B.sum = sum(B)), by = c("pixelGroup", "speciesCode")]
-    CBM_yieldOut[,.(B.sum = sum(B)), by = "pixelGroup"]
-    CBM_yieldOut[,.(B.sum = sum(B)), by = "speciesCode"]
+    # DT[,.(V4.Sum=sum(V4)),
+    #    by=V1][
+    # allInfoAGBin[,.(B.sum = sum(B)), by = c("pixelGroup", "speciesCode")]
+    # allInfoAGBin[,.(B.sum = sum(B)), by = "pixelGroup"]
+    # allInfoAGBin[,.(B.sum = sum(B)), by = "speciesCode"]
 
 
-    cumPools <- cumPoolsCreateAGB(CBM_yieldOut, pixelGroupEco, table6, table7)
+    cumPools <- cumPoolsCreateAGB(allInfoAGBin, table6, table7)
+
+    # problem###
+    dim(cumPools)
+    #1872    6
+    dim(allInfoAGBin)
+    #1878    8
 
     cbmAboveGroundPoolColNames <- "totMerch|fol|other"
     colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
+
+    #2.2 MAKE SURE THE PROVIDED CURVES ARE ANNUAL
+    ### if not, we need to extrapolate to make them annual
+    minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = "id"]
+    fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "id"]
+    # might not need this
+    length0s <- fill0s[,.(toMinAge = length(age)), by = "id"]
+    # these are going to be 0s
+    carbonVars <- data.table(id = unique(fill0s$id),
+                             totMerch = 0,
+                             fol = 0,
+                             other = 0 )
+    ## not 7cols, that was for CBM_VOl2biom, we have 6cols
+    fiveOf7cols <- fill0s[carbonVars, on = "id"]
+
+    otherVars <- cumPools[,.(pixelGroup = unique(pixelGroup)), by = "id"]
+    add0s <- fiveOf7cols[otherVars, on = "id"]
+    cumPoolsRaw <- rbind(cumPools,add0s)
+    set(cumPoolsRaw, NULL, "age", as.numeric(cumPoolsRaw$age))
+    setorderv(cumPoolsRaw, c("id", "age"))
+
+    # 2.3 Plot the curves that are directly out of the Boudewyn-translation
+    # Usually, these need to be, at a minimum, smoothed out.
+    figPath <- file.path(getwd(),"figures") #file.path(modulePath(sim), currentModule(sim), "figures")
+
+    # plotting and save the plots of the raw-translation in the sim$ don't really
+    # need this b/c the next use of m3ToBiomPlots fnct plots all 6 curves, 3
+    # raw-translation and 3-smoothed curves resulting from the Chapman-Richards
+    # parameter finding in the cumPoolsSmooth fnct. Leaving these lines here as
+    # exploration tools.
+    # if (!is.na(P(sim)$.plotInitialTime))
+    # sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = cumPoolsRaw,
+    #                                        path = figPath,
+    #                                        filenameBase = "rawCumBiomass_")
+
+    # Fixing of non-smooth curves
+
+    cumPoolsClean <- Cache(cumPoolsSmooth, cumPoolsRaw)
+
+    # a[, totMerch := totMerchNew]
+    if (!is.na(P(sim)$.plotInitialTime))
+      figs <- Cache(m3ToBiomPlots, inc = cumPoolsClean,
+                    path = figPath,
+                    filenameBase = "cumPools_smoothed_postChapmanRichards")
+
+    set(cumPoolsClean, NULL, colNames, NULL)
+    colNamesNew <- grep(cbmAboveGroundPoolColNames, colnames(cumPoolsClean), value = TRUE)
+    setnames(cumPoolsClean, old = colNamesNew, new = colNames)
+
 
 
 
