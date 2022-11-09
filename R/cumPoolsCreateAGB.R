@@ -12,7 +12,7 @@ cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
 
 ##TODO
 ##fix this work around
-  idj <- unique(oneSpecies$id)
+  idj <- unique(oneSpecies$cohort_id)
     #for (j in 1:NROW(unique(oneSpecies, on = "id"))) {
   for(j in 1:length(idj)){
     #for (l in 1:nrow(oneSpecies[id == idj[j],])) {
@@ -20,7 +20,7 @@ cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
   # this line is for if we are using j in 1:NROW above
   #    oneCurve <- oneSpecies[id == unique(oneSpecies$id)[j], ] ## check if this works oneSpecies[j,]
 
-      oneCurve <- oneSpecies[id == idj[j],]
+      oneCurve <- oneSpecies[cohort_id == idj[j],]
       ## IMPORTANT BOURDEWYN PARAMETERS FOR NOT HANDLE AGE 0 ##
       oneCurve <- oneCurve[which(age>0),]
 
@@ -41,9 +41,9 @@ cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
       # [9] "SlowMixing"
 
       # changed this to not have two things called cumBiomList
-      #cumBiomList[[counter]] <- data.table(id = oneCurve$id, pixelGroup = oneCurve$pixelGroup,
+      #cumBiomList[[counter]] <- data.table(id = oneCurve$cohort_id, pixelGroup = oneCurve$pixelGroup,
       #                                     age = oneCurve$age, cumBiom)
-      cumBiomList[[counter]] <- data.table(id = oneCurve$id, pixelGroup = oneCurve$pixelGroup,
+      cumBiomList[[counter]] <- data.table(gcids = oneCurve$cohort_id, pixelGroup = oneCurve$pixelGroup,
                                        age = oneCurve$age, cumBiom)
     }
   #cumBiomList <- append(cumBiomList,cumList)

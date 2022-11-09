@@ -38,7 +38,7 @@ Require(c("PredictiveEcology/SpaDES.project@transition", "SpaDES", "reproducible
           "data.table", "devtools"), # comes up with an error so added "devtools'
         require = c("SpaDES.core", "devtools"), # call `require` only on this package (same as `library`)
         verbose = 1)
-
+# there is a problem with CBMutils
 #Require("devtools")
 
 load_all("C:/Celine/github/CBMutils")

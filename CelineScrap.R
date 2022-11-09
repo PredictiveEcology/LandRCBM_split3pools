@@ -6,12 +6,12 @@
 ##############################################################
 # 1. This is all input data - expectsInputs() and .inputObject
     ## Read in two parameter tables
-    table6 <- prepInputs(url = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc/view?usp=sharing",
+    table6 <- Cache(prepInputs, url = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc/view?usp=sharing",
                          fun = "data.table::fread",
                                          destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",
                                          #purge = 7,
                                          filename2 = "appendix2_table6_tb.csv")
-    table7 <- prepInputs(url = "https://drive.google.com/file/d/16nQgTGW2p_IYF_Oavcc7WbWbgWl5uywt/view?usp=sharing",
+    table7 <- Cache(prepInputs, url = "https://drive.google.com/file/d/16nQgTGW2p_IYF_Oavcc7WbWbgWl5uywt/view?usp=sharing",
                          fun = "data.table::fread",
                          destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",
                          #purge = 7,
@@ -20,7 +20,7 @@
     # this gives us the link to the spatialUnitID - CBM consctruct that crosses the
     # AdminBoundaryID and EcoBoundary which are used for parameter matching
 
-    cbmAdmin <-  prepInputs(url = "https://drive.google.com/file/d/1NwVPqMho8fOcf9mVVzm5SlfDbbyQmQlh/view?usp=sharing",
+    cbmAdmin <-  Cache(prepInputs, url = "https://drive.google.com/file/d/1NwVPqMho8fOcf9mVVzm5SlfDbbyQmQlh/view?usp=sharing",
                                 fun = "data.table::fread",
                                 destinationPath = "C:/Celine/github/LandRCBM_split3pools/inputs",
                                 #purge = 7,
@@ -125,7 +125,7 @@
 
     setnames(CBM_AGB,"id","pixelGroup")
     CBM_AGB <- CBM_AGB[pixelGroup %in% 1:3,]
-
+library(data.table)
     cbm1 <- melt.data.table(CBM_AGB, id.vars = c("pixelGroup", "age"), variable.name = "Sp", value.name = "B")
     keycols1 = c("pixelGroup", "Sp")
     setkeyv(cbm1, keycols1)
@@ -168,18 +168,19 @@
                                       canfi_species = c(1303, 105, 101)))
 
     CBM_yieldOut <- merge(CBM_yieldOut, matchCanfi, by = "speciesCode")
+    # adding ecozone column
+    allInfoAGBin <- merge(CBM_yieldOut, pixelGroupEco, by = "pixelGroup")
 
     ##TODO
-    #### NOTE SURE IS THIS IS NEEDED. I THINK IT IS, TO MATCH SCOTT'S MORKEN's ID SCHEMA
+    ## WE need a cohort_id
     # there can be more than one cohort in a pixelGroup - more than one cohort
     # on a pixel. So, we need a unique identifier for each curve on each pixel.
     # I am therefore adding a column which in this case will be the same as the
     # pixelGroup
+    cohort_id <- unique(CBM_yieldOut[,.(pixelGroup, speciesCode)])
+    cohort_id[, cohort_id := 1:length(cohort_id$speciesCode)]
+    allInfoAGBin <- merge(allInfoAGBin, cohort_id, by = c("pixelGroup", "speciesCode"))
 
-    CBM_yieldOut[, id := pixelGroup]
-
-    # adding ecozone column
-    allInfoAGBin <- merge(CBM_yieldOut,pixelGroupEco, by = "pixelGroup")
 
 ##############################################################
 # END - 1. This is all input data - expectsInputs() and .inputObject
@@ -230,51 +231,107 @@
 
     #2.2 MAKE SURE THE PROVIDED CURVES ARE ANNUAL
     ### if not, we need to extrapolate to make them annual
-    minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = "id"]
-    fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "id"]
+    minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
+    fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcids"]
     # might not need this
-    length0s <- fill0s[,.(toMinAge = length(age)), by = "id"]
+    length0s <- fill0s[,.(toMinAge = length(age)), by = "gcids"]
     # these are going to be 0s
-    carbonVars <- data.table(id = unique(fill0s$id),
+    carbonVars <- data.table(gcids = unique(fill0s$gcids),
                              totMerch = 0,
                              fol = 0,
                              other = 0 )
     ## not 7cols, that was for CBM_VOl2biom, we have 6cols
-    fiveOf7cols <- fill0s[carbonVars, on = "id"]
+    fiveOf7cols <- fill0s[carbonVars, on = "gcids"]
 
-    otherVars <- cumPools[,.(pixelGroup = unique(pixelGroup)), by = "id"]
-    add0s <- fiveOf7cols[otherVars, on = "id"]
+    otherVars <- cumPools[,.(pixelGroup = unique(pixelGroup)), by = "gcids"]
+    add0s <- fiveOf7cols[otherVars, on = "gcids"]
     cumPoolsRaw <- rbind(cumPools,add0s)
     set(cumPoolsRaw, NULL, "age", as.numeric(cumPoolsRaw$age))
-    setorderv(cumPoolsRaw, c("id", "age"))
+    setorderv(cumPoolsRaw, c("gcids", "age"))
 
     # 2.3 Plot the curves that are directly out of the Boudewyn-translation
     # Usually, these need to be, at a minimum, smoothed out.
     figPath <- file.path(getwd(),"figures") #file.path(modulePath(sim), currentModule(sim), "figures")
 
-    # plotting and save the plots of the raw-translation in the sim$ don't really
-    # need this b/c the next use of m3ToBiomPlots fnct plots all 6 curves, 3
-    # raw-translation and 3-smoothed curves resulting from the Chapman-Richards
-    # parameter finding in the cumPoolsSmooth fnct. Leaving these lines here as
-    # exploration tools.
+    # plotting and save the plots of the raw-translation
     # if (!is.na(P(sim)$.plotInitialTime))
     # sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = cumPoolsRaw,
     #                                        path = figPath,
     #                                        filenameBase = "rawCumBiomass_")
 
-    # Fixing of non-smooth curves
+    plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = cumPoolsRaw,
+                                       path = figPath,
+                                       filenameBase = "rawCumBiomass_")
+    # Some of these curves may still be wonky. But there is not much that can be
+    # done unless we get better pool-splitting methods. The "matching" made in
+    # Biomass_speciesParameters to the PSP makes this as good as the data we
+    # have (PSPs).
+    # Note: Fixing of non-smooth curves done in CBM_vol2biomass would not help
+    # here. The smoothing to match PSP is done and cohort-level growth will only
+    # match a Chapman-Richard form is there is only one cohot on the pixel.
 
-    cumPoolsClean <- Cache(cumPoolsSmooth, cumPoolsRaw)
+    # 2.4 Calculating Increments
+    cbmAboveGroundPoolColNames <- "totMerch|fol|other"
+    colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
 
-    # a[, totMerch := totMerchNew]
-    if (!is.na(P(sim)$.plotInitialTime))
-      figs <- Cache(m3ToBiomPlots, inc = cumPoolsClean,
-                    path = figPath,
-                    filenameBase = "cumPools_smoothed_postChapmanRichards")
+    incCols <- c("incMerch", "incFol", "incOther")
+    cumPoolsRaw[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
+                  by = eval("gcids")]
+    colsToUse33 <- c("age", "gcids", incCols)
+    #if (!is.na(P(sim)$.plotInitialTime))
+      rawIncPlots <- Cache(m3ToBiomPlots, inc = cumPoolsRaw[, ..colsToUse33],
+                           path = figPath,
+                           title = "Increments merch fol other by gc id",
+                           filenameBase = "Increments")
+    message(crayon::red("User: please inspect figures of the raw and smoothed translation of your growth curves in: ",
+                        figPath))
 
-    set(cumPoolsClean, NULL, colNames, NULL)
-    colNamesNew <- grep(cbmAboveGroundPoolColNames, colnames(cumPoolsClean), value = TRUE)
-    setnames(cumPoolsClean, old = colNamesNew, new = colNames)
+
+    sim$cumPoolsClean <- cumPoolsClean
+
+    colsToUseForestType <- c("growth_curve_component_id", "forest_type_id", "gcids")
+    forestType <- gcMeta[, ..colsToUseForestType]
+    #       #FYI:
+    #       # cbmTables$forest_type
+    #       # id           name
+    #       # 1  1       Softwood
+    #       # 2  2      Mixedwood
+    #       # 3  3       Hardwood
+    #       # 4  9 Not Applicable
+
+    setkeyv(forestType, "gcids")
+    cumPoolsClean <- merge(cumPoolsClean, forestType, by = "gcids")
+    swCols <- c("swmerch", "swfol", "swother")
+    hwCols <- c("hwmerch", "hwfol", "hwother")
+
+    totalIncrementsSmooth <- cumPoolsClean[forest_type_id == 1, (swCols) := list((incMerch), (incFol), (incOther))]
+    totalIncrementsSmooth <- totalIncrementsSmooth[forest_type_id == 3, (hwCols) := list((incMerch), (incFol), (incOther))]
+    totalIncrementsSmooth[is.na(totalIncrementsSmooth)] <- 0
+    outCols <- c("incMerch", "incFol", "incOther", "forest_type_id")
+    incCols <- c(swCols, hwCols)
+    totalIncrementsSmooth[, (outCols) := NULL]
+    increments <- totalIncrementsSmooth[, (incCols) := list(
+      swmerch / 2, swfol / 2,
+      swother / 2, hwmerch / 2, hwfol / 2, hwother / 2
+    )]
+    setorderv(increments, c("gcids", "age"))
+
+    incColKeep <- c("id", "age", incCols)
+    set(increments, NULL, "id", as.numeric(increments[["gcids"]]))
+    set(increments, NULL, setdiff(colnames(increments), incColKeep), NULL)
+    setcolorder(increments, incColKeep)
+
+    # Assertions
+    if (isTRUE(P(sim)$doAssertions)) {
+      # All should have same min age
+      if (length(unique(increments[, min(age), by = "id"]$V1)) != 1)
+        stop("All ages should start at the same age for each curveID")
+      if (length(unique(increments[, max(age), by = "id"]$V1)) != 1)
+        stop("All ages should end at the same age for each curveID")
+    }
+
+    sim$growth_increments <- as.matrix(increments)
+    # END process growth curves -------------------------------------------------------------------------------
 
 
 
