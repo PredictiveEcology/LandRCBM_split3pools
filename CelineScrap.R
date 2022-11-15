@@ -286,7 +286,7 @@ library(data.table)
     message(crayon::red("User: please inspect figures of the raw and smoothed translation of your growth curves in: ",
                         figPath))
 
-
+###HERE###
     sim$cumPoolsClean <- cumPoolsClean
 
     colsToUseForestType <- c("growth_curve_component_id", "forest_type_id", "gcids")

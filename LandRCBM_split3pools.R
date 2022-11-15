@@ -16,7 +16,7 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
-  reqdPkgs = list("SpaDES.core (>=1.1.0)", "ggplot2"),
+  reqdPkgs = list("SpaDES.core (>=1.1.0)", "ggplot2", "data.table", "CBMutils"),
   parameters = bindrows(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
     defineParameter(".plots", "character", "screen", NA, NA,
@@ -51,61 +51,68 @@ defineModule(sim, list(
       desc = "Proportion model parameters similar to Boudewyn et al 2007,
       but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha",
       sourceURL = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc/view?usp=sharing"
-        #the link below is for the vol/ha - based proportion, will eventually
-        #have an NFIS link for the biomass-based ones. For now, I put a copy of
-        #the biomass-basedones provided by Paul boudewyn on the WBI/Carbon drive
-        #(FOR-Cast). for now on WBI/Carbon
-        #drive,"https://nfi.nfis.org/resources/biomass_models/appendix2_table6.csv"
+        #NOTE: current link is to a google drive but parameters will eventually
+        #be on the NFIS site as per the volume-based parameters. For now, I put
+        #a copy of the biomass-basedones provided by Paul boudewyn on the
+        #WBI/Carbon drive (FOR-Cast).
     ),
     expectsInput(
       objectName = "table7", objectClass = "dataframe",
       desc = "Caps on proportion models similar to  Boudewyn et al 2007,
       but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha",
       sourceURL = "https://drive.google.com/file/d/16nQgTGW2p_IYF_Oavcc7WbWbgWl5uywt/view?usp=sharing"
-      # this is for the vol/ha, will eventuall have an NFIS link for these,
-      #for now on WBI/Carbon drive,"https://nfi.nfis.org/resources/biomass_models/appendix2_table7.csv"
+      #NOTE: current link is to a google drive but parameters will eventually
+      #be on the NFIS site as per the volume-based parameters. For now, I put
+      #a copy of the biomass-basedones provided by Paul boudewyn on the
+      #WBI/Carbon drive (FOR-Cast).
     ),
       expectsInput(
       objectName = "cbmAdmin", objectClass = "dataframe",
       desc = "Provides equivalent between provincial boundaries, CBM-id for provincial boundaries and CBM-spatial unit ids",
       sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
-
     ),
     expectsInput(
-      objectName = "LandRCBM_AGB", objectClass = "dataframe",
-      desc = "Table created in the Yield module, will eventually get it from the module,
-              for now, sitting in the WBI/Carbon/LandrCBM folder",
-      sourceURL = INSERT LINK HERE
-
+      objectName = "ecozone", objectClass = "raster",
+      desc = "Ecozones of Canada",
+      sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
     ),
     expectsInput(
-      objectName = "LandRCBM_speciesCode", objectClass = "dataframe",
+      objectName = "canfi_species",
+      objectClass = "dataframe",
+      desc = "File containing the possible species in the Boudewyn table",
+      sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo"
+    ),
+    expectsInput(##TODO Yield module will be modified to provide required format
+      objectName = "CBM_AGB", objectClass = "dataframe",
       desc = "Table created in the Yield module, will eventually get it from the module,
               for now, sitting in the WBI/Carbon/LandrCBM folder",
-      sourceURL = INSERT LINK HERE
-
+      sourceURL = "https://drive.google.com/file/d/1xxfG-8ZJKPlO5HguHpVtqio5TXdcRGy7"
     ),
-    expectsInput(objectName = "gcMeta",
-                 objectClass = "dataframe",
-                 desc = "Provides equivalent between provincial boundaries,
-                 CBM-id for provincial boundaries and CBM-spatial unit ids",
-                 sourceURL = NA),
-    expectsInput(objectName = "gcMetaFile",
-                 objectClass = "character",
-                 desc = "File name and location for the user provided gcMeta dataframe",
-                 sourceURL = "https://drive.google.com/file/d/1YmQ6sNucpEmF8gYkRMocPoeKt2P26ZiX"
+    expectsInput(
+      objectName = "CBM_speciesCodes", objectClass = "dataframe",
+      desc = "Table created in the Yield module, will eventually get it from the module,
+              for now, sitting in the WBI/Carbon/LandrCBM folder",
+      sourceURL = "https://drive.google.com/file/d/1sVsDoT1E-CDgo2hnCU2pgqV6PpVic2Fe"
     ),
-    expectsInput(objectName = "canfi_species",
-                 objectClass = "dataframe",
-                 desc = "File containing the possible species in the Boudewyn table - note
-                 that if Boudewyn et al added species, this should be updated. Also note that such an update is very unlikely",
-                 sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo")
-
-  ),
-  outputObjects = bindrows(
-    #createsOutput("objectName", "objectClass", "output object description", ...),
-    createsOutput(objectName = NA, objectClass = NA, desc = NA)
+    expectsInput(objectName = "pixelGroupMap",
+                 objectClass = "raster",
+                 desc = "PixelGroup map from LandR",
+                 sourceURL = "https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3"
+    )
   )
+
+    outputObjects = bindrows(
+    #createsOutput("objectName", "objectClass", "output object description", ...),
+    createsOutput(objectName = "CBM_AGBplots",
+                  objectClass = "plot",
+                  desc = "Plot of the AGB values per cohort provided by the Yield module"),
+    createsOutput(objectName = "cumPools",
+                  objectClass = "dataframe",
+                  desc = "Cumulative carbon in three pools, totMerch, fol, and other per cohort"),
+    createsOutput(objectName = "growth_incForSpinup",
+                  objectClass = "matrix",
+                  desc = "Matrix of the 1/2 increment for every age provided per cohort")
+    )
 ))
 
 ## event types
@@ -191,6 +198,57 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 ### template initialization
 Init <- function(sim) {
   # # ! ----- EDIT BELOW ----- ! #
+  ###1. Data clean-up and creation until we update the Yield module
+  ## extra column was probably created when I saved the file - no need for this
+  ## unce Yield is updated
+  CBM_AGB <- sim$CBM_AGB[,2:6]
+  CBM_speciesCodes <- sim$CBM_speciesCodes[,2:4]
+
+  ### need to match the pixel groups with the ecozones and juris_id
+  ## Are pixelGroupMap and ecozone the same RTM?
+  ##checking
+  if(length(pixelGroupMap[]) != length(ecozone[])){
+    stop("There is a problem: the ecozone raster and the pixelGroupMap are not equal")
+  }
+  sim$pixelGroupEco <- as.data.table(cbind(pixelIndex = 1:ncell(pixelGroupMap),
+                                       pixelGroup = pixelGroupMap[],
+                                       ecozone = ecozone[]))
+
+  ##TODO
+  ##Limiting the pixelGroups to three to get all this working. Will need to
+  ##update this section to use all our pixelGroups
+  ### limiting this to our pixelGroups
+  pixelGroupEco <- sim$pixelGroupEco[, "pixelIndex" := NULL][pixelGroup %in% 1:3,]
+  pixelGroupEco <- unique(pixelGroupEco)
+
+  ### matching the ecozone to the admin, for now this is done by hand...
+  ##TODO make the matching to the admin abreviation automatic or make it a user
+  ##defined parameter in the global.R
+  juris_id <- sim$cbmAdmin[(EcoBoundaryID %in% pixelGroupEco$ecozone) & abreviation == "BC",]$abreviation
+
+  pixelGroupEco[, juris_id := juris_id]
+
+
+  ##TODO
+  ###Make up my data from from Yield module: doing this b/c what comes out of
+  ###Yield is currently not the correct format
+  setnames(CBM_AGB,"id","pixelGroup")
+
+  ##TODO
+  ##Limiting the pixelGroups to three to get all this working. Will need to
+  ##update this section to use all our pixelGroups
+  CBM_AGB <- CBM_AGB[pixelGroup %in% 1:3,]
+
+  cbm1 <- melt.data.table(CBM_AGB, id.vars = c("pixelGroup", "age"), variable.name = "Sp", value.name = "B")
+  keycols1 = c("pixelGroup", "Sp")
+  setkeyv(cbm1, keycols1)
+  setkeyv(CBM_speciesCodes, keycols1)
+  CBM_yieldOut <- merge(cbm1, CBM_speciesCodes, by = c("pixelGroup", "Sp"))
+  CBM_yieldOut <- CBM_yieldOut[,-"Sp"]
+
+
+
+
 
   # ! ----- STOP EDITING ----- ! #
 
@@ -261,23 +319,73 @@ Event2 <- function(sim) {
 
   # ! ----- EDIT BELOW ----- ! #
   # 1. NFIparams
-  if (!suppliedElsewhere("gcMeta", sim)) {
+  if (!suppliedElsewhere("table6", sim)) {
 
     # in this module data folder
-    sim$NFIparams<- prepInputs(targetFile = "C:/Celine/github/LandRCBM_split3pools/data/all_prop_models_bc_tb.csv",
+    sim$table6<- prepInputs(targetFile = extractURL("table6"),
                              fun = "data.table::fread",
-                             destinationPath = dPath,
+                             destinationPath = Paths$inputPath,
                              #purge = 7,
-                             filename2 = "all_prop_models_bc_tb.csv")
+                             filename2 = "appendix2_table6_tb.csv")
+  }
 
+  if (!suppliedElsewhere("table7", sim)) {
 
+    # in this module data folder
+    sim$table7<- prepInputs(targetFile = extractURL("table7"),
+                            fun = "data.table::fread",
+                            destinationPath = Paths$inputPath,
+                            #purge = 7,
+                            filename2 = "appendix2_table7_tb.csv")
+  }
+
+###HERE
+  # 2. CBM and NFI admin
     if (!suppliedElsewhere("cbmAdmin", sim)) {
       sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
                                  fun = "data.table::fread",
-                                 destinationPath = dPath,
+                                 destinationPath = Paths$inputPath,
                                  #purge = 7,
                                  filename2 = "cbmAdmin.csv")
     }
+
+  if (!suppliedElsewhere("canfi_species", sim)) {
+    sim$canfi_species <- prepInputs(url = extractURL("canfi_species"),
+                               fun = "data.table::fread",
+                               destinationPath = Paths$inputPath,
+                               #purge = 7,
+                               filename2 = "canfi_species.csv")
+  }
+  if (!suppliedElsewhere("ecozone", sim)) {
+    sim$ecozone <- CBMutils::prepInputsEcozones(url = extractURL("ecozone"),
+                               destinationPath = Paths$inputPath,
+                               rasterToMatch = RIArtm)
+  }
+
+  # 3. Information from LandR
+  ## these two next tables will be coming from the Yield module
+  ## this one is the actual yields that are needed for the CBM spinup
+
+  if (!suppliedElsewhere("CBM_AGB", sim)){
+    sim$CBM_AGB <- prepInputs(url = extractURL("CBM_AGB"),
+                              fun = "data.table::fread",
+                              destinationPath = Paths$inputPath,
+                              filename2 = "CBM_AGB.csv")
+  }
+
+  if (!suppliedElsewhere("CBM_speciesCodes", sim)){
+    sim$CBM_speciesCodes <- prepInputs(url = extractURL("CBM_speciesCodes"),
+                              fun = "data.table::fread",
+                              destinationPath = Paths$inputPath,
+                              filename2 = "CBM_speciesCodes.csv")
+  }
+  ## pixel to pixelGroup map from LandR
+  if (!suppliedElsewhere("pixelGroupMap", sim))
+  sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
+                         destinationPath = Paths$inputPath,
+                         rasterToMatch = RIArtm,
+                         useCache = TRUE)
+
 
   # ! ----- STOP EDITING ----- ! #
   return(invisible(sim))
