@@ -103,6 +103,10 @@ defineModule(sim, list(
 
     outputObjects = bindrows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
+
+    createsOutput(objectName = "CBM_yieldOut",
+                    objectClass = "dataframe",
+                    desc = "AGB values by pixel/pixelGroup, cohort (species and age) will be provided by the Yield module"),
     createsOutput(objectName = "CBM_AGBplots",
                   objectClass = "plot",
                   desc = "Plot of the AGB values per cohort provided by the Yield module"),
@@ -198,6 +202,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 ### template initialization
 Init <- function(sim) {
   # # ! ----- EDIT BELOW ----- ! #
+
+  ########################################################################
   ###1. Data clean-up and creation until we update the Yield module
   ## extra column was probably created when I saved the file - no need for this
   ## unce Yield is updated
@@ -244,11 +250,149 @@ Init <- function(sim) {
   setkeyv(cbm1, keycols1)
   setkeyv(CBM_speciesCodes, keycols1)
   CBM_yieldOut <- merge(cbm1, CBM_speciesCodes, by = c("pixelGroup", "Sp"))
-  CBM_yieldOut <- CBM_yieldOut[,-"Sp"]
+  sim$CBM_yieldOut <- CBM_yieldOut[,-"Sp"]
+
+  ################################################################################
+  # 2. Matching species, jurisdiction and ecozone
+
+  # Match the multimomial logit parameters (table6) and their caps (table7)
+  # with the pixelGroup and speciesCode in CBM_yieldOut.
+  # CBM_yieldOut$pixelGroup gives us the location. Location let's us figure
+  # out which ecozone, and admin. These will be used to match with juris_id
+  # (abreviation - can do this using cbmAdmin or a raster) and ecozone. The
+  # canfi_species have numbers which we need to match with the parameters.
 
 
+  ##TODO
+  # might have to do that by hand for now and maybe add the canfi_species
+  # numbers to the LandR::sppEquivalencies_CA
+
+  ## just working with what we have
+  matchCanfi <- as.data.table(cbind(speciesCode = unique(sim$CBM_yieldOut$speciesCode),
+                                    canfi_species = c(1303, 105, 101)))
+
+  CBM_yieldOut2 <- merge(sim$CBM_yieldOut, matchCanfi, by = "speciesCode")
+  # adding ecozone column
+  allInfoAGBin <- merge(CBM_yieldOut2, pixelGroupEco, by = "pixelGroup")
+
+  ##TODO
+  ## We need a cohort_id
+  # there can be more than one cohort in a pixelGroup - more than one cohort
+  # on a pixel. So, we need a unique identifier for each curve on each pixel.
+  # I am therefore adding a column which in this case will be the same as the
+  # pixelGroup. This value will come from the Yield module
+  cohort_id <- unique(CBM_yieldOut2[,.(pixelGroup, speciesCode)])
+  cohort_id[, cohort_id := 1:length(cohort_id$speciesCode)]
+  sim$allInfoAGBin <- merge(allInfoAGBin, cohort_id, by = c("pixelGroup", "speciesCode"))
 
 
+  ##############################################################################
+  #3. START processing curves from AGB to 3 pools
+
+  #3.1 Calculating the cumPools
+
+  ##TODO
+  ## add new functions to CBMutils. Only two of the three functions needed to be
+  ## modified to adapt to AGB instead of vol inputs. These are in the R/ of this
+  ## module
+
+  ### three functions are involved:
+  # - cumPoolsCreateAGB.R (modified from cumPoolsCreate)
+  # - convertM3biom (modified from cumPoolsCreate)
+  # - biomProp (as is from CBMutils)
+
+  ##testing done with 3 pixelGroups
+  # > unique(allInfoAGBin[,.(speciesCode,pixelGroup)])
+  # speciesCode pixelGroup
+  # 1:    Betu_pap          1
+  # 2:    Betu_pap          2
+  # 3:    Betu_pap          3
+  # 4:    Pice_gla          2
+  # 5:    Pice_mar          2
+  # 6:    Pice_mar          3
+
+  cumPools <- cumPoolsCreateAGB(sim$allInfoAGBin, table6, table7)
+
+  cbmAboveGroundPoolColNames <- "totMerch|fol|other"
+  colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
+
+  #3.2 MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
+  #connection, but might be needed for future connection to other sources of
+  #AGB).
+  ### if not, we need to extrapolate to make them annual
+  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
+  fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcids"]
+  # might not need this
+  length0s <- fill0s[,.(toMinAge = length(age)), by = "gcids"]
+  # these are going to be 0s
+  carbonVars <- data.table(gcids = unique(fill0s$gcids),
+                           totMerch = 0,
+                           fol = 0,
+                           other = 0 )
+  ## not 7cols, that was for CBM_VOl2biom, we have 6cols
+  fiveOf7cols <- fill0s[carbonVars, on = "gcids"]
+
+  otherVars <- cumPools[,.(pixelGroup = unique(pixelGroup)), by = "gcids"]
+  add0s <- fiveOf7cols[otherVars, on = "gcids"]
+  sim$cumPoolsRaw <- rbind(sim$cumPools,add0s)
+  set(sim$cumPoolsRaw, NULL, "age", as.numeric(sim$cumPoolsRaw$age))
+  setorderv(sim$cumPoolsRaw, c("gcids", "age"))
+
+
+  # problem check: the difference between these two should only be the 0s that
+  # got removed and the id columns
+  # if(dim(cumPools)[1] != dim(sim$allInfoAGBin)){
+  #   stop("There is a mismatch between the information that was given for translation and the results")
+  # }
+
+  # 3.3 Plot the curves that are directly out of the Boudewyn-translation
+  # Usually, these need to be, at a minimum, smoothed out.
+  ##TODO
+  # maybe need to change the getwd() to something else?
+  figPath <- file.path(getwd(),"figures") #file.path(modulePath(sim), currentModule(sim), "figures")
+
+  #TODO
+  # check that this is working. We only need to plot these when we are at the
+  # beginning of a sim. Plotting the yearly translations will not be useful.
+  # plotting and save the plots of the raw-translation
+  ## plotting is off - maybe turn it on?
+  # if (!is.na(P(sim)$.plotInitialTime))
+  sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw,
+                                     path = figPath,
+                                     filenameBase = "rawCumBiomass_")
+  # Some of these curves may still be wonky. But there is not much that can be
+  # done unless we get better pool-splitting methods. The "matching" made in
+  # Biomass_speciesParameters to the PSP makes this as good as the data we
+  # have (PSPs).
+  # Note: Fixing of non-smooth curves done in CBM_vol2biomass would not help
+  # here. The smoothing to match PSP is done and cohort-level growth will only
+  # match a Chapman-Richard form is there is only one cohort on the pixel.
+
+  # 3.4 Calculating Increments
+  cbmAboveGroundPoolColNames <- "totMerch|fol|other"
+  colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
+
+  incCols <- c("incMerch", "incFol", "incOther")
+  sim$cumPoolsRaw[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
+              by = eval("gcids")]
+  colsToUse33 <- c("age", "gcids", incCols)
+  #if (!is.na(P(sim)$.plotInitialTime))
+  sim$rawIncPlots <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw[, ..colsToUse33],
+                       path = figPath,
+                       title = "Increments merch fol other by gc id",
+                       filenameBase = "Increments")
+  message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
+                      figPath))
+
+  ## half the growth increments in tonnes of C/ha
+  increments <- cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
+
+
+  sim$incHalf <- increments[, (colNames) := list(
+    incMerch / 2,
+    incFol / 2,
+    incOther /2
+    )][, (incCols) := NULL]
 
   # ! ----- STOP EDITING ----- ! #
 
@@ -339,7 +483,7 @@ Event2 <- function(sim) {
                             filename2 = "appendix2_table7_tb.csv")
   }
 
-###HERE
+
   # 2. CBM and NFI admin
     if (!suppliedElsewhere("cbmAdmin", sim)) {
       sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
@@ -359,7 +503,7 @@ Event2 <- function(sim) {
   if (!suppliedElsewhere("ecozone", sim)) {
     sim$ecozone <- CBMutils::prepInputsEcozones(url = extractURL("ecozone"),
                                destinationPath = Paths$inputPath,
-                               rasterToMatch = RIArtm)
+                               rasterToMatch = RTM)
   }
 
   # 3. Information from LandR
@@ -383,7 +527,7 @@ Event2 <- function(sim) {
   if (!suppliedElsewhere("pixelGroupMap", sim))
   sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
                          destinationPath = Paths$inputPath,
-                         rasterToMatch = RIArtm,
+                         rasterToMatch = RTM,
                          useCache = TRUE)
 
 

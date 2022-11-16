@@ -34,10 +34,10 @@ Require(c("PredictiveEcology/SpaDES.project@transition", "SpaDES", "reproducible
 
 
 
-##TODO make sure paths are in place before running the objects
+##TODO messing up the module path
 setPaths(cachePath = "cache",
          inputPath = "inputs",
-         modulePath = "modules",
+         #modulePath = "C:/Celine/github/",
          outputPath = "outputs")
 
 
@@ -45,49 +45,41 @@ setPaths(cachePath = "cache",
 
 RIArtm <- Cache(prepInputs, url = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci/view?usp=sharing",
                 destinationPath = Paths$inputPath)
+##TODO
+### I think there needs to be this as a parameter for this module?
+#idCols <- c(“pixelGroup”, “cohort_id”)
+# this would need to trickly through the module
+
+# this is not working for me
+# options(spades.moduleCodeChecks = FALSE,
+#         spades.recoveryMode = FALSE)
+# if (any(Sys.info()[["user"]] %in% c("cboisven", "cboisvenue"))) {
+#   Require("googledrive")
+#   options(
+#     gargle_oauth_cache = ".secrets",
+#     gargle_oauth_email = "cboisvenue@gmail.com"
+#   )
+# }
 
 
-
-
-options(spades.moduleCodeChecks = FALSE,
-        spades.recoveryMode = FALSE)
-if (any(Sys.info()[["user"]] %in% c("cboisven", "cboisvenue"))) {
-  Require("googledrive")
-  options(
-    gargle_oauth_cache = ".secrets",
-    gargle_oauth_email = "cboisvenue@gmail.com"
-  )
-}
-
-
-objects <- list()
+objects <- list(RTM = RIArtm)
 times <- list(start = 0, end = 350)
 
 parameters <- list(
-  # .globals = list(
-  #   sppEquivCol = speciesNameConvention
-  #   , ".studyAreaName" = "RIA"
-  # ),
-  LandRCBM_split3pools = list(
-    .useCache = ".inputObjects",#c(, "init")
-    )
+  LandRCBM_split3pools = list(.useCache = ".inputObjects")
   )
+
 modules <- list("LandRCBM_split3pools")
-options(
-  rasterTmpDir = inputDir,
-  reproducible.cachePath = cacheDir,
-  spades.inputPath = inputDir,
-  spades.outputPath = outputDir,
-  spades.modulePath = moduleDir
-)
+
+
+
 
 # All the action is here
-split3poolsOut <- simInit(
+split3poolsInit <- simInit(
   times = times,
   params = parameters,
-  modules = modules,
-  objects = objects,
-  debug = 1
+  modules = "modules",
+  objects = objects
 )
 
 

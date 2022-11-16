@@ -259,7 +259,7 @@ library(data.table)
     #                                        path = figPath,
     #                                        filenameBase = "rawCumBiomass_")
 
-    plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = cumPoolsRaw,
+    plotsRawCumulativeBiomass <- Cache(CBMutils::m3ToBiomPlots, inc = cumPoolsRaw,
                                        path = figPath,
                                        filenameBase = "rawCumBiomass_")
     # Some of these curves may still be wonky. But there is not much that can be
@@ -287,22 +287,22 @@ library(data.table)
                         figPath))
 
 ###HERE###
-    sim$cumPoolsClean <- cumPoolsClean
 
-    colsToUseForestType <- c("growth_curve_component_id", "forest_type_id", "gcids")
-    forestType <- gcMeta[, ..colsToUseForestType]
-    #       #FYI:
-    #       # cbmTables$forest_type
-    #       # id           name
-    #       # 1  1       Softwood
-    #       # 2  2      Mixedwood
-    #       # 3  3       Hardwood
-    #       # 4  9 Not Applicable
-
-    setkeyv(forestType, "gcids")
-    cumPoolsClean <- merge(cumPoolsClean, forestType, by = "gcids")
-    swCols <- c("swmerch", "swfol", "swother")
-    hwCols <- c("hwmerch", "hwfol", "hwother")
+#
+#     colsToUseForestType <- c("growth_curve_component_id", "forest_type_id", "gcids")
+#     forestType <- gcMeta[, ..colsToUseForestType]
+#     #       #FYI:
+#     #       # cbmTables$forest_type
+#     #       # id           name
+#     #       # 1  1       Softwood
+#     #       # 2  2      Mixedwood
+#     #       # 3  3       Hardwood
+#     #       # 4  9 Not Applicable
+#
+#     setkeyv(forestType, "gcids")
+#     cumPoolsClean <- merge(cumPoolsClean, forestType, by = "gcids")
+    # swCols <- c("swmerch", "swfol", "swother")
+    # hwCols <- c("hwmerch", "hwfol", "hwother")
 
     totalIncrementsSmooth <- cumPoolsClean[forest_type_id == 1, (swCols) := list((incMerch), (incFol), (incOther))]
     totalIncrementsSmooth <- totalIncrementsSmooth[forest_type_id == 3, (hwCols) := list((incMerch), (incFol), (incOther))]
