@@ -1,0 +1,5 @@
+"file" "checksum" "filesize" "algorithm"
+"appendix2_table6_tb.csv" "8800836d5921f952" "222580" "xxhash64"
+"appendix2_table7_tb.csv" "3ba53b80e7f0a96b" "283991" "xxhash64"
+"canfi_species.csv" "0bbd72f7dfb15c67" "3174" "xxhash64"
+"cbmAdmin.csv" "c3b81abf140884c3" "1566" "xxhash64"

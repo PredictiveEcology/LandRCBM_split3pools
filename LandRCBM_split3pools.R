@@ -99,7 +99,10 @@ defineModule(sim, list(
       objectName = "pixelGroupMap", objectClass = "RasterLayer",
       desc = "PixelGroup map from LandR",
       sourceURL = "https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3"
-    )
+    ),
+    expectsInput("rasterToMatch", "RasterLayer",
+                 desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
+                 sourceURL = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci"
   ),
   outputObjects = bindrows(
     createsOutput(objectName = "CBM_yieldOut",
@@ -357,11 +360,10 @@ Init <- function(sim) {
   ## half the growth increments in tonnes of C/ha
   increments <- cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
 
-
   sim$incHalf <- increments[, (colNames) := list(
     incMerch / 2,
     incFol / 2,
-    incOther /2
+    incOther / 2
     )][, (incCols) := NULL]
 
   # ! ----- STOP EDITING ----- ! #
@@ -390,115 +392,77 @@ plotFun <- function(sim) {
   return(invisible(sim))
 }
 
-### template for your event1
-Event1 <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # THE NEXT TWO LINES ARE FOR DUMMY UNIT TESTS; CHANGE OR DELETE THEM.
-  # sim$event1Test1 <- " this is test for event 1. " # for dummy unit test
-  # sim$event1Test2 <- 999 # for dummy unit test
-
-  # ! ----- STOP EDITING ----- ! #
-  return(invisible(sim))
-}
-
-### template for your event2
-Event2 <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # THE NEXT TWO LINES ARE FOR DUMMY UNIT TESTS; CHANGE OR DELETE THEM.
-  # sim$event2Test1 <- " this is test for event 2. " # for dummy unit test
-  # sim$event2Test2 <- 777  # for dummy unit test
-
-  # ! ----- STOP EDITING ----- ! #
-  return(invisible(sim))
-}
-
 .inputObjects <- function(sim) {
-  # Any code written here will be run during the simInit for the purpose of creating
-  # any objects required by this module and identified in the inputObjects element of defineModule.
-  # This is useful if there is something required before simulation to produce the module
-  # object dependencies, including such things as downloading default datasets, e.g.,
-  # downloadData("LCC2005", modulePath(sim)).
-  # Nothing should be created here that does not create a named object in inputObjects.
-  # Any other initiation procedures should be put in "init" eventType of the doEvent function.
-  # Note: the module developer can check if an object is 'suppliedElsewhere' to
-  # selectively skip unnecessary steps because the user has provided those inputObjects in the
-  # simInit call, or another module will supply or has supplied it. e.g.,
-  # if (!suppliedElsewhere('defaultColor', sim)) {
-  #   sim$map <- Cache(prepInputs, extractURL('map')) # download, extract, load file from url in sourceURL
-  # }
-
-  #cacheTags <- c(currentModule(sim), "function:.inputObjects") ## uncomment this if Cache is being used
+  cacheTags <- c(currentModule(sim), "function:.inputObjects")
   dPath <- asPath(getOption("reproducible.destinationPath", dataPath(sim)), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
 
   # ! ----- EDIT BELOW ----- ! #
+  if (!suppliedElsewhere("rasterToMatch", sim)) {
+    sim$table6 <- prepInputs(url = extractURL("rasterToMatch"),
+                             fun = "raster::raster",
+                             destinationPath = dPath,
+                             filename2 = "rtm_RIA.tif") ## TODO: confirm
+  }
+
   # 1. NFIparams
   if (!suppliedElsewhere("table6", sim)) {
-
-    # in this module data folder
-    sim$table6<- prepInputs(targetFile = extractURL("table6"),
+    sim$table6 <- prepInputs(url = extractURL("table6"),
                              fun = "data.table::fread",
-                             destinationPath = Paths$inputPath,
-                             #purge = 7,
+                             destinationPath = dPath,
                              filename2 = "appendix2_table6_tb.csv")
   }
 
   if (!suppliedElsewhere("table7", sim)) {
-
-    # in this module data folder
-    sim$table7<- prepInputs(targetFile = extractURL("table7"),
-                            fun = "data.table::fread",
-                            destinationPath = Paths$inputPath,
-                            #purge = 7,
-                            filename2 = "appendix2_table7_tb.csv")
+    sim$table7 <- prepInputs(url = extractURL("table7"),
+                             fun = "data.table::fread",
+                             destinationPath = dPath,
+                             filename2 = "appendix2_table7_tb.csv")
   }
 
-
   # 2. CBM and NFI admin
-    if (!suppliedElsewhere("cbmAdmin", sim)) {
-      sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
-                                 fun = "data.table::fread",
-                                 destinationPath = Paths$inputPath,
-                                 #purge = 7,
-                                 filename2 = "cbmAdmin.csv")
-    }
+  if (!suppliedElsewhere("cbmAdmin", sim)) {
+    sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
+                               fun = "data.table::fread",
+                               destinationPath = dPath,
+                               filename2 = "cbmAdmin.csv")
+  }
 
   if (!suppliedElsewhere("canfi_species", sim)) {
     sim$canfi_species <- prepInputs(url = extractURL("canfi_species"),
-                               fun = "data.table::fread",
-                               destinationPath = Paths$inputPath,
-                               #purge = 7,
-                               filename2 = "canfi_species.csv")
+                                    fun = "data.table::fread",
+                                    destinationPath = dPath,
+                                    filename2 = "canfi_species.csv")
   }
   if (!suppliedElsewhere("ecozone", sim)) {
     sim$ecozone <- CBMutils::prepInputsEcozones(url = extractURL("ecozone"),
-                               destinationPath = Paths$inputPath,
-                               rasterToMatch = RTM)
+                                                destinationPath = dPath,
+                                                rasterToMatch = sim$rasterToMatch)
   }
 
   # 3. Information from LandR
   ## these two next tables will be coming from the Yield module
   ## this one is the actual yields that are needed for the CBM spinup
 
-  if (!suppliedElsewhere("CBM_AGB", sim)){
+  if (!suppliedElsewhere("CBM_AGB", sim)) {
     sim$CBM_AGB <- prepInputs(url = extractURL("CBM_AGB"),
                               fun = "data.table::fread",
-                              destinationPath = Paths$inputPath,
+                              destinationPath = dPath,
                               filename2 = "CBM_AGB.csv")
   }
 
-  if (!suppliedElsewhere("CBM_speciesCodes", sim)){
+  if (!suppliedElsewhere("CBM_speciesCodes", sim)) {
     sim$CBM_speciesCodes <- prepInputs(url = extractURL("CBM_speciesCodes"),
-                              fun = "data.table::fread",
-                              destinationPath = Paths$inputPath,
-                              filename2 = "CBM_speciesCodes.csv")
+                                       fun = "data.table::fread",
+                                       destinationPath = dPath,
+                                       filename2 = "CBM_speciesCodes.csv")
   }
   ## pixel to pixelGroup map from LandR
   if (!suppliedElsewhere("pixelGroupMap", sim))
   sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
-                         destinationPath = Paths$inputPath,
-                         rasterToMatch = RTM,
-                         useCache = TRUE)
+                                  destinationPath = dPath,
+                                  rasterToMatch = sim$rasterToMatch,
+                                  useCache = TRUE)
 
 
   # ! ----- STOP EDITING ----- ! #
@@ -509,5 +473,3 @@ ggplotFn <- function(data, ...) {
   ggplot(data, aes(TheSample)) +
     geom_histogram(...)
 }
-
-### add additional events as needed by copy/pasting from above
