@@ -103,6 +103,7 @@ defineModule(sim, list(
     expectsInput("rasterToMatch", "RasterLayer",
                  desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
                  sourceURL = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci"
+    )
   ),
   outputObjects = bindrows(
     createsOutput(objectName = "CBM_yieldOut",
