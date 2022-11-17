@@ -1,22 +1,21 @@
-## Everything in this file and any files in the R directory are sourced during `simInit()`;
-## all functions and objects are put into the `simList`.
-## To use objects, use `sim$xxx` (they are globally available to all modules).
-## Functions can be used inside any function that was sourced in this module;
-## they are namespaced to the module, just like functions in R packages.
-## If exact location is required, functions will be: `sim$.mods$<moduleName>$FunctionName`.
 defineModule(sim, list(
   name = "LandRCBM_split3pools",
   description = paste("Takes total aboveground biomass provided by LandR and divides",
-                      "it into the 3 required CBM pools"),
+                      "it into the 3 required CBM pools."),
   keywords = "",
-  authors = structure(list(list(given = c("Celine", "Middle"), family = "Boisvenue", role = c("aut", "cre"), email = "cboivenue@gmail.com", comment = NULL)), class = "person"),
+  authors = c(
+    person("Celine", "Boisvenue", email = "cboivenue@gmail.com", role = c("aut", "cre")),
+    person("Alex M", "Chubaty", email = "achubaty@for-cast.ca", role = "ctb")
+  ),
   childModules = character(0),
   version = list(LandRCBM_split3pools = "0.0.0.9000"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
-  reqdPkgs = list("SpaDES.core (>=1.1.0)", "ggplot2", "data.table", "CBMutils"),
+  reqdPkgs = list("data.table", "ggplot2",
+                  "PredictiveEcology/CBMutils",
+                  "PredictiveEcology/SpaDES.core@development (>= 1.1.0.9003)"),
   parameters = bindrows(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
     defineParameter(".plots", "character", "screen", NA, NA,
@@ -39,79 +38,78 @@ defineModule(sim, list(
                     "Should caching of events or module be used?")
   ),
   inputObjects = bindrows(
-    #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
-    # the required parameter tables are not yet hosted on the NFIS (Oct., 2022).
-    # The links "in the examples"table6" and "table7" below are for the
-    # parameters in the equations using "volume" instead of "total tree biomass"
-    # as a dependent variable. For now these two are replaced by a table
-    # containing both the parameters and the caps for BC provided in an email to
-    # cboivenue by Paul Boudewyn.
+    ## NOTE: the required parameter tables are not yet hosted on the NFIS (Oct., 2022).
+    ## The links "in the examples"table6" and "table7" below are for the
+    ## parameters in the equations using "volume" instead of "total tree biomass"
+    ## as a dependent variable. For now these two are replaced by a table
+    ## containing both the parameters and the caps for BC provided in an email to
+    ## cboivenue by Paul Boudewyn.
     expectsInput(
-      objectName = "table6", objectClass = "dataframe",
-      desc = "Proportion model parameters similar to Boudewyn et al 2007,
-      but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha",
-      sourceURL = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc/view?usp=sharing"
-        #NOTE: current link is to a google drive but parameters will eventually
-        #be on the NFIS site as per the volume-based parameters. For now, I put
-        #a copy of the biomass-basedones provided by Paul boudewyn on the
-        #WBI/Carbon drive (FOR-Cast).
+      objectName = "table6", objectClass = "data.frame",
+      desc = c("Proportion model parameters similar to Boudewyn et al 2007,",
+               "but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha"),
+      sourceURL = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc"
+      ## NOTE: current link is to a google drive but parameters will eventually
+      ## be on the NFIS site as per the volume-based parameters. For now, I put
+      ## a copy of the biomass-basedones provided by Paul Boudewyn on the (FOR-CAST) WBI/Carbon drive
     ),
     expectsInput(
-      objectName = "table7", objectClass = "dataframe",
-      desc = "Caps on proportion models similar to  Boudewyn et al 2007,
-      but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha",
-      sourceURL = "https://drive.google.com/file/d/16nQgTGW2p_IYF_Oavcc7WbWbgWl5uywt/view?usp=sharing"
-      #NOTE: current link is to a google drive but parameters will eventually
-      #be on the NFIS site as per the volume-based parameters. For now, I put
-      #a copy of the biomass-basedones provided by Paul boudewyn on the
-      #WBI/Carbon drive (FOR-Cast).
+      objectName = "table7", objectClass = "data.frame",
+      desc = paste("Caps on proportion models similar to Boudewyn et al. 2007",
+                   "but recalculated using total biomass (metric tonnes of tree biomass/ha)",
+                   "instead of vol/ha"),
+      sourceURL = "https://drive.google.com/file/d/16nQgTGW2p_IYF_Oavcc7WbWbgWl5uywt"
+      ## NOTE: current link is to a google drive but parameters will eventually
+      ## be on the NFIS site as per the volume-based parameters. For now, I put
+      ## a copy of the biomass-basedones provided by Paul Boudewyn on the (FOR-CAST) WBI/Carbon drive
     ),
-      expectsInput(
-      objectName = "cbmAdmin", objectClass = "dataframe",
-      desc = "Provides equivalent between provincial boundaries, CBM-id for provincial boundaries and CBM-spatial unit ids",
+    expectsInput(
+      objectName = "cbmAdmin", objectClass = "data.frame",
+      desc = paste("Provides equivalent between provincial boundaries,",
+                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
       sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
     ),
     expectsInput(
-      objectName = "ecozone", objectClass = "raster",
+      objectName = "ecozone", objectClass = "RasterLayer",
       desc = "Ecozones of Canada",
       sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
     ),
     expectsInput(
       objectName = "canfi_species",
-      objectClass = "dataframe",
+      objectClass = "data.frame",
       desc = "File containing the possible species in the Boudewyn table",
       sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo"
     ),
-    expectsInput(##TODO Yield module will be modified to provide required format
-      objectName = "CBM_AGB", objectClass = "dataframe",
-      desc = "Table created in the Yield module, will eventually get it from the module,
-              for now, sitting in the WBI/Carbon/LandrCBM folder",
+    expectsInput(
+      ## TODO Yield module will be modified to provide required format
+      objectName = "CBM_AGB", objectClass = "data.frame",
+      desc = "",
       sourceURL = "https://drive.google.com/file/d/1xxfG-8ZJKPlO5HguHpVtqio5TXdcRGy7"
+      ## TODO: table created in the Yield module, will eventually get it from the module,
+      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     ),
     expectsInput(
-      objectName = "CBM_speciesCodes", objectClass = "dataframe",
-      desc = "Table created in the Yield module, will eventually get it from the module,
-              for now, sitting in the WBI/Carbon/LandrCBM folder",
+      objectName = "CBM_speciesCodes", objectClass = "data.frame",
+      desc = paste(""),
       sourceURL = "https://drive.google.com/file/d/1sVsDoT1E-CDgo2hnCU2pgqV6PpVic2Fe"
+      ## TODO: table created in the Yield module, will eventually get it from the module,
+      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     ),
-    expectsInput(objectName = "pixelGroupMap",
-                 objectClass = "raster",
-                 desc = "PixelGroup map from LandR",
-                 sourceURL = "https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3"
+    expectsInput(
+      objectName = "pixelGroupMap", objectClass = "RasterLayer",
+      desc = "PixelGroup map from LandR",
+      sourceURL = "https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3"
     )
-  )
-
-    outputObjects = bindrows(
-    #createsOutput("objectName", "objectClass", "output object description", ...),
-
+  ),
+  outputObjects = bindrows(
     createsOutput(objectName = "CBM_yieldOut",
-                    objectClass = "dataframe",
-                    desc = "AGB values by pixel/pixelGroup, cohort (species and age) will be provided by the Yield module"),
+                  objectClass = "data.frame",
+                  desc = "AGB values by pixel/pixelGroup, cohort (species and age) will be provided by the Yield module"),
     createsOutput(objectName = "CBM_AGBplots",
                   objectClass = "plot",
                   desc = "Plot of the AGB values per cohort provided by the Yield module"),
     createsOutput(objectName = "cumPools",
-                  objectClass = "dataframe",
+                  objectClass = "data.frame",
                   desc = "Cumulative carbon in three pools, totMerch, fol, and other per cohort"),
     createsOutput(objectName = "growth_incForSpinup",
                   objectClass = "matrix",
@@ -162,34 +160,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 
       # ! ----- STOP EDITING ----- ! #
     },
-    event1 = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
-
-      # e.g., call your custom functions/methods here
-      # you can define your own methods below this `doEvent` function
-
-      # schedule future event(s)
-
-      # e.g.,
-      # sim <- scheduleEvent(sim, time(sim) + increment, "LandRCBM_split3pools", "templateEvent")
-
-      # ! ----- STOP EDITING ----- ! #
-    },
-    event2 = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
-
-      # e.g., call your custom functions/methods here
-      # you can define your own methods below this `doEvent` function
-
-      # schedule future event(s)
-
-      # e.g.,
-      # sim <- scheduleEvent(sim, time(sim) + increment, "LandRCBM_split3pools", "templateEvent")
-
-      # ! ----- STOP EDITING ----- ! #
-    },
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
   )
@@ -207,18 +177,18 @@ Init <- function(sim) {
   ###1. Data clean-up and creation until we update the Yield module
   ## extra column was probably created when I saved the file - no need for this
   ## unce Yield is updated
-  CBM_AGB <- sim$CBM_AGB[,2:6]
-  CBM_speciesCodes <- sim$CBM_speciesCodes[,2:4]
+  CBM_AGB <- sim$CBM_AGB[, 2:6]
+  CBM_speciesCodes <- sim$CBM_speciesCodes[, 2:4]
 
   ### need to match the pixel groups with the ecozones and juris_id
   ## Are pixelGroupMap and ecozone the same RTM?
   ##checking
-  if(length(pixelGroupMap[]) != length(ecozone[])){
+  if (length(pixelGroupMap[]) != length(ecozone[])) {
     stop("There is a problem: the ecozone raster and the pixelGroupMap are not equal")
   }
   sim$pixelGroupEco <- as.data.table(cbind(pixelIndex = 1:ncell(pixelGroupMap),
-                                       pixelGroup = pixelGroupMap[],
-                                       ecozone = ecozone[]))
+                                           pixelGroup = pixelGroupMap[],
+                                           ecozone = ecozone[]))
 
   ##TODO
   ##Limiting the pixelGroups to three to get all this working. Will need to
