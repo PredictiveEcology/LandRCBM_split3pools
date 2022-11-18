@@ -14,7 +14,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("data.table", "ggplot2",
-                  "PredictiveEcology/CBMutils",
+                  "PredictiveEcology/CBMutils@development (>= 0.0.7.9006)",
                   "PredictiveEcology/SpaDES.core@development (>= 1.1.0.9003)"),
   parameters = bindrows(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
@@ -435,10 +435,12 @@ plotFun <- function(sim) {
                                     destinationPath = dPath,
                                     filename2 = "canfi_species.csv")
   }
+
   if (!suppliedElsewhere("ecozone", sim)) {
-    sim$ecozone <- CBMutils::prepInputsEcozones(url = extractURL("ecozone"),
-                                                destinationPath = dPath,
-                                                rasterToMatch = sim$rasterToMatch)
+    sim$ecozone <- LandR::prepEcozonesRst(url = extractURL("ecozone"),
+                                          destinationPath = dPath,
+                                          rasterToMatch = sim$rasterToMatch) ## returns SpatRast
+    sim$ecozone <- raster(sim$ecozone)
   }
 
   # 3. Information from LandR
