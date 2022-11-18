@@ -64,12 +64,10 @@ This is a template for module documentation, and should be changed to reflect yo
 
 ### Module inputs and parameters
 
-Describe input data required by the module and how to obtain it (e.g., directly from online sources or supplied by other modules)
-If `sourceURL` is specified, `downloadData("LandRCBM_split3pools", "C:/Celine/github")` may be sufficient.
 Table \@ref(tab:moduleInputs-LandRCBM-split3pools) shows the full list of module inputs.
 
 ```{r moduleInputs-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
-df_inputs <- SpaDES.core::moduleInputs("LandRCBM_split3pools", "C:/Celine/github")
+df_inputs <- SpaDES.core::moduleInputs("LandRCBM_split3pools", "..")
 knitr::kable(df_inputs,
              caption = "List of (ref:LandRCBM-split3pools) input objects and their description.") %>%
   kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
@@ -79,7 +77,7 @@ Provide a summary of user-visible parameters (Table \@ref(tab:moduleParams-LandR
 
 
 ```{r moduleParams-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
-df_params <- SpaDES.core::moduleParams("LandRCBM_split3pools", "C:/Celine/github")
+df_params <- SpaDES.core::moduleParams("LandRCBM_split3pools", "..")
 knitr::kable(df_params, caption = "List of (ref:LandRCBM-split3pools) parameters and their description.") %>%
   kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
 ```
@@ -101,7 +99,7 @@ Write what is saved.
 Description of the module outputs (Table \@ref(tab:moduleOutputs-LandRCBM-split3pools)).
 
 ```{r moduleOutputs-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
-df_outputs <- SpaDES.core::moduleOutputs("LandRCBM_split3pools", "C:/Celine/github")
+df_outputs <- SpaDES.core::moduleOutputs("LandRCBM_split3pools", "..")
 knitr::kable(df_outputs, caption = "List of (ref:LandRCBM-split3pools) outputs and their description.") %>%
   kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
 ```
