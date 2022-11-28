@@ -400,10 +400,10 @@ plotFun <- function(sim) {
 
   # ! ----- EDIT BELOW ----- ! #
   if (!suppliedElsewhere("rasterToMatch", sim)) {
-    sim$table6 <- prepInputs(url = extractURL("rasterToMatch"),
-                             fun = "raster::raster",
-                             destinationPath = dPath,
-                             filename2 = "rtm_RIA.tif") ## TODO: confirm
+    sim$rasterToMatch <- prepInputs(url = extractURL("rasterToMatch"),
+                                    fun = "raster::raster",
+                                    destinationPath = dPath,
+                                    filename2 = "rtm_RIA.tif") ## TODO: confirm
   }
 
   # 1. NFIparams
