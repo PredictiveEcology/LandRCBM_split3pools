@@ -37,7 +37,7 @@ Require(c("PredictiveEcology/SpaDES.project@transition", "SpaDES", "reproducible
 ##TODO messing up the module path
 setPaths(cachePath = "cache",
          inputPath = "inputs",
-         #modulePath = "C:/Celine/github/",
+         #modulePath = "..",
          outputPath = "outputs")
 
 
