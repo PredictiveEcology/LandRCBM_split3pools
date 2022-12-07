@@ -15,6 +15,7 @@ defineModule(sim, list(
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("data.table", "ggplot2",
                   "PredictiveEcology/CBMutils@development (>= 0.0.7.9006)",
+                  "PredictiveEcology/LandR@development",
                   "PredictiveEcology/SpaDES.core@development (>= 1.1.0.9003)"),
   parameters = bindrows(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
