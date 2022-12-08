@@ -136,7 +136,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- Init(sim)
 
       # schedule future event(s)
-      sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "LandRCBM_split3pools", "plot")
+      #sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "LandRCBM_split3pools", "plot")
       sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "LandRCBM_split3pools", "save")
     },
     plot = {
@@ -178,6 +178,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 Init <- function(sim) {
   # # ! ----- EDIT BELOW ----- ! #
 
+  ##TODO
   ########################################################################
   ###1. Data clean-up and creation until we update the Yield module
   ## extra column was probably created when I saved the file - no need for this
@@ -188,12 +189,12 @@ Init <- function(sim) {
   ### need to match the pixel groups with the ecozones and juris_id
   ## Are pixelGroupMap and ecozone the same RTM?
   ##checking
-  if (length(pixelGroupMap[]) != length(ecozone[])) {
+  if (length(sim$pixelGroupMap[]) != length(sim$ecozone[])) {
     stop("There is a problem: the ecozone raster and the pixelGroupMap are not equal")
   }
-  sim$pixelGroupEco <- as.data.table(cbind(pixelIndex = 1:ncell(pixelGroupMap),
-                                           pixelGroup = pixelGroupMap[],
-                                           ecozone = ecozone[]))
+  sim$pixelGroupEco <- as.data.table(cbind(pixelIndex = 1:raster::ncell(sim$pixelGroupMap),
+                                           pixelGroup = sim$pixelGroupMap[],
+                                           ecozone = sim$ecozone[]))
 
   ##TODO
   ##Limiting the pixelGroups to three to get all this working. Will need to
@@ -212,7 +213,8 @@ Init <- function(sim) {
 
   ##TODO
   ###Make up my data from from Yield module: doing this b/c what comes out of
-  ###Yield is currently not the correct format
+  ###Yield is currently not the correct format. Can be removed once Yield issue
+  ###is addressed
   setnames(CBM_AGB,"id","pixelGroup")
 
   ##TODO
@@ -240,9 +242,9 @@ Init <- function(sim) {
 
   ##TODO
   # might have to do that by hand for now and maybe add the canfi_species
-  # numbers to the LandR::sppEquivalencies_CA
+  # numbers to the LandR::sppEquivalencies_CA?
 
-  ## just working with what we have
+  ## just working with what we have, by hand for now
   matchCanfi <- as.data.table(cbind(speciesCode = unique(sim$CBM_yieldOut$speciesCode),
                                     canfi_species = c(1303, 105, 101)))
 
@@ -255,7 +257,8 @@ Init <- function(sim) {
   # there can be more than one cohort in a pixelGroup - more than one cohort
   # on a pixel. So, we need a unique identifier for each curve on each pixel.
   # I am therefore adding a column which in this case will be the same as the
-  # pixelGroup. This value will come from the Yield module
+  # pixelGroup. This value will come from the Yield module. Can be removed once
+  # the issue with Yield is dealt with.
   cohort_id <- unique(CBM_yieldOut2[,.(pixelGroup, speciesCode)])
   cohort_id[, cohort_id := 1:length(cohort_id$speciesCode)]
   sim$allInfoAGBin <- merge(allInfoAGBin, cohort_id, by = c("pixelGroup", "speciesCode"))
@@ -286,7 +289,10 @@ Init <- function(sim) {
   # 5:    Pice_mar          2
   # 6:    Pice_mar          3
 
-  cumPools <- cumPoolsCreateAGB(sim$allInfoAGBin, table6, table7)
+  cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoAGBin,
+                                CBM_yieldOut = CBM_yieldOut2,
+                                table6 = sim$table6,
+                                table7 = sim$table7)
 
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
   colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
@@ -309,7 +315,7 @@ Init <- function(sim) {
 
   otherVars <- cumPools[,.(pixelGroup = unique(pixelGroup)), by = "gcids"]
   add0s <- fiveOf7cols[otherVars, on = "gcids"]
-  sim$cumPoolsRaw <- rbind(sim$cumPools,add0s)
+  sim$cumPoolsRaw <- rbind(cumPools,add0s)
   set(sim$cumPoolsRaw, NULL, "age", as.numeric(sim$cumPoolsRaw$age))
   setorderv(sim$cumPoolsRaw, c("gcids", "age"))
 
@@ -321,10 +327,8 @@ Init <- function(sim) {
   # }
 
   # 3.3 Plot the curves that are directly out of the Boudewyn-translation
-  # Usually, these need to be, at a minimum, smoothed out.
-  ##TODO
-  # maybe need to change the getwd() to something else?
-  figPath <- file.path(getwd(),"figures") #file.path(modulePath(sim), currentModule(sim), "figures")
+  figPath <- file.path(modulePath(sim),
+                       currentModule(sim),"figures") #file.path(modulePath(sim), currentModule(sim), "figures")
 
   #TODO
   # check that this is working. We only need to plot these when we are at the
@@ -333,6 +337,7 @@ Init <- function(sim) {
   ## plotting is off - maybe turn it on?
   # if (!is.na(P(sim)$.plotInitialTime))
   sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw,
+                                         id_col = c("gcids","pixelGroup"),
                                      path = figPath,
                                      filenameBase = "rawCumBiomass_")
   # Some of these curves may still be wonky. But there is not much that can be
@@ -360,7 +365,7 @@ Init <- function(sim) {
                       figPath))
 
   ## half the growth increments in tonnes of C/ha
-  increments <- cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
+  increments <- sim$cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
 
   sim$incHalf <- increments[, (colNames) := list(
     incMerch / 2,

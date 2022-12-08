@@ -9,4 +9,7 @@
 "ecozones.sbx" "c74f977febc73339" "148" "xxhash64"
 "ecozones.shp" "ee87a41e9ae6c9c3" "1846312" "xxhash64"
 "ecozones.shx" "40ca5d282f2e53c5" "300" "xxhash64"
+"CBM_AGB.csv" "5748a1cc5ac4c745" "258072487" "xxhash64"
+"CBM_speciesCodes.csv" "146071afe0502869" "69470150" "xxhash64"
 "cbmAdmin.csv" "c3b81abf140884c3" "1566" "xxhash64"
+"pixelGroupMap.tif" "6b8746e62a85a60d" "13440348" "xxhash64"

@@ -1,4 +1,4 @@
-cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
+cumPoolsCreateAGB <- function(allInfoAGBin, CBM_yieldOut, table6, table7){
   counter <- 0L
   cumBiomList <- list()
   #cumList <- list()
