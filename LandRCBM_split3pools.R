@@ -116,7 +116,22 @@ defineModule(sim, list(
     createsOutput(objectName = "cumPools",
                   objectClass = "data.frame",
                   desc = "Cumulative carbon in three pools, totMerch, fol, and other per cohort"),
-    createsOutput(objectName = "growth_incForSpinup",
+    createsOutput(objectName = "pixelGroupEco",
+                  objectClass = "data.table",
+                  desc = "Data table made from the pixelGroupMap raster and the ecozone raster with pixel number added"),
+    createsOutput(objectName = "allInfoAGBin",
+                  objectClass = "data.table",
+                  desc = "Data table with all cohort information necessary for coefficient matching and calculations"),
+    createsOutput(objectName = "cumPoolsRaw",
+                  objectClass = "data.table",
+                  desc = "Data table with the cumulative carbon for all three pools per cohort."),
+    createsOutput(objectName = "plotsRawCumulativeBiomass",
+                  objectClass = "plots",
+                  desc = "Plots of the cumPoolsRaw"),
+    createsOutput(objectName = "rawIncPlots",
+                  objectClass = "plots",
+                  desc = "Plots of the increments in each of the three pools."),
+    createsOutput(objectName = "incHalf",
                   objectClass = "matrix",
                   desc = "Matrix of the 1/2 increment for every age provided per cohort")
     )
@@ -263,6 +278,21 @@ Init <- function(sim) {
   cohort_id[, cohort_id := 1:length(cohort_id$speciesCode)]
   sim$allInfoAGBin <- merge(allInfoAGBin, cohort_id, by = c("pixelGroup", "speciesCode"))
 
+  ## Need to plot the incoming AGB values.
+  ##TODO
+  ## could use CBMUtils::m3ToBiomPlots with the addition of an argument (colsOut
+  ## = ), but I can't figure out how to make the list of NULLs the length of the
+  ## colsOut vector. So I wrote a version of that works (plotAGB.R). That needs
+  ## to be replaced by a modification to CBMUtils::m3ToBiomPlots
+  figPath <- file.path(modulePath(sim),
+                       currentModule(sim),"figures") #file.path(modulePath(sim), currentModule(sim), "figures")
+
+  sim$CBM_AGBplots <- plotAGB(inc = sim$allInfoAGBin,
+                              id_col = c("pixelGroup", "cohort_id"),
+                              filenameBase = "CBM_AGB_",
+                              path = figPath,
+                              colsOut = c("speciesCode", "canfi_species", "ecozone", "juris_id"),
+                              title = "AGB from LandR by cohort")
 
   ##############################################################################
   #3. START processing curves from AGB to 3 pools
@@ -289,22 +319,22 @@ Init <- function(sim) {
   # 5:    Pice_mar          2
   # 6:    Pice_mar          3
 
-  cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoAGBin,
+  sim$cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoAGBin,
                                 CBM_yieldOut = CBM_yieldOut2,
                                 table6 = sim$table6,
                                 table7 = sim$table7)
 
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
-  colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
+  colNames <- grep(cbmAboveGroundPoolColNames, colnames(sim$cumPools), value = TRUE)
 
   #3.2 MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
   #connection, but might be needed for future connection to other sources of
   #AGB).
   ### if not, we need to extrapolate to make them annual
-  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
+  minAgeId <- sim$cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
   fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcids"]
   # might not need this
-  length0s <- fill0s[,.(toMinAge = length(age)), by = "gcids"]
+  #length0s <- fill0s[,.(toMinAge = length(age)), by = "gcids"]
   # these are going to be 0s
   carbonVars <- data.table(gcids = unique(fill0s$gcids),
                            totMerch = 0,
@@ -313,9 +343,9 @@ Init <- function(sim) {
   ## not 7cols, that was for CBM_VOl2biom, we have 6cols
   fiveOf7cols <- fill0s[carbonVars, on = "gcids"]
 
-  otherVars <- cumPools[,.(pixelGroup = unique(pixelGroup)), by = "gcids"]
+  otherVars <- sim$cumPools[,.(pixelGroup = unique(pixelGroup)), by = "gcids"]
   add0s <- fiveOf7cols[otherVars, on = "gcids"]
-  sim$cumPoolsRaw <- rbind(cumPools,add0s)
+  sim$cumPoolsRaw <- rbind(sim$cumPools,add0s)
   set(sim$cumPoolsRaw, NULL, "age", as.numeric(sim$cumPoolsRaw$age))
   setorderv(sim$cumPoolsRaw, c("gcids", "age"))
 
@@ -327,8 +357,6 @@ Init <- function(sim) {
   # }
 
   # 3.3 Plot the curves that are directly out of the Boudewyn-translation
-  figPath <- file.path(modulePath(sim),
-                       currentModule(sim),"figures") #file.path(modulePath(sim), currentModule(sim), "figures")
 
   #TODO
   # check that this is working. We only need to plot these when we are at the
@@ -350,7 +378,7 @@ Init <- function(sim) {
 
   # 3.4 Calculating Increments
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
-  colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
+  colNames <- grep(cbmAboveGroundPoolColNames, colnames(sim$cumPools), value = TRUE)
 
   incCols <- c("incMerch", "incFol", "incOther")
   sim$cumPoolsRaw[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
