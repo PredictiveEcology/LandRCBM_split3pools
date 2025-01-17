@@ -11,7 +11,7 @@
 test_that("test Event1 and Event2.", {
   module <- list("LandRCBM_split3pools")
   path <- list(
-    modulePath = "C:/Celine/github",
+    modulePath = "C:/Users/docaron/Documents/Repos",
     outputPath = file.path(tempdir(), "outputs")
   )
   parameters <- list(

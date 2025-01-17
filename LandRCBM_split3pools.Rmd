@@ -13,7 +13,6 @@ output:
 editor_options:
   chunk_output_type: console
   bibliography: citations/references_LandRCBM_split3pools.bib
-citation-style: citations/ecology-letters.csl
 link-citations: true
 always_allow_html: true
 ---
@@ -26,17 +25,6 @@ always_allow_html: true
 ```{r setup-LandRCBM-split3pools, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = FALSE, results = "hold") ## change to eval = TRUE if all chunks are to be evaluated
 
-## get citation style
-if (!file.exists("citations/ecology-letters.csl")) {
-  dir.create("citations", showWarnings = FALSE)
-  download.file("https://www.zotero.org/styles/ecology-letters", destfile = "citations/ecology-letters.csl")
-}
-
-if (!require(dplyr)) {
-  install.packages("dplyr")
-  library(dplyr)
-}
-
 dir.create("figures", showWarnings = FALSE)
 
 download.file(url = "https://img.shields.io/badge/Made%20with-Markdown-1f425f.png",
@@ -44,7 +32,7 @@ download.file(url = "https://img.shields.io/badge/Made%20with-Markdown-1f425f.pn
               mode = 'wb')
 ```
 
-[![made-with-Markdown](figures/markdownBadge.png)](http://commonmark.org)
+[![made-with-Markdown](figures/markdownBadge.png)](https://commonmark.org)
 
 <!-- if knitting to pdf remember to add the pandoc_args: ["--extract-media", "."] option to yml in order to get the badge images -->
 
@@ -64,12 +52,14 @@ This is a template for module documentation, and should be changed to reflect yo
 
 ### Module inputs and parameters
 
+Describe input data required by the module and how to obtain it (e.g., directly from online sources or supplied by other modules)
+If `sourceURL` is specified, `downloadData("LandRCBM_split3pools", "C:/Users/docaron/Documents/Repos")` may be sufficient.
 Table \@ref(tab:moduleInputs-LandRCBM-split3pools) shows the full list of module inputs.
 
 ```{r moduleInputs-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
-df_inputs <- SpaDES.core::moduleInputs("LandRCBM_split3pools", "..")
+df_inputs <- SpaDES.core::moduleInputs("LandRCBM_split3pools", "C:/Users/docaron/Documents/Repos")
 knitr::kable(df_inputs,
-             caption = "List of (ref:LandRCBM-split3pools) input objects and their description.") %>%
+             caption = "List of (ref:LandRCBM-split3pools) input objects and their description.") |>
   kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
 ```
 
@@ -77,8 +67,8 @@ Provide a summary of user-visible parameters (Table \@ref(tab:moduleParams-LandR
 
 
 ```{r moduleParams-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
-df_params <- SpaDES.core::moduleParams("LandRCBM_split3pools", "..")
-knitr::kable(df_params, caption = "List of (ref:LandRCBM-split3pools) parameters and their description.") %>%
+df_params <- SpaDES.core::moduleParams("LandRCBM_split3pools", "C:/Users/docaron/Documents/Repos")
+knitr::kable(df_params, caption = "List of (ref:LandRCBM-split3pools) parameters and their description.") |>
   kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
 ```
 
@@ -99,8 +89,8 @@ Write what is saved.
 Description of the module outputs (Table \@ref(tab:moduleOutputs-LandRCBM-split3pools)).
 
 ```{r moduleOutputs-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
-df_outputs <- SpaDES.core::moduleOutputs("LandRCBM_split3pools", "..")
-knitr::kable(df_outputs, caption = "List of (ref:LandRCBM-split3pools) outputs and their description.") %>%
+df_outputs <- SpaDES.core::moduleOutputs("LandRCBM_split3pools", "C:/Users/docaron/Documents/Repos")
+knitr::kable(df_outputs, caption = "List of (ref:LandRCBM-split3pools) outputs and their description.") |>
   kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
 ```
 
