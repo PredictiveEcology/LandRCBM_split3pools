@@ -38,15 +38,40 @@ defineModule(sim, list(
     defineParameter(".useCache", "logical", FALSE, NA, NA,
                     "Should caching of events or module be used?")
   ),
+  # Initial list of inputs to include: 
+  ## Tables 6 and 7: hosted on NFIS?
+  ## CBM_AGB: produced by biomass_yieldTables
+  ## CBM_speciesCodes: produced by biomass_yieldTables
+  ## pixelGroupMap: produced by biomass_*
+  # Possibly: 
+  ## cbmAdmin: to link parameters from table 6 and 7 spatially?
+  ## ecozone: to link parameters from table 6 and 7 spatially?
+  ## canfi_species: to link species names between LandR and tables 6 and 7?
+  ## rasterToMatch: define the studyArea? does it need to be a raster?
+  ## gcids: cbmAdmin and ecozone might not be necessary? provided by CBM_dataPrep
   inputObjects = bindrows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
     expectsInput(objectName = NA, objectClass = NA, desc = NA, sourceURL = NA)
   ),
+  # Initial list of outputs to include:
+  ## growth_increments
+  ## cumPoolsRaw
+  ## cumPools
+  ## plotsRawCumulativeBiomass
+  ## rawIncPlots
+  ## allInfoAGBin
   outputObjects = bindrows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
     createsOutput(objectName = NA, objectClass = NA, desc = NA)
   )
 ))
+
+# Initial list of events:
+## 1) Match pixelGroups in dataPrep and pixelGroups in YieldTables to get correct equation to yieldTables
+## 2) Apply equation to CBM_AGB to get cumPoolsRaw (lookup CBMutils::cumPoolsCreate)
+## 3) Apply a smoothing to get cumPools? (lookup CBMutils::cumPoolsSmooth)
+## 4) Convert cumPools to get increments for each pool.
+## 5) Plot cumBiomass from cumPools
 
 doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
