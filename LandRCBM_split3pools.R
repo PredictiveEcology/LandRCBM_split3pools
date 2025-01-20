@@ -218,7 +218,8 @@ Init <- function(sim) {
   pixelGroupEco[, c("SpatialUnitID", "AdminBoundaryID", "stump_parameter_id", "adminName") := NULL]
   pixelGroupEco <- unique(pixelGroupEco)
   
-  ### might have to do that by hand for now and maybe add the canfi_species
+  ### TODO
+  # have to do that by hand for now and maybe add the canfi_species
   # numbers to the LandR::sppEquivalencies_CA?
   ## just working with what we have, by hand for now
   matchCanfi <- data.table(speciesCode = unique(sim$CBM_speciesCodes$speciesCode),
@@ -226,15 +227,17 @@ Init <- function(sim) {
   
   CBM_yieldOut <- merge(sim$CBM_speciesCodes, matchCanfi, by = "speciesCode")
   # adding other columns
-  sim$allInfoAGBin <- merge(CBM_yieldOut, pixelGroupEco, by = "pixelGroup", allow.cartesian = TRUE)
+  CBM_yieldOut <- merge(CBM_yieldOut, pixelGroupEco, by = "pixelGroup", allow.cartesian = TRUE)
+  sim$allInfoAGBin <- merge(CBM_AGB, CBM_yieldOut, allow.cartesian = TRUE)
   
+  setnames(sim$allInfoAGBin, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
-  ## Need to plot the incoming AGB values.
+  ##TODO Need to plot the incoming AGB values.
   
   ##############################################################################
-  #3. START processing curves from AGB to 3 pools
+  #2. START processing curves from AGB to 3 pools
   
-  #3.1 Calculating the cumPools
+  #2.1 Calculating the cumPools
   
   ##TODO
   ## add new functions to CBMutils. Only two of the three functions needed to be
@@ -257,21 +260,21 @@ Init <- function(sim) {
   # 6:    Pice_mar          3
   
   sim$cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoAGBin,
-                                    CBM_yieldOut = CBM_yieldOut2,
+                                    CBM_yieldOut = CBM_yieldOut,
                                     table6 = sim$table6,
                                     table7 = sim$table7)
   
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
   colNames <- grep(cbmAboveGroundPoolColNames, colnames(sim$cumPools), value = TRUE)
   
-  #3.2 MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
+  #2.2 MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
   #connection, but might be needed for future connection to other sources of
   #AGB).
   ### if not, we need to extrapolate to make them annual
   minAgeId <- sim$cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
   fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcids"]
   # might not need this
-  #length0s <- fill0s[,.(toMinAge = length(age)), by = "gcids"]
+  # length0s <- fill0s[,.(toMinAge = length(age)), by = "gcids"]
   # these are going to be 0s
   carbonVars <- data.table(gcids = unique(fill0s$gcids),
                            totMerch = 0,
@@ -286,25 +289,24 @@ Init <- function(sim) {
   set(sim$cumPoolsRaw, NULL, "age", as.numeric(sim$cumPoolsRaw$age))
   setorderv(sim$cumPoolsRaw, c("gcids", "age"))
   
-  
   # problem check: the difference between these two should only be the 0s that
   # got removed and the id columns
   # if(dim(cumPools)[1] != dim(sim$allInfoAGBin)){
   #   stop("There is a mismatch between the information that was given for translation and the results")
   # }
   
-  # 3.3 Plot the curves that are directly out of the Boudewyn-translation
+  # 2.3 Plot the curves that are directly out of the Boudewyn-translation
   
-  #TODO
+  # TODO
   # check that this is working. We only need to plot these when we are at the
   # beginning of a sim. Plotting the yearly translations will not be useful.
   # plotting and save the plots of the raw-translation
   ## plotting is off - maybe turn it on?
   # if (!is.na(P(sim)$.plotInitialTime))
-  sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw,
-                                         id_col = c("gcids","pixelGroup"),
-                                         path = figPath,
-                                         filenameBase = "rawCumBiomass_")
+  # sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw,
+  #                                        id_col = c("gcids","pixelGroup"),
+  #                                        path = figPath,
+  #                                        filenameBase = "rawCumBiomass_")
   # Some of these curves may still be wonky. But there is not much that can be
   # done unless we get better pool-splitting methods. The "matching" made in
   # Biomass_speciesParameters to the PSP makes this as good as the data we
@@ -313,7 +315,7 @@ Init <- function(sim) {
   # here. The smoothing to match PSP is done and cohort-level growth will only
   # match a Chapman-Richard form is there is only one cohort on the pixel.
   
-  # 3.4 Calculating Increments
+  # 2.4 Calculating Increments
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
   colNames <- grep(cbmAboveGroundPoolColNames, colnames(sim$cumPools), value = TRUE)
   
@@ -322,10 +324,10 @@ Init <- function(sim) {
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
   #if (!is.na(P(sim)$.plotInitialTime))
-  sim$rawIncPlots <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw[, ..colsToUse33],
-                           path = figPath,
-                           title = "Increments merch fol other by gc id",
-                           filenameBase = "Increments")
+  # sim$rawIncPlots <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw[, ..colsToUse33],
+  #                          path = figPath,
+  #                          title = "Increments merch fol other by gc id",
+  #                          filenameBase = "Increments")
   message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
                       figPath))
   
