@@ -298,11 +298,11 @@ Init <- function(sim) {
   # beginning of a sim. Plotting the yearly translations will not be useful.
   # plotting and save the plots of the raw-translation
   ## plotting is off - maybe turn it on?
-  # if (!is.na(P(sim)$.plotInitialTime))
-  # sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw,
-  #                                        id_col = c("gcids","pixelGroup"),
-  #                                        path = figPath,
-  #                                        filenameBase = "rawCumBiomass_")
+  if (!is.na(P(sim)$.plotInitialTime))
+  sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw,
+                                         id_col = c("gcids","pixelGroup"),
+                                         path = figurePath(sim),
+                                         filenameBase = "rawCumBiomass_")
   # Some of these curves may still be wonky. But there is not much that can be
   # done unless we get better pool-splitting methods. The "matching" made in
   # Biomass_speciesParameters to the PSP makes this as good as the data we
@@ -319,13 +319,13 @@ Init <- function(sim) {
   sim$cumPoolsRaw[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
-  #if (!is.na(P(sim)$.plotInitialTime))
-  # sim$rawIncPlots <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw[, ..colsToUse33],
-  #                          path = figPath,
-  #                          title = "Increments merch fol other by gc id",
-  #                          filenameBase = "Increments")
-  # message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
-  #                     figPath))
+  if (!is.na(P(sim)$.plotInitialTime))
+  sim$rawIncPlots <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw[, ..colsToUse33],
+                           path = figurePath(sim),
+                           title = "Increments merch fol other by gc id",
+                           filenameBase = "Increments")
+  message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
+                      figurePath(sim)))
   
   ## half the growth increments in tonnes of C/ha
   increments <- sim$cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
