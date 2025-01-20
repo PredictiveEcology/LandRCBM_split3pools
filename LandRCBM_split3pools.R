@@ -292,14 +292,13 @@ Init <- function(sim) {
   # }
   
   # 2.3 Plot the curves that are directly out of the Boudewyn-translation
-  
   # TODO
   # check that this is working. We only need to plot these when we are at the
   # beginning of a sim. Plotting the yearly translations will not be useful.
   # plotting and save the plots of the raw-translation
   ## plotting is off - maybe turn it on?
   if (!is.na(P(sim)$.plotInitialTime))
-  sim$plotsRawCumulativeBiomass <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw,
+  sim$plotsRawCumulativeBiomass <- m3ToBiomPlots(inc = sim$cumPoolsRaw,
                                          id_col = c("gcids","pixelGroup"),
                                          path = figurePath(sim),
                                          filenameBase = "rawCumBiomass_")
@@ -320,7 +319,7 @@ Init <- function(sim) {
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
   if (!is.na(P(sim)$.plotInitialTime))
-  sim$rawIncPlots <- Cache(m3ToBiomPlots, inc = sim$cumPoolsRaw[, ..colsToUse33],
+  sim$rawIncPlots <- m3ToBiomPlots(inc = sim$cumPoolsRaw[, ..colsToUse33],
                            path = figurePath(sim),
                            title = "Increments merch fol other by gc id",
                            filenameBase = "Increments")
