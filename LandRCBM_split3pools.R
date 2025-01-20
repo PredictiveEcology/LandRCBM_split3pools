@@ -218,14 +218,10 @@ Init <- function(sim) {
   pixelGroupEco[, c("SpatialUnitID", "AdminBoundaryID", "stump_parameter_id", "adminName") := NULL]
   pixelGroupEco <- unique(pixelGroupEco)
   
-  ### TODO
-  # have to do that by hand for now and maybe add the canfi_species
-  # numbers to the LandR::sppEquivalencies_CA?
-  ## just working with what we have, by hand for now
-  matchCanfi <- data.table(speciesCode = unique(sim$CBM_speciesCodes$speciesCode),
-                           canfi_species = c(304, 1303, 105, 101, 204, 1201))
+  ### matching LandR species with canfi species code
+  sp_canfi <- matchCanfi(unique(sim$CBM_speciesCodes$speciesCode), sim$canfi_species)
   
-  CBM_yieldOut <- merge(sim$CBM_speciesCodes, matchCanfi, by = "speciesCode")
+  CBM_yieldOut <- merge(sim$CBM_speciesCodes, sp_canfi, by = "speciesCode")
   # adding other columns
   CBM_yieldOut <- merge(CBM_yieldOut, pixelGroupEco, by = "pixelGroup", allow.cartesian = TRUE)
   sim$allInfoAGBin <- merge(CBM_AGB, CBM_yieldOut, allow.cartesian = TRUE)
