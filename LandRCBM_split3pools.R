@@ -82,6 +82,11 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo"
     ),
     expectsInput(
+      objectName = "spuRaster", objectClass = "SpatRaster",
+      desc = "Raster has spatial units for each pixel",
+      sourceURL = "https://drive.google.com/file/d/1D3O0Uj-s_QEgMW7_X-NhVsEZdJ29FBed"
+      ),
+    expectsInput(
       ## TODO Yield module will be modified to provide required format
       objectName = "CBM_AGB", objectClass = "data.frame",
       desc = "",
@@ -192,46 +197,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 ### template initialization
 Init <- function(sim) {
 
-  ### need to match the pixel groups with the ecozones and juris_id
-  ## Are pixelGroupMap and ecozone the same RTM?
-  ##checking
-  browser()
-  if (length(sim$pixelGroupMap[]) != length(sim$ecozone[])) {
-    stop("There is a problem: the ecozone raster and the pixelGroupMap are not equal")
-  }
-  sim$pixelGroupEco <- data.table(pixelIndex = 1:raster::ncell(sim$pixelGroupMap),
-                                  pixelGroup = as.integer(sim$pixelGroupMap[]),
-                                  ecozone = as.integer(sim$ecozone[]))
-  sim$pixelGroupEco <- na.omit(sim$pixelGroupEco, cols = "pixelGroup")
-  ### matching the ecozone to the admin, for now this is done by hand...
-  ##TODO make the matching to the admin abreviation automatic or make it a user
-  ##defined parameter in the global.R
-  juris_id <- sim$cbmAdmin[(EcoBoundaryID %in% pixelGroupEco$ecozone) & abreviation == "BC",]$abreviation
-  
-  pixelGroupEco[, juris_id := juris_id]
-  
-  
-  ##TODO
-  ###Make up my data from from Yield module: doing this b/c what comes out of
-  ###Yield is currently not the correct format. Can be removed once Yield issue
-  ###is addressed
-  setnames(CBM_AGB,"id","pixelGroup")
-  
-  ##TODO
-  ##Limiting the pixelGroups to three to get all this working. Will need to
-  ##update this section to use all our pixelGroups
-  CBM_AGB <- CBM_AGB[pixelGroup %in% 1:3,]
-  
-  cbm1 <- melt.data.table(CBM_AGB, id.vars = c("pixelGroup", "age"), variable.name = "Sp", value.name = "B")
-  keycols1 = c("pixelGroup", "Sp")
-  setkeyv(cbm1, keycols1)
-  setkeyv(CBM_speciesCodes, keycols1)
-  CBM_yieldOut <- merge(cbm1, CBM_speciesCodes, by = c("pixelGroup", "Sp"))
-  sim$CBM_yieldOut <- CBM_yieldOut[,-"Sp"]
-  
   ################################################################################
-  # 2. Matching species, jurisdiction and ecozone
-  
+  # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
   # with the pixelGroup and speciesCode in CBM_yieldOut.
   # CBM_yieldOut$pixelGroup gives us the location. Location let's us figure
@@ -239,45 +206,30 @@ Init <- function(sim) {
   # (abreviation - can do this using cbmAdmin or a raster) and ecozone. The
   # canfi_species have numbers which we need to match with the parameters.
   
+  ### need to match the pixel groups with the ecozones and juris_id
+  if (length(sim$pixelGroupMap[]) != length(sim$spuRaster[])) {
+    stop("There is a problem: the spuRaster and the pixelGroupMap are not equal")
+  }
+  pixelGroupEco <- data.table(pixelGroup = as.integer(sim$pixelGroupMap[]),
+                                  SpatialUnitID = as.integer(sim$spuRaster[]))
+  pixelGroupEco <- na.omit(pixelGroupEco, cols = "pixelGroup")
+  ### matching the ecozone to the admin
+  pixelGroupEco <- merge(pixelGroupEco, sim$cbmAdmin, by = "SpatialUnitID")
+  pixelGroupEco[, c("SpatialUnitID", "AdminBoundaryID", "stump_parameter_id", "adminName") := NULL]
+  pixelGroupEco <- unique(pixelGroupEco)
   
-  ##TODO
-  # might have to do that by hand for now and maybe add the canfi_species
+  ### might have to do that by hand for now and maybe add the canfi_species
   # numbers to the LandR::sppEquivalencies_CA?
-  
   ## just working with what we have, by hand for now
-  matchCanfi <- as.data.table(cbind(speciesCode = unique(sim$CBM_yieldOut$speciesCode),
-                                    canfi_species = c(1303, 105, 101)))
+  matchCanfi <- data.table(speciesCode = unique(sim$CBM_speciesCodes$speciesCode),
+                           canfi_species = c(304, 1303, 105, 101, 204, 1201))
   
-  CBM_yieldOut2 <- merge(sim$CBM_yieldOut, matchCanfi, by = "speciesCode")
-  # adding ecozone column
-  allInfoAGBin <- merge(CBM_yieldOut2, pixelGroupEco, by = "pixelGroup")
+  CBM_yieldOut <- merge(sim$CBM_speciesCodes, matchCanfi, by = "speciesCode")
+  # adding other columns
+  sim$allInfoAGBin <- merge(CBM_yieldOut, pixelGroupEco, by = "pixelGroup", allow.cartesian = TRUE)
   
-  ##TODO
-  ## We need a cohort_id
-  # there can be more than one cohort in a pixelGroup - more than one cohort
-  # on a pixel. So, we need a unique identifier for each curve on each pixel.
-  # I am therefore adding a column which in this case will be the same as the
-  # pixelGroup. This value will come from the Yield module. Can be removed once
-  # the issue with Yield is dealt with.
-  cohort_id <- unique(CBM_yieldOut2[,.(pixelGroup, speciesCode)])
-  cohort_id[, cohort_id := 1:length(cohort_id$speciesCode)]
-  sim$allInfoAGBin <- merge(allInfoAGBin, cohort_id, by = c("pixelGroup", "speciesCode"))
   
   ## Need to plot the incoming AGB values.
-  ##TODO
-  ## could use CBMUtils::m3ToBiomPlots with the addition of an argument (colsOut
-  ## = ), but I can't figure out how to make the list of NULLs the length of the
-  ## colsOut vector. So I wrote a version of that works (plotAGB.R). That needs
-  ## to be replaced by a modification to CBMUtils::m3ToBiomPlots
-  figPath <- file.path(modulePath(sim),
-                       currentModule(sim),"figures") #file.path(modulePath(sim), currentModule(sim), "figures")
-  
-  sim$CBM_AGBplots <- plotAGB(inc = sim$allInfoAGBin,
-                              id_col = c("pixelGroup", "cohort_id"),
-                              filenameBase = "CBM_AGB_",
-                              path = figPath,
-                              colsOut = c("speciesCode", "canfi_species", "ecozone", "juris_id"),
-                              title = "AGB from LandR by cohort")
   
   ##############################################################################
   #3. START processing curves from AGB to 3 pools
@@ -416,7 +368,6 @@ plotFun <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   dPath <- asPath(getOption("reproducible.destinationPath", dataPath(sim)), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
-  browser()
   # ! ----- EDIT BELOW ----- ! #
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(url = extractURL("rasterToMatch"),
@@ -463,6 +414,30 @@ plotFun <- function(sim) {
                                           maskTo = sim$rasterToMatch, 
                               cropTo = sim$rasterToMatch) ## returns SpatRast
     sim$ecozone <- rasterize(sim$ecozone, rasterToMatch, field = "ZONE_NAME")
+  }
+  
+  if (!suppliedElsewhere("spuRaster", sim)){
+    
+    if (!suppliedElsewhere("spuRasterURL", sim, where = "user")) message(
+      "User has not supplied a spatial units raster ('spuRaster' or 'spuRasterURL'). ",
+      "Default for Canada will be used.")
+    
+    spuSF <- prepInputs(
+      destinationPath = inputPath(sim),
+      url         = extractURL("spuRaster"),
+      filename1   = "spUnit_Locator.zip",
+      targetFile  = "spUnit_Locator.shp",
+      alsoExtract = "similar",
+      fun         = sf::st_read(targetFile, quiet = TRUE),
+      projectTo   = sim$rasterToMatch,
+      cropTo      = sim$rasterToMatch
+    ) |> Cache()
+    
+    sim$spuRaster <- terra::rasterize(
+      terra::vect(spuSF),
+      sim$rasterToMatch,
+      field = "spu_id"
+    ) |> Cache()
   }
   
   # 3. Information from LandR
