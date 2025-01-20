@@ -13,7 +13,7 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
-  reqdPkgs = list("data.table", "ggplot2",
+  reqdPkgs = list("data.table", "ggplot2", "terra",
                   "PredictiveEcology/CBMutils@development (>= 0.0.7.9006)",
                   "PredictiveEcology/LandR@development",
                   "PredictiveEcology/SpaDES.core@development (>= 1.1.0.9003)"),
@@ -328,8 +328,8 @@ Init <- function(sim) {
   #                          path = figPath,
   #                          title = "Increments merch fol other by gc id",
   #                          filenameBase = "Increments")
-  message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
-                      figPath))
+  # message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
+  #                     figPath))
   
   ## half the growth increments in tonnes of C/ha
   increments <- sim$cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]

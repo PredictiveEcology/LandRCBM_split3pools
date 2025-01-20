@@ -36,3 +36,5 @@ split3poolsInit <- SpaDES.core::simInit(
   objects = objects,
   paths = list(modulePath = "~/Repos/")
 )
+
+split3poolsSim <- spades(split3poolsInit)
