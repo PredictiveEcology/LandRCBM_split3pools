@@ -28,7 +28,9 @@ split3poolsInit <- SpaDES.core::simInit(
   params = parameters,
   modules = modules,
   objects = objects,
-  paths = list(modulePath = "~/Repos/")
+  paths = list(modulePath = "~/Repos/",
+               inputPath = "~/Repos/LandRCBM_split3pools/inputs/",
+               outputPath = "~/Repos/LandRCBM_split3pools/outputs/")
   )
 
 split3poolsSim <- spades(split3poolsInit)

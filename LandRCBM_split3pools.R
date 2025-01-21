@@ -21,6 +21,9 @@ defineModule(sim, list(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
+    defineParameter("numPlots", "integer", 10, NA, NA,
+                    "When plotting the yield curves, this is how many unique pixel groups will ",
+                    "be randomly selected and plotted"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
                     "Describes the simulation time at which the first plot event should occur."),
     defineParameter(".plotInterval", "numeric", NA, NA, NA,
@@ -85,7 +88,7 @@ defineModule(sim, list(
       objectName = "spuRaster", objectClass = "SpatRaster",
       desc = "Raster has spatial units for each pixel",
       sourceURL = "https://drive.google.com/file/d/1D3O0Uj-s_QEgMW7_X-NhVsEZdJ29FBed"
-      ),
+    ),
     expectsInput(
       ## TODO Yield module will be modified to provide required format
       objectName = "CBM_AGB", objectClass = "data.frame",
@@ -229,7 +232,12 @@ Init <- function(sim) {
   setnames(sim$allInfoAGBin, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
   ##TODO Need to plot the incoming AGB values.
+  pixelGroupsToPlot <- unique(sim$allInfoAGBin$pixelGroup)
+  if(Par$numPlots < length(pixelGroupsToPlot)){
+    pixelGroupsToPlot <- sample(pixelGroupsToPlot, size = Par$numPlots)
+  }
   
+  sim$AGBinPlot <- pltfn(allInfoAGBin = sim$allInfoAGBin, pixelGroupsToPlot = pixelGroupsToPlot)
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
   
@@ -297,11 +305,14 @@ Init <- function(sim) {
   # beginning of a sim. Plotting the yearly translations will not be useful.
   # plotting and save the plots of the raw-translation
   ## plotting is off - maybe turn it on?
-  if (!is.na(P(sim)$.plotInitialTime))
-  sim$plotsRawCumulativeBiomass <- m3ToBiomPlots(inc = sim$cumPoolsRaw,
-                                         id_col = c("gcids","pixelGroup"),
-                                         path = figurePath(sim),
-                                         filenameBase = "rawCumBiomass_")
+  if (!is.na(P(sim)$.plotInitialTime)){
+    cumPoolsRawToPlot <- sim$cumPoolsRaw[pixelGroup %in% pixelGroupsToPlot]
+    sim$plotsRawCumulativeBiomass <- m3ToBiomPlots(inc = sim$cumPoolsRaw,
+                                                   id_col = c("gcids","pixelGroup"),
+                                                   path = figurePath(sim),
+                                                   filenameBase = "rawCumBiomass_")
+  }
+
   # Some of these curves may still be wonky. But there is not much that can be
   # done unless we get better pool-splitting methods. The "matching" made in
   # Biomass_speciesParameters to the PSP makes this as good as the data we
@@ -370,7 +381,7 @@ plotFun <- function(sim) {
     sim$rasterToMatch <- prepInputs(url = extractURL("rasterToMatch"),
                                     fun = "raster::raster",
                                     destinationPath = dPath,
-                                    filename2 = "rtm_RIA.tif") ## TODO: confirm
+                                    filename2 = "rtm.tif") ## TODO: confirm
   }
   
   # 1. NFIparams
@@ -401,16 +412,6 @@ plotFun <- function(sim) {
                                     fun = "data.table::fread",
                                     destinationPath = dPath,
                                     filename2 = "canfi_species.csv")
-  }
-  
-  if (!suppliedElsewhere("ecozone", sim)) {
-    sim$ecozone <- prepInputs(url = extractURL("ecozone"),
-                                     fun = "sf::st_read",
-                                          destinationPath = dPath,
-                              projectTo = sim$rasterToMatch,
-                                          maskTo = sim$rasterToMatch, 
-                              cropTo = sim$rasterToMatch) ## returns SpatRast
-    sim$ecozone <- rasterize(sim$ecozone, rasterToMatch, field = "ZONE_NAME")
   }
   
   if (!suppliedElsewhere("spuRaster", sim)){
@@ -466,7 +467,11 @@ plotFun <- function(sim) {
   return(invisible(sim))
 }
 
-ggplotFn <- function(data, ...) {
-  ggplot(data, aes(TheSample)) +
-    geom_histogram(...)
+pltfn <- function(allInfoAGBin, pixelGroupsToPlot) {
+  id2 <- allInfoAGBin[pixelGroup %in% pixelGroupsToPlot]
+  setnames(id2, "B", "AGB")
+  sp <- unique(allInfoAGBin[pixelGroup %in% pixelGroupsToPlot]$speciesCode)
+  gg <- ggplot(id2, aes(age, AGB, color = speciesCode)) + geom_line() + theme_bw() +
+    facet_wrap(~pixelGroup)
+  return(invisible(gg))
 }
