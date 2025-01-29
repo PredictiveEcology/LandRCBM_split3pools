@@ -109,9 +109,15 @@ defineModule(sim, list(
       desc = "PixelGroup map from LandR",
       sourceURL = "https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3"
     ),
-    expectsInput("rasterToMatch", "RasterLayer",
-                 desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
-                 sourceURL = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci"
+    expectsInput(
+      objectName = "rasterToMatch", objectClass =  "RasterLayer",
+      desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
+      sourceURL = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci"
+    ),
+    expectInput(
+      objectName = "cohortData", objectClass = "data.frame",
+      desc = "Above ground biomass of cohorts in pixel groups",
+      sourceURL = "" ## TODO
     )
   ),
   outputObjects = bindrows(
@@ -152,41 +158,24 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-      ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
       
-      # do stuff for this event
+      # prepare the inputs
       sim <- Init(sim)
       
-      # schedule future event(s)
-      #sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "LandRCBM_split3pools", "plot")
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "LandRCBM_split3pools", "save")
+      # split yield tables into AGB pools
+      sim <- SplitYieldTables(sim)
+      
+      # spit AGB of cohorts into pools 
+      sim <- scheduleEvent(sim, start(sim), "scheduling", "annualIncrements")
     },
-    plot = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
+    annualIncrements = {
       
-      plotFun(sim) # example of a plotting function
-      # schedule future event(s)
+      # split AGB of cohorts into pools
+      sim <- splitCohortData(sim)
       
-      # e.g.,
-      #sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "LandRCBM_split3pools", "plot")
+      # do this for each timestep
+      sim <- scheduleEvent(sim, time(sim) + 1, "scheduling", "annualIncrements")
       
-      # ! ----- STOP EDITING ----- ! #
-    },
-    save = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
-      
-      # e.g., call your custom functions/methods here
-      # you can define your own methods below this `doEvent` function
-      
-      # schedule future event(s)
-      
-      # e.g.,
-      # sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "LandRCBM_split3pools", "save")
-      
-      # ! ----- STOP EDITING ----- ! #
     },
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
@@ -199,7 +188,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 
 ### template initialization
 Init <- function(sim) {
-
+  
   ################################################################################
   # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
@@ -214,7 +203,7 @@ Init <- function(sim) {
     stop("There is a problem: the spuRaster and the pixelGroupMap are not equal")
   }
   pixelGroupEco <- data.table(pixelGroup = as.integer(sim$pixelGroupMap[]),
-                                  SpatialUnitID = as.integer(sim$spuRaster[]))
+                              SpatialUnitID = as.integer(sim$spuRaster[]))
   pixelGroupEco <- na.omit(pixelGroupEco, cols = "pixelGroup")
   ### matching the ecozone to the admin
   pixelGroupEco <- merge(pixelGroupEco, sim$cbmAdmin, by = "SpatialUnitID")
@@ -312,7 +301,7 @@ Init <- function(sim) {
                                                    path = figurePath(sim),
                                                    filenameBase = "rawCumBiomass_")
   }
-
+  
   # Some of these curves may still be wonky. But there is not much that can be
   # done unless we get better pool-splitting methods. The "matching" made in
   # Biomass_speciesParameters to the PSP makes this as good as the data we
@@ -330,10 +319,10 @@ Init <- function(sim) {
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
   if (!is.na(P(sim)$.plotInitialTime))
-  sim$rawIncPlots <- m3ToBiomPlots(inc = sim$cumPoolsRaw[, ..colsToUse33],
-                           path = figurePath(sim),
-                           title = "Increments merch fol other by gc id",
-                           filenameBase = "Increments")
+    sim$rawIncPlots <- m3ToBiomPlots(inc = sim$cumPoolsRaw[, ..colsToUse33],
+                                     path = figurePath(sim),
+                                     title = "Increments merch fol other by gc id",
+                                     filenameBase = "Increments")
   message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
                       figurePath(sim)))
   
@@ -351,26 +340,6 @@ Init <- function(sim) {
   return(invisible(sim))
 }
 
-### template for save events
-Save <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # do stuff for this event
-  sim <- saveFiles(sim)
-  
-  # ! ----- STOP EDITING ----- ! #
-  return(invisible(sim))
-}
-
-### template for plot events
-plotFun <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # do stuff for this event
-  sampleData <- data.frame("TheSample" = sample(1:10, replace = TRUE))
-  Plots(sampleData, fn = ggplotFn)
-  
-  # ! ----- STOP EDITING ----- ! #
-  return(invisible(sim))
-}
 
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
@@ -455,6 +424,7 @@ plotFun <- function(sim) {
                                        destinationPath = dPath,
                                        filename2 = "CBM_speciesCodes.csv")
   }
+  
   ## pixel to pixelGroup map from LandR
   if (!suppliedElsewhere("pixelGroupMap", sim))
     sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
@@ -462,6 +432,11 @@ plotFun <- function(sim) {
                                     rasterToMatch = sim$rasterToMatch,
                                     useCache = TRUE)
   
+  ## The above ground biomass for each cohort in each pixel group
+  if (!suppliedElsewhere("cohortData", sim))
+    sim$cohortData <- prepInputs(url = extractURL("cohortData"),
+                                 destinationPath = dPath,
+                                 useCache = TRUE)
   
   # ! ----- STOP EDITING ----- ! #
   return(invisible(sim))
