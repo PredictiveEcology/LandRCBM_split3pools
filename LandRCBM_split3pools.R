@@ -159,9 +159,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     eventType,
     init = {
       
-      # prepare the inputs
-      sim <- Init(sim)
-      
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
@@ -171,7 +168,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     annualIncrements = {
       
       # split AGB of cohorts into pools
-      sim <- splitCohortData(sim)
+      sim <- SplitCohortData(sim)
       
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, "scheduling", "annualIncrements")
@@ -187,46 +184,37 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 #   - keep event functions short and clean, modularize by calling subroutines from section below.
 
 ### template initialization
-Init <- function(sim) {
+SplitYieldTables <- function(sim) {
   
   ################################################################################
   # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
-  # with the pixelGroup and speciesCode in CBM_yieldOut.
-  # CBM_yieldOut$pixelGroup gives us the location. Location let's us figure
+  # with the pixelGroup and speciesCode.
+  # pixelGroup gives us the location. Location let's us figure
   # out which ecozone, and admin. These will be used to match with juris_id
   # (abreviation - can do this using cbmAdmin or a raster) and ecozone. The
   # canfi_species have numbers which we need to match with the parameters.
   
-  ### need to match the pixel groups with the ecozones and juris_id
-  if (length(sim$pixelGroupMap[]) != length(sim$spuRaster[])) {
-    stop("There is a problem: the spuRaster and the pixelGroupMap are not equal")
-  }
-  pixelGroupEco <- data.table(pixelGroup = as.integer(sim$pixelGroupMap[]),
-                              SpatialUnitID = as.integer(sim$spuRaster[]))
-  pixelGroupEco <- na.omit(pixelGroupEco, cols = "pixelGroup")
-  ### matching the ecozone to the admin
-  pixelGroupEco <- merge(pixelGroupEco, sim$cbmAdmin, by = "SpatialUnitID")
-  pixelGroupEco[, c("SpatialUnitID", "AdminBoundaryID", "stump_parameter_id", "adminName") := NULL]
-  pixelGroupEco <- unique(pixelGroupEco)
+  allInfoYieldTables <- matchCurveToCohort(
+    CBM_speciesCodes = sim$CBM_speciesCodes,
+    pixelGroupMap = sim$pixelGroupMap,
+    spuRaster = sim$spuRaster,
+    cbmAdmin = sim$cbmAdmin,
+    sp_canfi = sim$canfi_species,
+    cohortData = NULL
+  )
   
-  ### matching LandR species with canfi species code
-  sp_canfi <- matchCanfi(unique(sim$CBM_speciesCodes$speciesCode), sim$canfi_species)
+  sim$allInfoYieldTables <- merge(CBM_AGB, allInfoYieldTables, allow.cartesian = TRUE)
   
-  CBM_yieldOut <- merge(sim$CBM_speciesCodes, sp_canfi, by = "speciesCode")
-  # adding other columns
-  CBM_yieldOut <- merge(CBM_yieldOut, pixelGroupEco, by = "pixelGroup", allow.cartesian = TRUE)
-  sim$allInfoAGBin <- merge(CBM_AGB, CBM_yieldOut, allow.cartesian = TRUE)
-  
-  setnames(sim$allInfoAGBin, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
+  setnames(sim$allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
   ##TODO Need to plot the incoming AGB values.
-  pixelGroupsToPlot <- unique(sim$allInfoAGBin$pixelGroup)
-  if(Par$numPlots < length(pixelGroupsToPlot)){
-    pixelGroupsToPlot <- sample(pixelGroupsToPlot, size = Par$numPlots)
-  }
-  
-  sim$AGBinPlot <- pltfn(allInfoAGBin = sim$allInfoAGBin, pixelGroupsToPlot = pixelGroupsToPlot)
+  # pixelGroupsToPlot <- unique(sim$allInfoAGBin$pixelGroup)
+  # if(Par$numPlots < length(pixelGroupsToPlot)){
+  #   pixelGroupsToPlot <- sample(pixelGroupsToPlot, size = Par$numPlots)
+  # }
+  # 
+  # sim$AGBinPlot <- pltfn(allInfoAGBin = sim$allInfoAGBin, pixelGroupsToPlot = pixelGroupsToPlot)
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
   
@@ -252,8 +240,7 @@ Init <- function(sim) {
   # 5:    Pice_mar          2
   # 6:    Pice_mar          3
   
-  sim$cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoAGBin,
-                                    CBM_yieldOut = CBM_yieldOut,
+  sim$cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
                                     table6 = sim$table6,
                                     table7 = sim$table7)
   
@@ -338,6 +325,18 @@ Init <- function(sim) {
   # ! ----- STOP EDITING ----- ! #
   
   return(invisible(sim))
+}
+
+SplitCohortData <- function(sim) {
+  allInfoCohortData <- matchCurveToCohort(
+    CBM_speciesCodes = sim$CBM_speciesCodes,
+    pixelGroupMap = sim$pixelGroupMap,
+    spuRaster = sim$spuRaster,
+    cbmAdmin = sim$cbmAdmin,
+    sp_canfi = sim$canfi_species,
+    cohortData = NULL
+  )
+  sim$allInfoCohortData <- merge(cohortData, allInfoYieldTables, allow.cartesian = TRUE)
 }
 
 

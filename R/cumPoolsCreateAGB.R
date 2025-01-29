@@ -1,10 +1,10 @@
-cumPoolsCreateAGB <- function(allInfoAGBin, CBM_yieldOut, table6, table7){
+cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
   counter <- 0L
   cumBiomList <- list()
   #cumList <- list()
   # matching on species name
   for (i in 1:length(unique(allInfoAGBin$canfi_species))) {
-    oneSpecies <- allInfoAGBin[canfi_species == unique(CBM_yieldOut$canfi_species)[i], ]
+    oneSpecies <- allInfoAGBin[canfi_species == unique(allInfoAGBin$canfi_species)[i], ]
 
 ## the 1:NROW seems to not work (have not determined why it does not cycle
 ## through past the first species
