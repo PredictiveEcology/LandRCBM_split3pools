@@ -18,7 +18,6 @@ defineModule(sim, list(
                   "PredictiveEcology/LandR@development",
                   "PredictiveEcology/SpaDES.core@development (>= 1.1.0.9003)"),
   parameters = bindrows(
-    #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter("numPlots", "integer", 10, NA, NA,
@@ -35,7 +34,6 @@ defineModule(sim, list(
     defineParameter(".studyAreaName", "character", NA, NA, NA,
                     "Human-readable name for the study area used - e.g., a hash of the study",
                     "area obtained using `reproducible::studyAreaName()`"),
-    ## .seed is optional: `list('init' = 123)` will `set.seed(123)` for the `init` event only.
     defineParameter(".seed", "list", list(), NA, NA,
                     "Named list of seeds to use for each event (names)."),
     defineParameter(".useCache", "logical", FALSE, NA, NA,
@@ -151,9 +149,6 @@ defineModule(sim, list(
   )
 ))
 
-## event types
-#   - type `init` is required for initialization
-
 doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
@@ -180,20 +175,16 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   return(invisible(sim))
 }
 
-## event functions
-#   - keep event functions short and clean, modularize by calling subroutines from section below.
-
-### template initialization
 SplitYieldTables <- function(sim) {
   
-  ################################################################################
+  ##############################################################################
   # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
-  # with the pixelGroup and speciesCode.
-  # pixelGroup gives us the location. Location let's us figure
-  # out which ecozone, and admin. These will be used to match with juris_id
-  # (abreviation - can do this using cbmAdmin or a raster) and ecozone. The
-  # canfi_species have numbers which we need to match with the parameters.
+  # with the pixelGroup and speciesCode. pixelGroup gives us the location. 
+  # Location let's us figure out which ecozone, and admin. These will be used to
+  # match with juris_id (abreviation - can do this using cbmAdmin or a raster) 
+  # and ecozone. The canfi_species have numbers which we need to match with the 
+  # parameters.
   
   allInfoYieldTables <- matchCurveToCohort(
     CBM_speciesCodes = sim$CBM_speciesCodes,
@@ -322,8 +313,6 @@ SplitYieldTables <- function(sim) {
     incOther / 2
   )][, (incCols) := NULL]
   
-  # ! ----- STOP EDITING ----- ! #
-  
   return(invisible(sim))
 }
 
@@ -344,7 +333,7 @@ SplitCohortData <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   dPath <- asPath(getOption("reproducible.destinationPath", dataPath(sim)), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
-  # ! ----- EDIT BELOW ----- ! #
+
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(url = extractURL("rasterToMatch"),
                                     fun = "raster::raster",
@@ -424,20 +413,19 @@ SplitCohortData <- function(sim) {
                                        filename2 = "CBM_speciesCodes.csv")
   }
   
-  ## pixel to pixelGroup map from LandR
+  ## pixel to pixelGroup map that gets updated annually
   if (!suppliedElsewhere("pixelGroupMap", sim))
     sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
                                     destinationPath = dPath,
                                     rasterToMatch = sim$rasterToMatch,
                                     useCache = TRUE)
   
-  ## The above ground biomass for each cohort in each pixel group
+  ## biomass per cohort and pixel group that gets updated annually
   if (!suppliedElsewhere("cohortData", sim))
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
                                  destinationPath = dPath,
                                  useCache = TRUE)
-  
-  # ! ----- STOP EDITING ----- ! #
+
   return(invisible(sim))
 }
 
