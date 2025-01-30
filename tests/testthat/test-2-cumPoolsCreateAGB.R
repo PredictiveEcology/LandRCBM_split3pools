@@ -18,11 +18,12 @@ setnames(allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "e
 
 out <- cumPoolsCreateAGB(allInfoYieldTables, table6, table7)
 
+# more than 1 single curve per species, because they might have grown with other species.
 ggplot(out) +
-  geom_line(aes(x = age, y = totMerch, color = as.factor(gcids)), linewidth = 1)
+  geom_line(aes(x = age, y = totMerch, group = gcids, color = species), linewidth = 1)
 
 ggplot(out) +
-  geom_line(aes(x = age, y = fol, color = as.factor(gcids)), linewidth = 1)
+  geom_line(aes(x = age, y = fol, group = gcids, color = species), linewidth = 1)
 
 ggplot(out) +
-  geom_line(aes(x = age, y = other, color = as.factor(gcids)), linewidth = 1)
+  geom_line(aes(x = age, y = other, group = gcids, color = species), linewidth = 1)

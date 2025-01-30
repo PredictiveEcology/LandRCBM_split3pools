@@ -243,29 +243,21 @@ SplitYieldTables <- function(sim) {
   #connection, but might be needed for future connection to other sources of
   #AGB).
   ### if not, we need to extrapolate to make them annual
+  
   minAgeId <- sim$cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
   fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcids"]
-  # might not need this
-  # length0s <- fill0s[,.(toMinAge = length(age)), by = "gcids"]
-  # these are going to be 0s
   carbonVars <- data.table(gcids = unique(fill0s$gcids),
                            totMerch = 0,
                            fol = 0,
                            other = 0 )
-  ## not 7cols, that was for CBM_VOl2biom, we have 6cols
+
   fiveOf7cols <- fill0s[carbonVars, on = "gcids"]
   
-  otherVars <- sim$cumPools[,.(pixelGroup = unique(pixelGroup)), by = "gcids"]
+  otherVars <- sim$cumPools[,.(pixelGroup = unique(pixelGroup), species = unique(species)), by = "gcids"]
   add0s <- fiveOf7cols[otherVars, on = "gcids"]
   sim$cumPoolsRaw <- rbind(sim$cumPools,add0s)
   set(sim$cumPoolsRaw, NULL, "age", as.numeric(sim$cumPoolsRaw$age))
   setorderv(sim$cumPoolsRaw, c("gcids", "age"))
-  
-  # problem check: the difference between these two should only be the 0s that
-  # got removed and the id columns
-  # if(dim(cumPools)[1] != dim(sim$allInfoAGBin)){
-  #   stop("There is a mismatch between the information that was given for translation and the results")
-  # }
   
   # 2.3 Plot the curves that are directly out of the Boudewyn-translation
   # TODO
@@ -273,13 +265,13 @@ SplitYieldTables <- function(sim) {
   # beginning of a sim. Plotting the yearly translations will not be useful.
   # plotting and save the plots of the raw-translation
   ## plotting is off - maybe turn it on?
-  if (!is.na(P(sim)$.plotInitialTime)){
-    cumPoolsRawToPlot <- sim$cumPoolsRaw[pixelGroup %in% pixelGroupsToPlot]
-    sim$plotsRawCumulativeBiomass <- m3ToBiomPlots(inc = sim$cumPoolsRaw,
-                                                   id_col = c("gcids","pixelGroup"),
-                                                   path = figurePath(sim),
-                                                   filenameBase = "rawCumBiomass_")
-  }
+  # if (!is.na(P(sim)$.plotInitialTime)){
+  #   cumPoolsRawToPlot <- sim$cumPoolsRaw[pixelGroup %in% pixelGroupsToPlot]
+  #   sim$plotsRawCumulativeBiomass <- m3ToBiomPlots(inc = sim$cumPoolsRaw,
+  #                                                  id_col = c("gcids","pixelGroup"),
+  #                                                  path = figurePath(sim),
+  #                                                  filenameBase = "rawCumBiomass_")
+  # }
 
   # Some of these curves may still be wonky. But there is not much that can be
   # done unless we get better pool-splitting methods. The "matching" made in
@@ -290,10 +282,9 @@ SplitYieldTables <- function(sim) {
   # match a Chapman-Richard form is there is only one cohort on the pixel.
   
   # 2.4 Calculating Increments
-  cbmAboveGroundPoolColNames <- "totMerch|fol|other"
-  colNames <- grep(cbmAboveGroundPoolColNames, colnames(sim$cumPools), value = TRUE)
-  
   incCols <- c("incMerch", "incFol", "incOther")
+  # This line calculates the first difference of each colNames, shifting it down 
+  # by one row and filling the first entry with NA.
   sim$cumPoolsRaw[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
@@ -305,14 +296,17 @@ SplitYieldTables <- function(sim) {
   message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
                       figurePath(sim)))
   
-  ## half the growth increments in tonnes of C/ha
-  increments <- sim$cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
+  sim$increments <- sim$cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
   
-  sim$incHalf <- increments[, (colNames) := list(
-    incMerch / 2,
-    incFol / 2,
-    incOther / 2
-  )][, (incCols) := NULL]
+  
+  ### DC: I believe this is not necessary since we already divided by two in the 
+  ### cumPoolsCreateAGB function.
+  
+  # sim$incHalf <- increments[, (colNames) := list(
+  #   incMerch / 2,
+  #   incFol / 2,
+  #   incOther / 2
+  # )][, (incCols) := NULL]
   
   return(invisible(sim))
 }
@@ -327,6 +321,14 @@ SplitCohortData <- function(sim) {
     cohortData = NULL
   )
   sim$allInfoCohortData <- merge(cohortData, allInfoYieldTables, allow.cartesian = TRUE)
+  setnames(sim$allInfoCohortData, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
+  
+  sim$cohortPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
+                                    table6 = sim$table6,
+                                    table7 = sim$table7)
+
+  #### TODO: there is probably ages (e.g., age = 0) for which we loss data.
+  
 }
 
 
