@@ -18,7 +18,7 @@ defineModule(sim, list(
                   "PredictiveEcology/LandR@development",
                   "PredictiveEcology/SpaDES.core@development (>= 1.1.0.9003)"),
   parameters = bindrows(
-    #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
+
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter("numPlots", "integer", 10, NA, NA,
@@ -35,7 +35,6 @@ defineModule(sim, list(
     defineParameter(".studyAreaName", "character", NA, NA, NA,
                     "Human-readable name for the study area used - e.g., a hash of the study",
                     "area obtained using `reproducible::studyAreaName()`"),
-    ## .seed is optional: `list('init' = 123)` will `set.seed(123)` for the `init` event only.
     defineParameter(".seed", "list", list(), NA, NA,
                     "Named list of seeds to use for each event (names)."),
     defineParameter(".useCache", "logical", FALSE, NA, NA,
@@ -109,9 +108,15 @@ defineModule(sim, list(
       desc = "PixelGroup map from LandR",
       sourceURL = "https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3"
     ),
-    expectsInput("rasterToMatch", "RasterLayer",
-                 desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
-                 sourceURL = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci"
+    expectsInput(
+      objectName = "rasterToMatch", objectClass =  "RasterLayer",
+      desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
+      sourceURL = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci"
+    ),
+    expectInput(
+      objectName = "cohortData", objectClass = "data.frame",
+      desc = "Above ground biomass of cohorts in pixel groups",
+      sourceURL = "" ## TODO
     )
   ),
   outputObjects = bindrows(
@@ -145,48 +150,24 @@ defineModule(sim, list(
   )
 ))
 
-## event types
-#   - type `init` is required for initialization
-
 doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-      ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
       
-      # do stuff for this event
-      sim <- Init(sim)
+      # split yield tables into AGB pools
+      sim <- SplitYieldTables(sim)
       
-      # schedule future event(s)
-      #sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "LandRCBM_split3pools", "plot")
-      sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "LandRCBM_split3pools", "save")
+      # spit AGB of cohorts into pools 
+      sim <- scheduleEvent(sim, start(sim), "scheduling", "annualIncrements")
     },
-    plot = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
+    annualIncrements = {
       
-      plotFun(sim) # example of a plotting function
-      # schedule future event(s)
+      # split AGB of cohorts into pools
+      sim <- SplitCohortData(sim)
       
-      # e.g.,
-      #sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "LandRCBM_split3pools", "plot")
-      
-      # ! ----- STOP EDITING ----- ! #
-    },
-    save = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
-      
-      # e.g., call your custom functions/methods here
-      # you can define your own methods below this `doEvent` function
-      
-      # schedule future event(s)
-      
-      # e.g.,
-      # sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "LandRCBM_split3pools", "save")
-      
-      # ! ----- STOP EDITING ----- ! #
+      # do this for each timestep
+      sim <- scheduleEvent(sim, time(sim) + 1, "scheduling", "annualIncrements")
     },
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
@@ -194,50 +175,38 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   return(invisible(sim))
 }
 
-## event functions
-#   - keep event functions short and clean, modularize by calling subroutines from section below.
-
-### template initialization
-Init <- function(sim) {
-
-  ################################################################################
+SplitYieldTables <- function(sim) {
+  
+  ##############################################################################
   # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
-  # with the pixelGroup and speciesCode in CBM_yieldOut.
-  # CBM_yieldOut$pixelGroup gives us the location. Location let's us figure
-  # out which ecozone, and admin. These will be used to match with juris_id
-  # (abreviation - can do this using cbmAdmin or a raster) and ecozone. The
-  # canfi_species have numbers which we need to match with the parameters.
+  # with the pixelGroup and speciesCode. pixelGroup gives us the location. 
+  # Location let's us figure out which ecozone, and admin. These will be used to
+  # match with juris_id (abreviation - can do this using cbmAdmin or a raster) 
+  # and ecozone. The canfi_species have numbers which we need to match with the 
+  # parameters.
   
-  ### need to match the pixel groups with the ecozones and juris_id
-  if (length(sim$pixelGroupMap[]) != length(sim$spuRaster[])) {
-    stop("There is a problem: the spuRaster and the pixelGroupMap are not equal")
-  }
-  pixelGroupEco <- data.table(pixelGroup = as.integer(sim$pixelGroupMap[]),
-                                  SpatialUnitID = as.integer(sim$spuRaster[]))
-  pixelGroupEco <- na.omit(pixelGroupEco, cols = "pixelGroup")
-  ### matching the ecozone to the admin
-  pixelGroupEco <- merge(pixelGroupEco, sim$cbmAdmin, by = "SpatialUnitID")
-  pixelGroupEco[, c("SpatialUnitID", "AdminBoundaryID", "stump_parameter_id", "adminName") := NULL]
-  pixelGroupEco <- unique(pixelGroupEco)
+  allInfoYieldTables <- matchCurveToCohort(
+    CBM_speciesCodes = sim$CBM_speciesCodes,
+    pixelGroupMap = sim$pixelGroupMap,
+    spuRaster = sim$spuRaster,
+    cbmAdmin = sim$cbmAdmin,
+    sp_canfi = sim$canfi_species,
+    cohortData = NULL
+  )
   
-  ### matching LandR species with canfi species code
-  sp_canfi <- matchCanfi(unique(sim$CBM_speciesCodes$speciesCode), sim$canfi_species)
+  sim$allInfoYieldTables <- merge(CBM_AGB, allInfoYieldTables, allow.cartesian = TRUE)
   
-  CBM_yieldOut <- merge(sim$CBM_speciesCodes, sp_canfi, by = "speciesCode")
-  # adding other columns
-  CBM_yieldOut <- merge(CBM_yieldOut, pixelGroupEco, by = "pixelGroup", allow.cartesian = TRUE)
-  sim$allInfoAGBin <- merge(CBM_AGB, CBM_yieldOut, allow.cartesian = TRUE)
-  
-  setnames(sim$allInfoAGBin, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
+  setnames(sim$allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
   ##TODO Need to plot the incoming AGB values.
-  pixelGroupsToPlot <- unique(sim$allInfoAGBin$pixelGroup)
-  if(Par$numPlots < length(pixelGroupsToPlot)){
-    pixelGroupsToPlot <- sample(pixelGroupsToPlot, size = Par$numPlots)
-  }
-  
-  sim$AGBinPlot <- pltfn(allInfoAGBin = sim$allInfoAGBin, pixelGroupsToPlot = pixelGroupsToPlot)
+  # pixelGroupsToPlot <- unique(sim$allInfoAGBin$pixelGroup)
+  # if(Par$numPlots < length(pixelGroupsToPlot)){
+  #   pixelGroupsToPlot <- sample(pixelGroupsToPlot, size = Par$numPlots)
+  # }
+  # 
+  # sim$AGBinPlot <- pltfn(allInfoAGBin = sim$allInfoAGBin, pixelGroupsToPlot = pixelGroupsToPlot)
+
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
   
@@ -263,8 +232,7 @@ Init <- function(sim) {
   # 5:    Pice_mar          2
   # 6:    Pice_mar          3
   
-  sim$cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoAGBin,
-                                    CBM_yieldOut = CBM_yieldOut,
+  sim$cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
                                     table6 = sim$table6,
                                     table7 = sim$table7)
   
@@ -346,37 +314,27 @@ Init <- function(sim) {
     incOther / 2
   )][, (incCols) := NULL]
   
-  # ! ----- STOP EDITING ----- ! #
-  
   return(invisible(sim))
 }
 
-### template for save events
-Save <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # do stuff for this event
-  sim <- saveFiles(sim)
-  
-  # ! ----- STOP EDITING ----- ! #
-  return(invisible(sim))
+SplitCohortData <- function(sim) {
+  allInfoCohortData <- matchCurveToCohort(
+    CBM_speciesCodes = sim$CBM_speciesCodes,
+    pixelGroupMap = sim$pixelGroupMap,
+    spuRaster = sim$spuRaster,
+    cbmAdmin = sim$cbmAdmin,
+    sp_canfi = sim$canfi_species,
+    cohortData = NULL
+  )
+  sim$allInfoCohortData <- merge(cohortData, allInfoYieldTables, allow.cartesian = TRUE)
 }
 
-### template for plot events
-plotFun <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # do stuff for this event
-  sampleData <- data.frame("TheSample" = sample(1:10, replace = TRUE))
-  Plots(sampleData, fn = ggplotFn)
-  
-  # ! ----- STOP EDITING ----- ! #
-  return(invisible(sim))
-}
 
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   dPath <- asPath(getOption("reproducible.destinationPath", dataPath(sim)), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
-  # ! ----- EDIT BELOW ----- ! #
+
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(url = extractURL("rasterToMatch"),
                                     fun = "raster::raster",
@@ -455,15 +413,20 @@ plotFun <- function(sim) {
                                        destinationPath = dPath,
                                        filename2 = "CBM_speciesCodes.csv")
   }
-  ## pixel to pixelGroup map from LandR
+  
+  ## pixel to pixelGroup map that gets updated annually
   if (!suppliedElsewhere("pixelGroupMap", sim))
     sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
                                     destinationPath = dPath,
                                     rasterToMatch = sim$rasterToMatch,
                                     useCache = TRUE)
   
-  
-  # ! ----- STOP EDITING ----- ! #
+  ## biomass per cohort and pixel group that gets updated annually
+  if (!suppliedElsewhere("cohortData", sim))
+    sim$cohortData <- prepInputs(url = extractURL("cohortData"),
+                                 destinationPath = dPath,
+                                 useCache = TRUE)
+
   return(invisible(sim))
 }
 
