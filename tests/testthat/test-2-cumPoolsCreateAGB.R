@@ -12,3 +12,17 @@ CBM_AGB <- reproducible::prepInputs(
   "tests/testthat/fixtures/yield_module_sample/CBM_AGB.csv", 
   fun = "data.table::fread"
 )
+allInfoYieldTables <- fread("tests/testthat/fixtures/allInfoYieldTables.csv")
+allInfoYieldTables <- merge(CBM_AGB, allInfoYieldTables, allow.cartesian = TRUE)
+setnames(allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
+
+out <- cumPoolsCreateAGB(allInfoYieldTables, table6, table7)
+
+ggplot(out) +
+  geom_line(aes(x = age, y = totMerch, color = as.factor(gcids)), linewidth = 1)
+
+ggplot(out) +
+  geom_line(aes(x = age, y = fol, color = as.factor(gcids)), linewidth = 1)
+
+ggplot(out) +
+  geom_line(aes(x = age, y = other, color = as.factor(gcids)), linewidth = 1)
