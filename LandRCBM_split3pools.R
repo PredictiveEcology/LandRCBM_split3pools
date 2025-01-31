@@ -17,7 +17,7 @@ defineModule(sim, list(
                   "PredictiveEcology/CBMutils@development",
                   "PredictiveEcology/LandR@development"),
   parameters = bindrows(
-
+    
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter("numCohortPlots", "integer", 3, NA, NA,
@@ -51,8 +51,8 @@ defineModule(sim, list(
     ## cboivenue by Paul Boudewyn.
     expectsInput(
       objectName = "table6", objectClass = "data.frame",
-      desc = c("Proportion model parameters similar to Boudewyn et al 2007,",
-               "but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha"),
+      desc = paste("Proportion model parameters similar to Boudewyn et al 2007,",
+                   "but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha"),
       sourceURL = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc"
       ## NOTE: current link is to a google drive but parameters will eventually
       ## be on the NFIS site as per the volume-based parameters. For now, I put
@@ -124,33 +124,65 @@ defineModule(sim, list(
     )
   ),
   outputObjects = bindrows(
-    createsOutput(objectName = "CBM_yieldOut",
-                  objectClass = "data.frame",
-                  desc = "AGB values by pixel/pixelGroup, cohort (species and age) will be provided by the Yield module"),
-    createsOutput(objectName = "CBM_AGBplots",
-                  objectClass = "plot",
-                  desc = "Plot of the AGB values per cohort provided by the Yield module"),
-    createsOutput(objectName = "cumPools",
-                  objectClass = "data.frame",
-                  desc = "Cumulative carbon in three pools, totMerch, fol, and other per cohort"),
-    createsOutput(objectName = "pixelGroupEco",
-                  objectClass = "data.table",
-                  desc = "Data table made from the pixelGroupMap raster and the ecozone raster with pixel number added"),
-    createsOutput(objectName = "allInfoAGBin",
-                  objectClass = "data.table",
-                  desc = "Data table with all cohort information necessary for coefficient matching and calculations"),
-    createsOutput(objectName = "cumPoolsRaw",
-                  objectClass = "data.table",
-                  desc = "Data table with the cumulative carbon for all three pools per cohort."),
-    createsOutput(objectName = "plotsRawCumulativeBiomass",
-                  objectClass = "plots",
-                  desc = "Plots of the cumPoolsRaw"),
-    createsOutput(objectName = "rawIncPlots",
-                  objectClass = "plots",
-                  desc = "Plots of the increments in each of the three pools."),
-    createsOutput(objectName = "incHalf",
-                  objectClass = "matrix",
-                  desc = "Matrix of the 1/2 increment for every age provided per cohort")
+    createsOutput(
+      objectName = "yieldCurvePlots",
+      objectClass = "ggplot",
+      desc = paste("Plot of the yield curves of randomly selected pixelGroup provided",
+                   "by the biomass_yieldTables module")
+    ),
+    # Same as yieldCurvePlots, but curve are stacked to visualize total biomass
+    createsOutput(
+      objectName = "yieldCurvePlotsStacked",
+      objectClass = "ggplot",
+      desc = paste("Plot of the AGB values per cohort of randomly selected pixelGroup",
+                   "provided by the biomass_yieldTables module")
+    ),
+    createsOutput(
+      objectName = "allInfoYieldTables",
+      objectClass = "data.table",
+      desc = paste("Yield table provided by the biomass_yieldTables module with",
+                   "additionnal information to match with Boudewyn et al. equations.")
+    ),
+    createsOutput(
+      objectName = "cumPools",
+      objectClass = "data.table",
+      desc = paste("Cumulative biomass in each aboveground biomass pool for each",
+                   "yield curve (in tonnes of carbon/ha).")
+    ),
+    # Do we need cumPools if we have cumPoolsRaw?
+    createsOutput(
+      objectName = "cumPoolsRaw",
+      objectClass = "data.table",
+      desc = "Same as cumPools with additionnal lines for age 0 of each cohort."
+    ),
+    createsOutput(
+      objectName = "increments",
+      objectClass = "data.table",
+      desc = "Increments for each yield curve (in tonnes of carbon/ha)."
+    ),
+    createsOutput(
+      objectName = "rawIncPlots",
+      objectClass = "ggplot",
+      desc = "Plot of the increments for yield curves of randomly selected pixelGroup"
+    ),
+    createsOutput(
+      objectName = "yieldCurvePoolPlots",
+      objectClass = "ggplot",
+      desc = paste("Plot of the cumulative biomass of the three AGB pools for randomly",
+                   "selected pixelGroup.")
+    ),
+    createsOutput(
+      objectName = "allInfoCohortData",
+      objectClass = "data.table",
+      desc = paste("Above ground biomass (in tonnes of g/m2) of each cohort per",
+                   "pixelGroup provided by LandR with additionnal information to",
+                   "match with Boudewyn et al. equations. Gets updated each timestep")
+    ),
+    createsOutput(
+      objectName = "cohortPools",
+      objectClass = "data.table",
+      desc = "Cumulative biomass in each aboveground pool for each cohort per pixelGroup."
+    )
   )
 ))
 
@@ -290,7 +322,7 @@ SplitYieldTables <- function(sim) {
                            totMerch = 0,
                            fol = 0,
                            other = 0 )
-
+  
   fiveOf7cols <- fill0s[carbonVars, on = "gcids"]
   
   otherVars <- sim$cumPools[,.(pixelGroup = unique(pixelGroup), species = unique(species)), by = "gcids"]
@@ -307,10 +339,10 @@ SplitYieldTables <- function(sim) {
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
   if (!is.na(P(sim)$.plotInitialTime))
-  sim$rawIncPlots <- m3ToBiomPlots(inc = sim$cumPoolsRaw[, ..colsToUse33],
-                           path = figurePath(sim),
-                           title = "Increments merch fol other by gc id",
-                           filenameBase = "Increments")
+    sim$rawIncPlots <- m3ToBiomPlots(inc = sim$cumPoolsRaw[, ..colsToUse33],
+                                     path = figurePath(sim),
+                                     title = "Increments merch fol other by gc id",
+                                     filenameBase = "Increments")
   message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
                       figurePath(sim)))
   
@@ -363,7 +395,7 @@ PlotYieldTablesPools <- function(sim){
     measure.vars = c("totMerch", "fol", "other"),
     variable.name = "pool",
     value.name = "B"
-    )
+  )
   # plot
   sim$yieldCurvePoolPlots <- ggplot(plot_dt, aes(age, B, fill = pool)) + 
     geom_area(position = position_stack()) + 
@@ -383,11 +415,11 @@ SplitCohortData <- function(sim) {
     CBM_speciesCodes = NULL
   )
   setnames(sim$allInfoCohortData, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
-
+  
   sim$cohortPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
-                                    table6 = sim$table6,
-                                    table7 = sim$table7)
-
+                                       table6 = sim$table6,
+                                       table7 = sim$table7)
+  
   #### TODO: there is probably ages (e.g., age = 0) for which we loss data.
   return(invisible(sim))
   
@@ -398,7 +430,7 @@ SplitCohortData <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   dPath <- asPath(getOption("reproducible.destinationPath", dataPath(sim)), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
-
+  
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(url = extractURL("rasterToMatch"),
                                     fun = "raster::raster",
@@ -490,15 +522,6 @@ SplitCohortData <- function(sim) {
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
                                  destinationPath = dPath,
                                  filename2 = "cohortData.csv")
-
+  
   return(invisible(sim))
-}
-
-pltfn <- function(allInfoAGBin, pixelGroupsToPlot) {
-  id2 <- allInfoAGBin[pixelGroup %in% pixelGroupsToPlot]
-  setnames(id2, "B", "AGB")
-  sp <- unique(allInfoAGBin[pixelGroup %in% pixelGroupsToPlot]$speciesCode)
-  gg <- ggplot(id2, aes(age, AGB, color = speciesCode)) + geom_line() + theme_bw() +
-    facet_wrap(~pixelGroup)
-  return(invisible(gg))
 }
