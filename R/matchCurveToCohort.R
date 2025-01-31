@@ -1,8 +1,8 @@
-matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, sp_canfi, cohortData = NULL, CBM_speciesCodes = NULL){
+matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species, cohortData = NULL, CBM_speciesCodes = NULL){
+
   if(!is.null(cohortData)){
     if (!is.null(CBM_speciesCodes)) stop("either cohortData or CBM_speciesCodes need to be NULL")
-    cohort_info <- unique(cohortData[, .(speciesCode, pixelGroup)])
-    cohort_info <- cohort_info[,cohort_id := frank(speciesCode, pixelGroup)]
+    cohort_info <- cohortData
   }
   if(!is.null(CBM_speciesCodes)){
     cohort_info <- CBM_speciesCodes

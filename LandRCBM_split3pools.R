@@ -13,10 +13,9 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
-  reqdPkgs = list("data.table", "ggplot2", "terra",
-                  "PredictiveEcology/CBMutils@development (>= 0.0.7.9006)",
-                  "PredictiveEcology/LandR@development",
-                  "PredictiveEcology/SpaDES.core@development (>= 1.1.0.9003)"),
+  reqdPkgs = list("PredictiveEcology/SpaDES.core@box", "PredictiveEcology/reproducible@AI", "data.table", "ggplot2", "terra",
+                  "PredictiveEcology/CBMutils@development",
+                  "PredictiveEcology/LandR@development"),
   parameters = bindrows(
 
     defineParameter(".plots", "character", "screen", NA, NA,
@@ -116,10 +115,12 @@ defineModule(sim, list(
       desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
       sourceURL = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci"
     ),
-    expectInput(
+    expectsInput(
       objectName = "cohortData", objectClass = "data.frame",
       desc = "Above ground biomass of cohorts in pixel groups",
-      sourceURL = "" ## TODO
+      sourceURL = "https://drive.google.com/file/d/1sVsDoT1E-CDgo2hnCU2pgqV6PpVic2Fe" 
+      ## TODO: table created in the Yield module, will eventually get it from the module,
+      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     )
   ),
   outputObjects = bindrows(
@@ -168,7 +169,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- PlotYieldTablesPools(sim)
       
       # spit AGB of cohorts into pools 
-      sim <- scheduleEvent(sim, start(sim), "scheduling", "annualIncrements")
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","annualIncrements")
     },
     annualIncrements = {
       
@@ -176,7 +177,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- SplitCohortData(sim)
       
       # do this for each timestep
-      sim <- scheduleEvent(sim, time(sim) + 1, "scheduling", "annualIncrements")
+      sim <- scheduleEvent(sim, time(sim) + 1, "LandRCBM_split3pools", "annualIncrements")
     },
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
@@ -184,6 +185,13 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   return(invisible(sim))
 }
 
+##TODO Need to plot the incoming AGB values.
+# pixelGroupsToPlot <- unique(sim$allInfoAGBin$pixelGroup)
+# if(Par$numPlots < length(pixelGroupsToPlot)){
+#   pixelGroupsToPlot <- sample(pixelGroupsToPlot, size = Par$numPlots)
+# }
+# 
+# sim$AGBinPlot <- pltfn(allInfoAGBin = sim$allInfoAGBin, pixelGroupsToPlot = pixelGroupsToPlot)
 PlotYieldTables <- function(sim){
   nPixGroups <- length(unique(sim$CBM_speciesCodes$pixelGroup))
   nPlots <- P(sim)$numPixGroupPlots
@@ -213,6 +221,7 @@ PlotYieldTables <- function(sim){
     facet_wrap(~pixelGroup)
   sim$yieldCurvePlotsStacked <- ggplot(plot_dt, aes(age, B, fill = speciesCode)) + geom_area(position = position_stack()) + theme_bw() +
     facet_wrap(~pixelGroup)
+  return(invisible(sim))
 }
 
 SplitYieldTables <- function(sim) {
@@ -225,13 +234,12 @@ SplitYieldTables <- function(sim) {
   # match with juris_id (abreviation - can do this using cbmAdmin or a raster) 
   # and ecozone. The canfi_species have numbers which we need to match with the 
   # parameters.
-  
   allInfoYieldTables <- matchCurveToCohort(
     CBM_speciesCodes = sim$CBM_speciesCodes,
     pixelGroupMap = sim$pixelGroupMap,
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
-    sp_canfi = sim$canfi_species,
+    canfi_species = sim$canfi_species,
     cohortData = NULL
   )
   
@@ -239,14 +247,6 @@ SplitYieldTables <- function(sim) {
   
   setnames(sim$allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
-  ##TODO Need to plot the incoming AGB values.
-  # pixelGroupsToPlot <- unique(sim$allInfoAGBin$pixelGroup)
-  # if(Par$numPlots < length(pixelGroupsToPlot)){
-  #   pixelGroupsToPlot <- sample(pixelGroupsToPlot, size = Par$numPlots)
-  # }
-  # 
-  # sim$AGBinPlot <- pltfn(allInfoAGBin = sim$allInfoAGBin, pixelGroupsToPlot = pixelGroupsToPlot)
-
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
   
@@ -299,28 +299,6 @@ SplitYieldTables <- function(sim) {
   set(sim$cumPoolsRaw, NULL, "age", as.numeric(sim$cumPoolsRaw$age))
   setorderv(sim$cumPoolsRaw, c("gcids", "age"))
   
-  # 2.3 Plot the curves that are directly out of the Boudewyn-translation
-  # TODO
-  # check that this is working. We only need to plot these when we are at the
-  # beginning of a sim. Plotting the yearly translations will not be useful.
-  # plotting and save the plots of the raw-translation
-  ## plotting is off - maybe turn it on?
-  # if (!is.na(P(sim)$.plotInitialTime)){
-  #   cumPoolsRawToPlot <- sim$cumPoolsRaw[pixelGroup %in% pixelGroupsToPlot]
-  #   sim$plotsRawCumulativeBiomass <- m3ToBiomPlots(inc = sim$cumPoolsRaw,
-  #                                                  id_col = c("gcids","pixelGroup"),
-  #                                                  path = figurePath(sim),
-  #                                                  filenameBase = "rawCumBiomass_")
-  # }
-
-  # Some of these curves may still be wonky. But there is not much that can be
-  # done unless we get better pool-splitting methods. The "matching" made in
-  # Biomass_speciesParameters to the PSP makes this as good as the data we
-  # have (PSPs).
-  # Note: Fixing of non-smooth curves done in CBM_vol2biomass would not help
-  # here. The smoothing to match PSP is done and cohort-level growth will only
-  # match a Chapman-Richard form is there is only one cohort on the pixel.
-  
   # 2.4 Calculating Increments
   incCols <- c("incMerch", "incFol", "incOther")
   # This line calculates the first difference of each colNames, shifting it down 
@@ -351,44 +329,67 @@ SplitYieldTables <- function(sim) {
   return(invisible(sim))
 }
 
+
+# 2.3 Plot the curves that are directly out of the Boudewyn-translation
+# TODO
+# check that this is working. We only need to plot these when we are at the
+# beginning of a sim. Plotting the yearly translations will not be useful.
+# plotting and save the plots of the raw-translation
+## plotting is off - maybe turn it on?
+# if (!is.na(P(sim)$.plotInitialTime)){
+#   cumPoolsRawToPlot <- sim$cumPoolsRaw[pixelGroup %in% pixelGroupsToPlot]
+#   sim$plotsRawCumulativeBiomass <- m3ToBiomPlots(inc = sim$cumPoolsRaw,
+#                                                  id_col = c("gcids","pixelGroup"),
+#                                                  path = figurePath(sim),
+#                                                  filenameBase = "rawCumBiomass_")
+# }
+# Some of these curves may still be wonky. But there is not much that can be
+# done unless we get better pool-splitting methods. The "matching" made in
+# Biomass_speciesParameters to the PSP makes this as good as the data we
+# have (PSPs).
+# Note: Fixing of non-smooth curves done in CBM_vol2biomass would not help
+# here. The smoothing to match PSP is done and cohort-level growth will only
+# match a Chapman-Richard form is there is only one cohort on the pixel.
 PlotYieldTablesPools <- function(sim){
   #### HERE: What if the pixel groups cross across NFI spatial units?! The same
   #### Yield curve would produce different pools
   cohortToPlot <- unique(sim$yieldCurvePlots$data$cohort_id)
   
-  plot_dt <- sim$cumPoolsRaw[cohort_id %in% cohortToPlot]
+  plot_dt <- sim$cumPoolsRaw[gcids %in% cohortToPlot]
   
   plot_dt <- melt(
-    out, 
+    plot_dt, 
     id.vars = c("gcids", "species", "pixelGroup", "age"),
     measure.vars = c("totMerch", "fol", "other"),
     variable.name = "pool",
-    values.name = "B"
+    value.name = "B"
     )
   # plot
   sim$yieldCurvePoolPlots <- ggplot(plot_dt, aes(age, B, fill = pool)) + 
     geom_area(position = position_stack()) + 
     theme_bw() +
     facet_wrap(pixelGroup~species)
+  return(invisible(sim))
+  
 }
 
 SplitCohortData <- function(sim) {
-  allInfoCohortData <- matchCurveToCohort(
-    CBM_speciesCodes = sim$CBM_speciesCodes,
+  sim$allInfoCohortData <- matchCurveToCohort(
+    cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
-    sp_canfi = sim$canfi_species,
-    cohortData = NULL
+    canfi_species = sim$canfi_species,
+    CBM_speciesCodes = NULL
   )
-  sim$allInfoCohortData <- merge(cohortData, allInfoYieldTables, allow.cartesian = TRUE)
   setnames(sim$allInfoCohortData, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
-  
+
   sim$cohortPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
                                     table6 = sim$table6,
                                     table7 = sim$table7)
 
   #### TODO: there is probably ages (e.g., age = 0) for which we loss data.
+  return(invisible(sim))
   
 }
 
@@ -488,7 +489,7 @@ SplitCohortData <- function(sim) {
   if (!suppliedElsewhere("cohortData", sim))
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
                                  destinationPath = dPath,
-                                 useCache = TRUE)
+                                 filename2 = "cohortData.csv")
 
   return(invisible(sim))
 }
