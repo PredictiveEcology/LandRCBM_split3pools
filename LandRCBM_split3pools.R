@@ -246,7 +246,7 @@ PlotYieldTables <- function(sim){
   # dt for plotting.
   plot_dt <- sim$CBM_AGB[cohort_id %in% top_cohort_per_pixel$cohort_id]
   plot_dt <- sim$CBM_AGB[pixelGroup %in% pixGroupToPlot]
-  plot_dt <- plot_dt[sim$CBM_speciesCodes, on = c("cohort_id", "pixelGroup" = "pixelGroup")]
+  plot_dt <- merge(plot_dt, sim$CBM_speciesCodes, by = c("cohort_id", "pixelGroup"))
   
   # plot
   sim$yieldCurvePlots <- ggplot(plot_dt, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
@@ -275,7 +275,7 @@ SplitYieldTables <- function(sim) {
     cohortData = NULL
   )
   
-  sim$allInfoYieldTables <- merge(CBM_AGB, allInfoYieldTables, allow.cartesian = TRUE)
+  sim$allInfoYieldTables <- merge(sim$CBM_AGB, allInfoYieldTables, allow.cartesian = TRUE)
   
   setnames(sim$allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
@@ -339,10 +339,10 @@ SplitYieldTables <- function(sim) {
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
   if (!is.na(P(sim)$.plotInitialTime))
-    sim$rawIncPlots <- m3ToBiomPlots(inc = sim$cumPoolsRaw[, ..colsToUse33],
-                                     path = figurePath(sim),
-                                     title = "Increments merch fol other by gc id",
-                                     filenameBase = "Increments")
+    # sim$rawIncPlots <- m3ToBiomPlots(inc = sim$cumPoolsRaw[, ..colsToUse33],
+    #                                  path = figurePath(sim),
+    #                                  title = "Increments merch fol other by gc id",
+    #                                  filenameBase = "Increments")
   message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
                       figurePath(sim)))
   
