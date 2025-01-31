@@ -94,31 +94,31 @@ defineModule(sim, list(
       ## TODO Yield module will be modified to provide required format
       objectName = "CBM_AGB", objectClass = "data.frame",
       desc = "",
-      sourceURL = "https://drive.google.com/file/d/1xxfG-8ZJKPlO5HguHpVtqio5TXdcRGy7"
+      sourceURL = "https://drive.google.com/file/d/1ANziym1UWZyDHPoVdRR5WHwrNw6b9Ms7/view?usp=sharing"
       ## TODO: table created in the Yield module, will eventually get it from the module,
       ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     ),
     expectsInput(
       objectName = "CBM_speciesCodes", objectClass = "data.frame",
       desc = paste(""),
-      sourceURL = "https://drive.google.com/file/d/1sVsDoT1E-CDgo2hnCU2pgqV6PpVic2Fe"
+      sourceURL = "https://drive.google.com/file/d/1GunHO8hN54WeMVgCh-MgWvxRaguPYuMJ/view?usp=drive_link"
       ## TODO: table created in the Yield module, will eventually get it from the module,
       ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     ),
     expectsInput(
       objectName = "pixelGroupMap", objectClass = "RasterLayer",
       desc = "PixelGroup map from LandR",
-      sourceURL = "https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3"
+      sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "rasterToMatch", objectClass =  "RasterLayer",
       desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
-      sourceURL = "https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci"
+      sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "cohortData", objectClass = "data.frame",
       desc = "Above ground biomass of cohorts in pixel groups",
-      sourceURL = "https://drive.google.com/file/d/1sVsDoT1E-CDgo2hnCU2pgqV6PpVic2Fe" 
+      sourceURL = "https://drive.google.com/file/d/17VSBMgnvJtcDYgeaLXZWUA36DbsnLDyF/view?usp=drive_link" 
       ## TODO: table created in the Yield module, will eventually get it from the module,
       ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     )
@@ -433,7 +433,7 @@ SplitCohortData <- function(sim) {
   
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(url = extractURL("rasterToMatch"),
-                                    fun = "raster::raster",
+                                    fun = "terra::rast",
                                     destinationPath = dPath,
                                     filename2 = "rtm.tif") ## TODO: confirm
   }
@@ -481,8 +481,8 @@ SplitCohortData <- function(sim) {
       targetFile  = "spUnit_Locator.shp",
       alsoExtract = "similar",
       fun         = sf::st_read(targetFile, quiet = TRUE),
-      projectTo   = sim$rasterToMatch,
-      cropTo      = sim$rasterToMatch
+      to = sim$rasterToMatch,
+      overwrite      = TRUE
     ) |> Cache()
     
     sim$spuRaster <- terra::rasterize(
@@ -514,6 +514,7 @@ SplitCohortData <- function(sim) {
   if (!suppliedElsewhere("pixelGroupMap", sim))
     sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
                                     destinationPath = dPath,
+                                    fun = "terra::rast",
                                     rasterToMatch = sim$rasterToMatch,
                                     useCache = TRUE)
   
@@ -521,6 +522,8 @@ SplitCohortData <- function(sim) {
   if (!suppliedElsewhere("cohortData", sim))
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
                                  destinationPath = dPath,
+                                 fun = "data.table::fread",
+                                 overwrite = TRUE,
                                  filename2 = "cohortData.csv")
   
   return(invisible(sim))
