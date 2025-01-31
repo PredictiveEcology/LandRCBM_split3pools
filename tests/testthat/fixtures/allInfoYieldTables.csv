@@ -1,0 +1,12 @@
+pixelGroup,speciesCode,cohort_id,canfi_species,abreviation,EcoBoundaryID
+1,Abie_las,1,304,BC,4
+1,Pice_gla,475940,105,BC,4
+1,Pinu_con,1132893,204,BC,4
+1,Popu_tre,1650396,1201,BC,4
+2,Abie_las,2,304,BC,4
+2,Pice_gla,475941,105,BC,4
+2,Popu_tre,1650397,1201,BC,4
+3,Betu_pap,323870,1303,BC,4
+3,Pice_gla,475942,105,BC,4
+3,Pice_mar,898543,101,BC,4
+3,Popu_tre,1650398,1201,BC,4

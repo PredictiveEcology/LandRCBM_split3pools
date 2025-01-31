@@ -159,10 +159,13 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     init = {
       
       # plot the yield tables
-      sim <- plotYieldTables(sim)
+      sim <- PlotYieldTables(sim)
       
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
+      
+      # plot the yield tables with pools seperated
+      sim <- PlotYieldTablesPools(sim)
       
       # spit AGB of cohorts into pools 
       sim <- scheduleEvent(sim, start(sim), "scheduling", "annualIncrements")
@@ -181,7 +184,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   return(invisible(sim))
 }
 
-plotYieldTables <- function(sim){
+PlotYieldTables <- function(sim){
   nPixGroups <- length(unique(sim$CBM_speciesCodes$pixelGroup))
   nPlots <- P(sim)$numPixGroupPlots
   if (nPlots <= 0){
@@ -346,6 +349,27 @@ SplitYieldTables <- function(sim) {
   # )][, (incCols) := NULL]
   
   return(invisible(sim))
+}
+
+PlotYieldTablesPools <- function(sim){
+  #### HERE: What if the pixel groups cross across NFI spatial units?! The same
+  #### Yield curve would produce different pools
+  cohortToPlot <- unique(sim$yieldCurvePlots$data$cohort_id)
+  
+  plot_dt <- sim$cumPoolsRaw[cohort_id %in% cohortToPlot]
+  
+  plot_dt <- melt(
+    out, 
+    id.vars = c("gcids", "species", "pixelGroup", "age"),
+    measure.vars = c("totMerch", "fol", "other"),
+    variable.name = "pool",
+    values.name = "B"
+    )
+  # plot
+  sim$yieldCurvePoolPlots <- ggplot(plot_dt, aes(age, B, fill = pool)) + 
+    geom_area(position = position_stack()) + 
+    theme_bw() +
+    facet_wrap(pixelGroup~species)
 }
 
 SplitCohortData <- function(sim) {
