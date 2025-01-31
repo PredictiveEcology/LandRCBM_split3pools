@@ -1,6 +1,9 @@
 source("R/matchCurveToCohort.R")
 library(data.table)
-
+CBM_AGB <- reproducible::prepInputs(
+  "tests/testthat/fixtures/yield_module_sample/CBM_AGB.csv", 
+  fun = "data.table::fread"
+)
 CBM_AGB <- CBM_AGB[CBM_AGB$pixelGroup %in% c(1,2,3),]
 CBM_speciesCodes <- reproducible::prepInputs(
   "tests/testthat/fixtures/yield_module_sample/CBM_speciesCodes.csv", 

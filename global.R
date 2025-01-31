@@ -5,11 +5,11 @@ if (!require("SpaDES.project")){
 }
 
 ## Objects
-CBM_AGB <- reproducible::prepInputs("data/yield_module_sample/CBM_AGB.csv", fun = "data.table::fread")
+CBM_AGB <- reproducible::prepInputs("tests/testthat/fixtures/yield_module_sample/CBM_AGB.csv", fun = "data.table::fread")
 CBM_AGB <- CBM_AGB[CBM_AGB$pixelGroup %in% c(1,2,3),]
-CBM_speciesCodes <- reproducible::prepInputs("data/yield_module_sample/CBM_speciesCodes.csv", fun = "data.table::fread")
+CBM_speciesCodes <- reproducible::prepInputs("tests/testthat/fixtures/yield_module_sample/CBM_speciesCodes.csv", fun = "data.table::fread")
 CBM_speciesCodes <- CBM_speciesCodes[CBM_speciesCodes$pixelGroup %in% c(1,2,3),]
-pixelGroupMap <- reproducible::prepInputs("data/yield_module_sample/pixelGroupMap.tiff", fun = "terra::rast")
+pixelGroupMap <- reproducible::prepInputs("tests/testthat/fixtures/yield_module_sample/pixelGroupMap.tiff", fun = "terra::rast")
 rasterToMatch = pixelGroupMap
 
 objects <- list(CBM_AGB = CBM_AGB,

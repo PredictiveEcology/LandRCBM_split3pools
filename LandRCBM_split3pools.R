@@ -21,9 +21,12 @@ defineModule(sim, list(
 
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
-    defineParameter("numPlots", "integer", 10, NA, NA,
+    defineParameter("numCohortPlots", "integer", 3, NA, NA,
+                    "When plotting the yield curves, this is how many unique cohorts per ",
+                    "pixelGroup plotted."),
+    defineParameter("numPixGroupPlots", "integer", 10, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
-                    "be randomly selected and plotted"),
+                    "be randomly selected and plotted."),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
                     "Describes the simulation time at which the first plot event should occur."),
     defineParameter(".plotInterval", "numeric", NA, NA, NA,
@@ -155,6 +158,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     eventType,
     init = {
       
+      # plot the yield tables
+      sim <- plotYieldTables(sim)
+      
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
@@ -173,6 +179,37 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
   )
   return(invisible(sim))
+}
+
+plotYieldTables <- function(sim){
+  nPixGroups <- length(unique(sim$CBM_speciesCodes$pixelGroup))
+  nPlots <- P(sim)$numPixGroupPlots
+  if (nPlots <= 0){
+    stop("numPlots needs to be a positive integer")
+  } else if (nPlots > nPixGroups) {
+    message("numPixGroupPlots is greater than the number of pixel groups, ",
+            "plotting all pixelgroups.")
+    nPlots <- nPixGroups
+  } 
+  pixGroupToPlot <- sample(unique(sim$CBM_speciesCodes$pixelGroup), nPlots)
+  # numCohortPlots: we want to plot this number of cohorts per pixelGroup, 
+  # keeping species that reach the highest biomass
+  max_B_per_cohort <- sim$CBM_AGB[, .(max_B = max(B)), by = .(pixelGroup, cohort_id)]
+  top_cohort_per_pixel <- max_B_per_cohort[, {
+    # Order by max_B in descending order and keep the top 3, or all if fewer than 3
+    .SD[order(-max_B)][1:min(3, .N)]
+  }, by = pixelGroup]
+  
+  # dt for plotting.
+  plot_dt <- sim$CBM_AGB[cohort_id %in% top_cohort_per_pixel$cohort_id]
+  plot_dt <- sim$CBM_AGB[pixelGroup %in% pixGroupToPlot]
+  plot_dt <- plot_dt[sim$CBM_speciesCodes, on = c("cohort_id", "pixelGroup" = "pixelGroup")]
+  
+  # plot
+  sim$yieldCurvePlots <- ggplot(plot_dt, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
+    facet_wrap(~pixelGroup)
+  sim$yieldCurvePlotsStacked <- ggplot(plot_dt, aes(age, B, fill = speciesCode)) + geom_area(position = position_stack()) + theme_bw() +
+    facet_wrap(~pixelGroup)
 }
 
 SplitYieldTables <- function(sim) {
