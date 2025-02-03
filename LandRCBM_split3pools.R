@@ -240,12 +240,11 @@ PlotYieldTables <- function(sim){
   max_B_per_cohort <- sim$CBM_AGB[, .(max_B = max(B)), by = .(pixelGroup, cohort_id)]
   top_cohort_per_pixel <- max_B_per_cohort[, {
     # Order by max_B in descending order and keep the top 3, or all if fewer than 3
-    .SD[order(-max_B)][1:min(3, .N)]
+    .SD[order(-max_B)][1:min(P(sim)$numCohortPlots, .N)]
   }, by = pixelGroup]
-  
   # dt for plotting.
   plot_dt <- sim$CBM_AGB[cohort_id %in% top_cohort_per_pixel$cohort_id]
-  plot_dt <- sim$CBM_AGB[pixelGroup %in% pixGroupToPlot]
+  plot_dt <- plot_dt[pixelGroup %in% pixGroupToPlot]
   plot_dt <- merge(plot_dt, sim$CBM_speciesCodes, by = c("cohort_id", "pixelGroup"))
   
   # plot
@@ -338,14 +337,15 @@ SplitYieldTables <- function(sim) {
   sim$cumPoolsRaw[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
-  if (!is.na(P(sim)$.plotInitialTime))
-    # sim$rawIncPlots <- m3ToBiomPlots(inc = sim$cumPoolsRaw[, ..colsToUse33],
-    #                                  path = figurePath(sim),
-    #                                  title = "Increments merch fol other by gc id",
-    #                                  filenameBase = "Increments")
-  message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
-                      figurePath(sim)))
-  
+  if (!is.na(P(sim)$.plotInitialTime)){
+    plot_dt <- sim$cumPoolsRaw[gcids %in% unique(sim$yieldCurvePlots$data$cohort_id)]
+    sim$rawIncPlots <- m3ToBiomPlots(inc = plot_dt[, ..colsToUse33],
+                                     path = figurePath(sim),
+                                     title = "Increments merch fol other by gc id",
+                                     filenameBase = "Increments")
+    message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
+                        figurePath(sim)))
+  }
   sim$increments <- sim$cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
   
   
@@ -400,7 +400,9 @@ PlotYieldTablesPools <- function(sim){
   sim$yieldCurvePoolPlots <- ggplot(plot_dt, aes(age, B, fill = pool)) + 
     geom_area(position = position_stack()) + 
     theme_bw() +
-    facet_wrap(pixelGroup~species)
+    facet_grid(species~pixelGroup) +
+    theme(panel.background = element_rect(fill = "white", color = NA),
+          panel.grid = element_blank())
   return(invisible(sim))
   
 }
@@ -428,28 +430,28 @@ SplitCohortData <- function(sim) {
 
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
-  dPath <- asPath(getOption("reproducible.destinationPath", dataPath(sim)), 1)
-  message(currentModule(sim), ": using dataPath '", dPath, "'.")
   
   if (!suppliedElsewhere("rasterToMatch", sim)) {
-    sim$rasterToMatch <- prepInputs(url = extractURL("rasterToMatch"),
-                                    fun = "terra::rast",
-                                    destinationPath = dPath,
-                                    filename2 = "rtm.tif") ## TODO: confirm
+    sim$rasterToMatch <- prepInputs(
+      url = extractURL("rasterToMatch"),
+      fun = "terra::rast",
+      destinationPath = inputPath(sim),
+      overwrite = TRUE
+    ) |> Cache() ## TODO: confirm
   }
   
   # 1. NFIparams
   if (!suppliedElsewhere("table6", sim)) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
                              fun = "data.table::fread",
-                             destinationPath = dPath,
+                             destinationPath = inputPath(sim),
                              filename2 = "appendix2_table6_tb.csv")
   }
   
   if (!suppliedElsewhere("table7", sim)) {
     sim$table7 <- prepInputs(url = extractURL("table7"),
                              fun = "data.table::fread",
-                             destinationPath = dPath,
+                             destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv")
   }
   
@@ -457,17 +459,16 @@ SplitCohortData <- function(sim) {
   if (!suppliedElsewhere("cbmAdmin", sim)) {
     sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
                                fun = "data.table::fread",
-                               destinationPath = dPath,
+                               destinationPath = inputPath(sim),
                                filename2 = "cbmAdmin.csv")
   }
   
   if (!suppliedElsewhere("canfi_species", sim)) {
     sim$canfi_species <- prepInputs(url = extractURL("canfi_species"),
                                     fun = "data.table::fread",
-                                    destinationPath = dPath,
+                                    destinationPath = inputPath(sim),
                                     filename2 = "canfi_species.csv")
   }
-  
   if (!suppliedElsewhere("spuRaster", sim)){
     
     if (!suppliedElsewhere("spuRasterURL", sim, where = "user")) message(
@@ -478,9 +479,8 @@ SplitCohortData <- function(sim) {
       destinationPath = inputPath(sim),
       url         = extractURL("spuRaster"),
       filename1   = "spUnit_Locator.zip",
-      targetFile  = "spUnit_Locator.shp",
       alsoExtract = "similar",
-      fun         = sf::st_read(targetFile, quiet = TRUE),
+      fun         = "sf::st_read",
       to = sim$rasterToMatch,
       overwrite      = TRUE
     ) |> Cache()
@@ -499,29 +499,30 @@ SplitCohortData <- function(sim) {
   if (!suppliedElsewhere("CBM_AGB", sim)) {
     sim$CBM_AGB <- prepInputs(url = extractURL("CBM_AGB"),
                               fun = "data.table::fread",
-                              destinationPath = dPath,
+                              destinationPath = inputPath(sim),
                               filename2 = "CBM_AGB.csv")
   }
   
   if (!suppliedElsewhere("CBM_speciesCodes", sim)) {
     sim$CBM_speciesCodes <- prepInputs(url = extractURL("CBM_speciesCodes"),
                                        fun = "data.table::fread",
-                                       destinationPath = dPath,
+                                       destinationPath = inputPath(sim),
                                        filename2 = "CBM_speciesCodes.csv")
   }
   
   ## pixel to pixelGroup map that gets updated annually
   if (!suppliedElsewhere("pixelGroupMap", sim))
     sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
-                                    destinationPath = dPath,
+                                    destinationPath = inputPath(sim),
                                     fun = "terra::rast",
                                     rasterToMatch = sim$rasterToMatch,
-                                    useCache = TRUE)
+                                    useCache = TRUE,
+                                    overwrite = TRUE)
   
   ## biomass per cohort and pixel group that gets updated annually
   if (!suppliedElsewhere("cohortData", sim))
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
-                                 destinationPath = dPath,
+                                 destinationPath = inputPath(sim),
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
                                  filename2 = "cohortData.csv")
