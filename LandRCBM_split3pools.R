@@ -17,15 +17,14 @@ defineModule(sim, list(
                   "PredictiveEcology/CBMutils@development",
                   "PredictiveEcology/LandR@development"),
   parameters = bindrows(
-    
-    defineParameter(".plots", "character", "screen", NA, NA,
-                    "Used by Plots function, which can be optionally used here"),
     defineParameter("numCohortPlots", "integer", 3, NA, NA,
                     "When plotting the yield curves, this is how many unique cohorts per ",
                     "pixelGroup plotted."),
     defineParameter("numPixGroupPlots", "integer", 10, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
+    defineParameter(".plots", "character", "screen", NA, NA,
+                    "Used by Plots function, which can be optionally used here"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
                     "Describes the simulation time at which the first plot event should occur."),
     defineParameter(".plotInterval", "numeric", NA, NA, NA,
@@ -43,6 +42,60 @@ defineModule(sim, list(
                     "Should caching of events or module be used?")
   ),
   inputObjects = bindrows(
+    expectsInput(
+      objectName = "canfi_species",
+      objectClass = "data.frame",
+      desc = "File containing the possible species in the Boudewyn table",
+      sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo"
+    ),
+    expectsInput(
+      objectName = "cbmAdmin", objectClass = "data.frame",
+      desc = paste("Provides equivalent between provincial boundaries,",
+                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
+      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
+    ),    
+    expectsInput(
+      ## TODO Yield module will be modified to provide required format
+      objectName = "CBM_AGB", objectClass = "data.frame",
+      desc = "",
+      sourceURL = "https://drive.google.com/file/d/1ANziym1UWZyDHPoVdRR5WHwrNw6b9Ms7/view?usp=sharing"
+      ## TODO: table created in the Yield module, will eventually get it from the module,
+      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
+    ),
+    expectsInput(
+      objectName = "CBM_speciesCodes", objectClass = "data.frame",
+      desc = paste(""),
+      sourceURL = "https://drive.google.com/file/d/1GunHO8hN54WeMVgCh-MgWvxRaguPYuMJ/view?usp=drive_link"
+      ## TODO: table created in the Yield module, will eventually get it from the module,
+      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
+    ),
+    expectsInput(
+      objectName = "cohortData", objectClass = "data.frame",
+      desc = "Above ground biomass of cohorts in pixel groups",
+      sourceURL = "https://drive.google.com/file/d/17VSBMgnvJtcDYgeaLXZWUA36DbsnLDyF/view?usp=drive_link" 
+      ## TODO: table created in the Yield module, will eventually get it from the module,
+      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
+    ),
+    expectsInput(
+      objectName = "ecozone", objectClass = "RasterLayer",
+      desc = "Ecozones of Canada",
+      sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
+    ),
+    expectsInput(
+      objectName = "pixelGroupMap", objectClass = "RasterLayer",
+      desc = "PixelGroup map from LandR",
+      sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
+    ),
+    expectsInput(
+      objectName = "rasterToMatch", objectClass =  "RasterLayer",
+      desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
+      sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
+    ),
+    expectsInput(
+      objectName = "spuRaster", objectClass = "SpatRaster",
+      desc = "Raster has spatial units for each pixel",
+      sourceURL = "https://drive.google.com/file/d/1D3O0Uj-s_QEgMW7_X-NhVsEZdJ29FBed"
+    ),
     ## NOTE: the required parameter tables are not yet hosted on the NFIS (Oct., 2022).
     ## The links "in the examples"table6" and "table7" below are for the
     ## parameters in the equations using "volume" instead of "total tree biomass"
@@ -67,81 +120,26 @@ defineModule(sim, list(
       ## NOTE: current link is to a google drive but parameters will eventually
       ## be on the NFIS site as per the volume-based parameters. For now, I put
       ## a copy of the biomass-basedones provided by Paul Boudewyn on the (FOR-CAST) WBI/Carbon drive
-    ),
-    expectsInput(
-      objectName = "cbmAdmin", objectClass = "data.frame",
-      desc = paste("Provides equivalent between provincial boundaries,",
-                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
-      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
-    ),
-    expectsInput(
-      objectName = "ecozone", objectClass = "RasterLayer",
-      desc = "Ecozones of Canada",
-      sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
-    ),
-    expectsInput(
-      objectName = "canfi_species",
-      objectClass = "data.frame",
-      desc = "File containing the possible species in the Boudewyn table",
-      sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo"
-    ),
-    expectsInput(
-      objectName = "spuRaster", objectClass = "SpatRaster",
-      desc = "Raster has spatial units for each pixel",
-      sourceURL = "https://drive.google.com/file/d/1D3O0Uj-s_QEgMW7_X-NhVsEZdJ29FBed"
-    ),
-    expectsInput(
-      ## TODO Yield module will be modified to provide required format
-      objectName = "CBM_AGB", objectClass = "data.frame",
-      desc = "",
-      sourceURL = "https://drive.google.com/file/d/1ANziym1UWZyDHPoVdRR5WHwrNw6b9Ms7/view?usp=sharing"
-      ## TODO: table created in the Yield module, will eventually get it from the module,
-      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
-    ),
-    expectsInput(
-      objectName = "CBM_speciesCodes", objectClass = "data.frame",
-      desc = paste(""),
-      sourceURL = "https://drive.google.com/file/d/1GunHO8hN54WeMVgCh-MgWvxRaguPYuMJ/view?usp=drive_link"
-      ## TODO: table created in the Yield module, will eventually get it from the module,
-      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
-    ),
-    expectsInput(
-      objectName = "pixelGroupMap", objectClass = "RasterLayer",
-      desc = "PixelGroup map from LandR",
-      sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
-    ),
-    expectsInput(
-      objectName = "rasterToMatch", objectClass =  "RasterLayer",
-      desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
-      sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
-    ),
-    expectsInput(
-      objectName = "cohortData", objectClass = "data.frame",
-      desc = "Above ground biomass of cohorts in pixel groups",
-      sourceURL = "https://drive.google.com/file/d/17VSBMgnvJtcDYgeaLXZWUA36DbsnLDyF/view?usp=drive_link" 
-      ## TODO: table created in the Yield module, will eventually get it from the module,
-      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     )
   ),
   outputObjects = bindrows(
     createsOutput(
-      objectName = "yieldCurvePlots",
-      objectClass = "ggplot",
-      desc = paste("Plot of the yield curves of randomly selected pixelGroup provided",
-                   "by the biomass_yieldTables module")
-    ),
-    # Same as yieldCurvePlots, but curve are stacked to visualize total biomass
-    createsOutput(
-      objectName = "yieldCurvePlotsStacked",
-      objectClass = "ggplot",
-      desc = paste("Plot of the AGB values per cohort of randomly selected pixelGroup",
-                   "provided by the biomass_yieldTables module")
+      objectName = "allInfoCohortData",
+      objectClass = "data.table",
+      desc = paste("Above ground biomass (in tonnes of g/m2) of each cohort per",
+                   "pixelGroup provided by LandR with additionnal information to",
+                   "match with Boudewyn et al. equations. Gets updated each timestep")
     ),
     createsOutput(
       objectName = "allInfoYieldTables",
       objectClass = "data.table",
       desc = paste("Yield table provided by the biomass_yieldTables module with",
                    "additionnal information to match with Boudewyn et al. equations.")
+    ),
+    createsOutput(
+      objectName = "cohortPools",
+      objectClass = "data.table",
+      desc = "Cumulative biomass in each aboveground pool for each cohort per pixelGroup."
     ),
     createsOutput(
       objectName = "cumPools",
@@ -166,22 +164,23 @@ defineModule(sim, list(
       desc = "Plot of the increments for yield curves of randomly selected pixelGroup"
     ),
     createsOutput(
+      objectName = "yieldCurvePlots",
+      objectClass = "ggplot",
+      desc = paste("Plot of the yield curves of randomly selected pixelGroup provided",
+                   "by the biomass_yieldTables module")
+    ),
+    # Same as yieldCurvePlots, but curve are stacked to visualize total biomass
+    createsOutput(
+      objectName = "yieldCurvePlotsStacked",
+      objectClass = "ggplot",
+      desc = paste("Plot of the AGB values per cohort of randomly selected pixelGroup",
+                   "provided by the biomass_yieldTables module")
+    ),
+    createsOutput(
       objectName = "yieldCurvePoolPlots",
       objectClass = "ggplot",
       desc = paste("Plot of the cumulative biomass of the three AGB pools for randomly",
                    "selected pixelGroup.")
-    ),
-    createsOutput(
-      objectName = "allInfoCohortData",
-      objectClass = "data.table",
-      desc = paste("Above ground biomass (in tonnes of g/m2) of each cohort per",
-                   "pixelGroup provided by LandR with additionnal information to",
-                   "match with Boudewyn et al. equations. Gets updated each timestep")
-    ),
-    createsOutput(
-      objectName = "cohortPools",
-      objectClass = "data.table",
-      desc = "Cumulative biomass in each aboveground pool for each cohort per pixelGroup."
     )
   )
 ))
