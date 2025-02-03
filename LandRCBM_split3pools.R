@@ -77,17 +77,12 @@ defineModule(sim, list(
       ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     ),
     expectsInput(
-      objectName = "ecozone", objectClass = "RasterLayer",
-      desc = "Ecozones of Canada",
-      sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
-    ),
-    expectsInput(
-      objectName = "pixelGroupMap", objectClass = "RasterLayer",
+      objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = "PixelGroup map from LandR",
       sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
     ),
     expectsInput(
-      objectName = "rasterToMatch", objectClass =  "RasterLayer",
+      objectName = "rasterToMatch", objectClass =  "SpatRaster",
       desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
       sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
     ),
@@ -216,13 +211,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   return(invisible(sim))
 }
 
-##TODO Need to plot the incoming AGB values.
-# pixelGroupsToPlot <- unique(sim$allInfoAGBin$pixelGroup)
-# if(Par$numPlots < length(pixelGroupsToPlot)){
-#   pixelGroupsToPlot <- sample(pixelGroupsToPlot, size = Par$numPlots)
-# }
-# 
-# sim$AGBinPlot <- pltfn(allInfoAGBin = sim$allInfoAGBin, pixelGroupsToPlot = pixelGroupsToPlot)
 PlotYieldTables <- function(sim){
   nPixGroups <- length(unique(sim$CBM_speciesCodes$pixelGroup))
   nPlots <- P(sim)$numPixGroupPlots

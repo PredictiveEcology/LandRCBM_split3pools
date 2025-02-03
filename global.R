@@ -16,10 +16,10 @@ modules <- list("LandRCBM_split3pools")
 split3poolsInit <- simInit(
   params = parameters,
   modules = modules,
-  paths = list(modulePath = "~/repos/",
-               inputPath = "~/repos/LandRCBM_split3pools/inputs/",
-               outputPath = "~/repos/LandRCBM_split3pools/outputs/",
-               cache = "~/repos/LandRCBM_split3pools/cache/")
+  paths = list(modulePath = "~/Repos/",
+               inputPath = "~/Repos/LandRCBM_split3pools/inputs/",
+               outputPath = "~/Repos/LandRCBM_split3pools/outputs/",
+               cache = "~/Repos/LandRCBM_split3pools/cache/")
   )
 
 split3poolsSim <- spades(split3poolsInit)
