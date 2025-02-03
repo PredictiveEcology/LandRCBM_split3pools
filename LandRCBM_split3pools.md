@@ -45,7 +45,7 @@ This is a template for module documentation, and should be changed to reflect yo
 ### Module inputs and parameters
 
 Describe input data required by the module and how to obtain it (e.g., directly from online sources or supplied by other modules)
-If `sourceURL` is specified, `downloadData("LandRCBM_split3pools", "C:/Users/docaron/Documents/Repos")` may be sufficient.
+If `sourceURL` is specified, `downloadData("LandRCBM_split3pools", "..")` may be sufficient.
 Table \@ref(tab:moduleInputs-LandRCBM-split3pools) shows the full list of module inputs.
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
