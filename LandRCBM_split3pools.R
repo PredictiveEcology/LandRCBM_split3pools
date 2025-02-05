@@ -329,16 +329,6 @@ SplitYieldTables <- function(sim) {
   }
   sim$increments <- sim$cumPools[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
   
-  
-  ### DC: I believe this is not necessary since we already divided by two in the 
-  ### cumPoolsCreateAGB function.
-  
-  # sim$incHalf <- increments[, (colNames) := list(
-  #   incMerch / 2,
-  #   incFol / 2,
-  #   incOther / 2
-  # )][, (incCols) := NULL]
-  
   return(invisible(sim))
 }
 
