@@ -142,12 +142,6 @@ defineModule(sim, list(
       desc = paste("Cumulative biomass in each aboveground biomass pool for each",
                    "yield curve (in tonnes of carbon/ha).")
     ),
-    # Do we need cumPools if we have cumPoolsRaw?
-    createsOutput(
-      objectName = "cumPoolsRaw",
-      objectClass = "data.table",
-      desc = "Same as cumPools with additionnal lines for age 0 of each cohort."
-    ),
     createsOutput(
       objectName = "increments",
       objectClass = "data.table",
@@ -290,19 +284,19 @@ SplitYieldTables <- function(sim) {
   # 5:    Pice_mar          2
   # 6:    Pice_mar          3
   
-  sim$cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
+  cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
                                     table6 = sim$table6,
                                     table7 = sim$table7)
   
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
-  colNames <- grep(cbmAboveGroundPoolColNames, colnames(sim$cumPools), value = TRUE)
+  colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
   
   #2.2 MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
   #connection, but might be needed for future connection to other sources of
   #AGB).
   ### if not, we need to extrapolate to make them annual
   
-  minAgeId <- sim$cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
+  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
   fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcids"]
   carbonVars <- data.table(gcids = unique(fill0s$gcids),
                            totMerch = 0,
@@ -311,21 +305,21 @@ SplitYieldTables <- function(sim) {
   
   fiveOf7cols <- fill0s[carbonVars, on = "gcids"]
   
-  otherVars <- sim$cumPools[,.(pixelGroup = unique(pixelGroup), species = unique(species)), by = "gcids"]
+  otherVars <- cumPools[,.(pixelGroup = unique(pixelGroup), species = unique(species)), by = "gcids"]
   add0s <- fiveOf7cols[otherVars, on = "gcids"]
-  sim$cumPoolsRaw <- rbind(sim$cumPools,add0s)
-  set(sim$cumPoolsRaw, NULL, "age", as.numeric(sim$cumPoolsRaw$age))
-  setorderv(sim$cumPoolsRaw, c("gcids", "age"))
+  sim$cumPools <- rbind(cumPools,add0s)
+  set(sim$cumPools, NULL, "age", as.numeric(sim$cumPools$age))
+  setorderv(sim$cumPools, c("gcids", "age"))
   
   # 2.4 Calculating Increments
   incCols <- c("incMerch", "incFol", "incOther")
   # This line calculates the first difference of each colNames, shifting it down 
   # by one row and filling the first entry with NA.
-  sim$cumPoolsRaw[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
+  sim$cumPools[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
                   by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
   if (!is.na(P(sim)$.plotInitialTime)){
-    plot_dt <- sim$cumPoolsRaw[gcids %in% unique(sim$yieldCurvePlots$data$cohort_id)]
+    plot_dt <- sim$cumPools[gcids %in% unique(sim$yieldCurvePlots$data$cohort_id)]
     sim$rawIncPlots <- m3ToBiomPlots(inc = plot_dt[, ..colsToUse33],
                                      path = figurePath(sim),
                                      title = "Increments merch fol other by gc id",
@@ -333,7 +327,7 @@ SplitYieldTables <- function(sim) {
     message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
                         figurePath(sim)))
   }
-  sim$increments <- sim$cumPoolsRaw[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
+  sim$increments <- sim$cumPools[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
   
   
   ### DC: I believe this is not necessary since we already divided by two in the 
@@ -374,7 +368,7 @@ PlotYieldTablesPools <- function(sim){
   #### Yield curve would produce different pools
   cohortToPlot <- unique(sim$yieldCurvePlots$data$cohort_id)
   
-  plot_dt <- sim$cumPoolsRaw[gcids %in% cohortToPlot]
+  plot_dt <- sim$cumPools[gcids %in% cohortToPlot]
   
   plot_dt <- melt(
     plot_dt, 
