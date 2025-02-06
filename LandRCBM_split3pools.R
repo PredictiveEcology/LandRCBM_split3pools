@@ -112,7 +112,13 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Yield table provided by the biomass_yieldTables module with",
                    "additionnal information to match with Boudewyn et al. equations.")
+    ),    
+    createsOutput(
+      objectName = "annualIncrements",
+      objectClass = "data.table",
+      desc = paste("Increments for each cohort and pixelGroups (in tonnes of carbon/ha).")
     ),
+    
     createsOutput(
       objectName = "cohortPools",
       objectClass = "data.table",
@@ -125,9 +131,9 @@ defineModule(sim, list(
                    "yield curve (in tonnes of carbon/ha).")
     ),
     createsOutput(
-      objectName = "increments",
-      objectClass = "data.table",
-      desc = "Increments for each yield curve (in tonnes of carbon/ha)."
+      objectName = "incrementPixelGroupMap",
+      objectClass = "spatRaster",
+      desc = "Raster of the pixelGroups for the annual increments."
     ),
     createsOutput(
       objectName = "rawIncPlots",
@@ -140,18 +146,16 @@ defineModule(sim, list(
       desc = paste("Plot of the yield curves of randomly selected pixelGroup provided",
                    "by the biomass_yieldTables module")
     ),
-    # Same as yieldCurvePlots, but curve are stacked to visualize total biomass
-    createsOutput(
-      objectName = "yieldCurvePlotsStacked",
-      objectClass = "ggplot",
-      desc = paste("Plot of the AGB values per cohort of randomly selected pixelGroup",
-                   "provided by the biomass_yieldTables module")
-    ),
     createsOutput(
       objectName = "yieldCurvePoolPlots",
       objectClass = "ggplot",
       desc = paste("Plot of the cumulative biomass of the three AGB pools for randomly",
                    "selected pixelGroup.")
+    ),    
+    createsOutput(
+      objectName = "yieldIincrements",
+      objectClass = "data.table",
+      desc = "Increments for each yield curve (in tonnes of carbon/ha)."
     )
   )
 ))
@@ -176,7 +180,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     annualIncrements = {
       
       # split AGB of cohorts into pools
-      sim <- SplitCohortData(sim)
+      sim <- AnnualIncrements(sim)
       
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, "LandRCBM_split3pools", "annualIncrements")
@@ -313,7 +317,7 @@ SplitYieldTables <- function(sim) {
     message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
                         figurePath(sim)))
   }
-  sim$increments <- sim$cumPools[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
+  sim$yieldIncrements <- sim$cumPools[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
   
   return(invisible(sim))
 }
@@ -364,7 +368,25 @@ PlotYieldTablesPools <- function(sim){
   
 }
 
-SplitCohortData <- function(sim) {
+AnnualIncrements <- function(sim){
+  if (time(sim) != start(sim)){
+    
+    # 1. match pixelGroups of previous year and of this year to create pixelGroups
+    # for increments
+    sim$incrementPixelGroupMap <- rast(mod$pixelGroupMapP)
+    pixGr <- data.table(oldPixelGroup = c(mod$pixelGroupMapP[]),
+                        newPixelGroup = c(sim$pixelGroupMap[]))
+    pixGr[, incrementPixelGroup := .GRP, by = .(oldPixelGroup, newPixelGroup)]
+    sim$incrementPixelGroupMap[] <- pixGr$incrementPixelGroup 
+    sim$incrementPixelGroupMap <- mask(sim$incrementPixelGroupMap, mod$pixelGroupMapP)
+    pixGr <- na.omit(pixGr) |> unique()
+    
+    # 2. append the cohortPools of the previous year
+    annualIncrements <- merge(pixGr, sim$cohortPools, by.x = "oldPixelGroup", by.y = "pixelGroup")
+    setnames(annualIncrements, old = c("totMerch", "fol", "other"), new = c("oldTotMerch", "oldFol", "oldOther"))
+  }
+  
+  # 3. split cohort data of current year
   sim$allInfoCohortData <- matchCurveToCohort(
     cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
@@ -382,10 +404,27 @@ SplitCohortData <- function(sim) {
                                        table6 = sim$table6,
                                        table7 = sim$table7)
   
-  #### TODO: there is probably ages (e.g., age = 0) for which we loss data.
+  # 4. append the cohortPools of the previous year
+  if (time(sim) != start(sim)){
+    poolIncrements <- merge(poolIncrements, 
+                            sim$cohortPools, 
+                            by.x = c("newPixelGroup", "species"), 
+                            by.y = c("pixelGroup", "species"))
+    # adds biomass 0 when there is a new species in a pixelGroup
+    setnafill(annualIncrements, fill = 0, 
+              cols=c("totMerch", "fol", "other", "oldTotMerch", "oldFol", "oldOther"))
+    
+    # 5. take the difference
+    annualIncrements[, `:=`(totMerch = totMerch - oldTotMerch,
+                          fol = fol - oldFol,
+                          other = other - oldOther)]
+    
+    sim$annualIncrements <- annualIncrements[,.(incrementPixelGroup, species, totMerch, fol, other)]
+    
+  }
+  mod$pixelGroupMapP <- sim$pixelGroupMap
   return(invisible(sim))
 }
-
 
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")

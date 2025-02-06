@@ -7,7 +7,7 @@ if (!require("SpaDES.project")){
 
 ## Objects
 parameters <- list(
-  LandRCBM_split3pools = list(.useCache = ".inputObjects")
+  LandRCBM_split3pools = list(.useCache = ".inputObjects", .plots = "png")
   )
 
 modules <- list("LandRCBM_split3pools")
