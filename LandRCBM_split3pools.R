@@ -59,22 +59,16 @@ defineModule(sim, list(
       objectName = "CBM_AGB", objectClass = "data.frame",
       desc = "",
       sourceURL = "https://drive.google.com/file/d/1ANziym1UWZyDHPoVdRR5WHwrNw6b9Ms7/view?usp=sharing"
-      ## TODO: table created in the Yield module, will eventually get it from the module,
-      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     ),
     expectsInput(
       objectName = "CBM_speciesCodes", objectClass = "data.frame",
       desc = paste(""),
       sourceURL = "https://drive.google.com/file/d/1GunHO8hN54WeMVgCh-MgWvxRaguPYuMJ/view?usp=drive_link"
-      ## TODO: table created in the Yield module, will eventually get it from the module,
-      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     ),
     expectsInput(
       objectName = "cohortData", objectClass = "data.frame",
-      desc = "Above ground biomass of cohorts in pixel groups",
+      desc = "Above ground biomass (g/m^2) of cohorts in pixel groups",
       sourceURL = "https://drive.google.com/file/d/17VSBMgnvJtcDYgeaLXZWUA36DbsnLDyF/view?usp=drive_link" 
-      ## TODO: table created in the Yield module, will eventually get it from the module,
-      ##       for now, sitting in the WBI/Carbon/LandrCBM folder
     ),
     expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
@@ -91,12 +85,6 @@ defineModule(sim, list(
       desc = "Raster has spatial units for each pixel",
       sourceURL = "https://drive.google.com/file/d/1D3O0Uj-s_QEgMW7_X-NhVsEZdJ29FBed"
     ),
-    ## NOTE: the required parameter tables are not yet hosted on the NFIS (Oct., 2022).
-    ## The links "in the examples"table6" and "table7" below are for the
-    ## parameters in the equations using "volume" instead of "total tree biomass"
-    ## as a dependent variable. For now these two are replaced by a table
-    ## containing both the parameters and the caps for BC provided in an email to
-    ## cboivenue by Paul Boudewyn.
     expectsInput(
       objectName = "table6", objectClass = "data.frame",
       desc = paste("Proportion model parameters similar to Boudewyn et al 2007,",
@@ -115,7 +103,7 @@ defineModule(sim, list(
     createsOutput(
       objectName = "allInfoCohortData",
       objectClass = "data.table",
-      desc = paste("Above ground biomass (in tonnes of g/m2) of each cohort per",
+      desc = paste("Above ground biomass (metric tonnes of tree biomass/ha) of each cohort per",
                    "pixelGroup provided by LandR with additionnal information to",
                    "match with Boudewyn et al. equations. Gets updated each timestep")
     ),
@@ -222,10 +210,11 @@ PlotYieldTables <- function(sim){
   plot_dt <- plot_dt[pixelGroup %in% pixGroupToPlot]
   plot_dt <- merge(plot_dt, sim$CBM_speciesCodes, by = c("cohort_id", "pixelGroup"))
   
+  # convert g/m^2 into tonnes/ha
+  plot_dt$B <- plot_dt$B/100
+  
   # plot
   sim$yieldCurvePlots <- ggplot(plot_dt, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
-    facet_wrap(~pixelGroup)
-  sim$yieldCurvePlotsStacked <- ggplot(plot_dt, aes(age, B, fill = speciesCode)) + geom_area(position = position_stack()) + theme_bw() +
     facet_wrap(~pixelGroup)
   return(invisible(sim))
 }
@@ -277,6 +266,9 @@ SplitYieldTables <- function(sim) {
   # 4:    Pice_gla          2
   # 5:    Pice_mar          2
   # 6:    Pice_mar          3
+  
+  # convert m^2 into tonnes/ha
+  sim$allInfoYieldTables$B <- sim$allInfoYieldTables$B/100
   
   cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
                                     table6 = sim$table6,
@@ -383,13 +375,15 @@ SplitCohortData <- function(sim) {
   )
   setnames(sim$allInfoCohortData, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
+  # convert m^2 into tonnes/ha
+  sim$allInfoCohortData$B <- sim$allInfoCohortData$B/100
+  
   sim$cohortPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
                                        table6 = sim$table6,
                                        table7 = sim$table7)
   
   #### TODO: there is probably ages (e.g., age = 0) for which we loss data.
   return(invisible(sim))
-  
 }
 
 
