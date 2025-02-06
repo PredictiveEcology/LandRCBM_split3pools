@@ -101,20 +101,14 @@ defineModule(sim, list(
       objectName = "table6", objectClass = "data.frame",
       desc = paste("Proportion model parameters similar to Boudewyn et al 2007,",
                    "but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha"),
-      sourceURL = "https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc"
-      ## NOTE: current link is to a google drive but parameters will eventually
-      ## be on the NFIS site as per the volume-based parameters. For now, I put
-      ## a copy of the biomass-basedones provided by Paul Boudewyn on the (FOR-CAST) WBI/Carbon drive
+      sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv"
     ),
     expectsInput(
       objectName = "table7", objectClass = "data.frame",
       desc = paste("Caps on proportion models similar to Boudewyn et al. 2007",
                    "but recalculated using total biomass (metric tonnes of tree biomass/ha)",
                    "instead of vol/ha"),
-      sourceURL = "https://drive.google.com/file/d/16nQgTGW2p_IYF_Oavcc7WbWbgWl5uywt"
-      ## NOTE: current link is to a google drive but parameters will eventually
-      ## be on the NFIS site as per the volume-based parameters. For now, I put
-      ## a copy of the biomass-basedones provided by Paul Boudewyn on the (FOR-CAST) WBI/Carbon drive
+      sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv"
     )
   ),
   outputObjects = bindrows(
