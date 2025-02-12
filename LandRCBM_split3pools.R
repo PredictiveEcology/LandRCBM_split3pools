@@ -17,10 +17,10 @@ defineModule(sim, list(
                   "PredictiveEcology/CBMutils@development",
                   "PredictiveEcology/LandR@development"),
   parameters = bindrows(
-    defineParameter("numCohortPlots", "integer", 3, NA, NA,
+    defineParameter("numCohortPlots", "integer", 3L, NA, NA,
                     "When plotting the yield curves, this is how many unique cohorts per ",
                     "pixelGroup plotted."),
-    defineParameter("numPixGroupPlots", "integer", 10, NA, NA,
+    defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
     defineParameter(".plots", "character", "screen", NA, NA,
