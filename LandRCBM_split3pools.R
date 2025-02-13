@@ -220,7 +220,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 10, "LandRCBM_split3pools", "summarizeAGBPools")
-    }
+    },
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
   )
