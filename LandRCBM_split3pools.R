@@ -199,10 +199,10 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
     },
     summarizeAGBPools = {
-      sumLandscape <- colSums(cohortPools[, .SD, .SDcols = c("totMerch", "fol", "other")])
-      sumLandscape$year <- time(sim)
-      sumBySpecies <- cohortPools[, lapply(.SD, sum), by = speciesCode, .SDcols = c("totMerch", "fol", "other")]
-      sumBySpecies$year <- time(sim)
+      sumLandscape <- sim$cohortPools[, lapply(.SD, sum), .SDcols = c("totMerch", "fol", "other")]
+      sumLandscape$year <- time(sim)[1]
+      sumBySpecies <- sim$cohortPools[, lapply(.SD, sum), by = species, .SDcols = c("totMerch", "fol", "other")]
+      sumBySpecies$year <- time(sim)[1]
       
       if (time(sim) == start(sim)){
         sim$summaryAGBPoolsLandscape <- sumLandscape
