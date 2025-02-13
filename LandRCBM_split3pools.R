@@ -141,6 +141,16 @@ defineModule(sim, list(
       desc = "Plot of the increments for yield curves of randomly selected pixelGroup"
     ),
     createsOutput(
+      objectName = "summaryAGBPoolsSpecies",
+      objectClass = "data.table",
+      desc = "Biomass of each of the AG pools per species and year."
+    ),
+    createsOutput(
+      objectName = "summaryAGBPoolsLandscape",
+      objectClass = "ggplot",
+      desc = "Sum biomass for each of the three pools on the landscape per year."
+    ),
+    createsOutput(
       objectName = "yieldCurvePlots",
       objectClass = "ggplot",
       desc = paste("Plot of the yield curves of randomly selected pixelGroup provided",
@@ -174,8 +184,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # plot the yield tables with pools seperated
       sim <- PlotYieldTablesPools(sim)
       
-      # spit AGB of cohorts into pools 
+      # split AGB of cohorts into pools 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualIncrements")
+      
+      # summarize simulation 
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
     },
     annualIncrements = {
       
@@ -185,6 +198,29 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
     },
+    summarizeAGBPools = {
+      sumLandscape <- colSums(cohortPools[, .SD, .SDcols = c("totMerch", "fol", "other")])
+      sumLandscape$year <- time(sim)
+      sumBySpecies <- cohortPools[, lapply(.SD, sum), by = speciesCode, .SDcols = c("totMerch", "fol", "other")]
+      sumBySpecies$year <- time(sim)
+      
+      if (time(sim) == start(sim)){
+        sim$summaryAGBPoolsLandscape <- sumLandscape
+        sim$summaryAGBPoolsSpecies <- sumBySpecies
+      } else {
+        sim$summaryAGBPoolsLandscape <- rbind(
+          sim$summaryAGBPoolsLandscape,
+          sumLandscape
+        )
+        sim$summaryAGBPoolsSpecies <- rbind(
+          sim$summaryAGBPoolsSpecies,
+          sumBySpecies
+        )
+      }
+      
+      # do this for each timestep
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 10, "LandRCBM_split3pools", "summarizeAGBPools")
+    }
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
   )
