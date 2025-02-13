@@ -376,9 +376,9 @@ AnnualIncrements <- function(sim){
     sim$incrementPixelGroupMap <- rast(mod$pixelGroupMapTminus1)
     pixGr <- data.table(pixelGroupTminus1 = c(mod$pixelGroupMapTminus1[]),
                         pixelGroupT = c(sim$pixelGroupMap[])) |>
-      setorder(pixelGroupT)
+      setorder(pixelGroupT, na.last = TRUE)
     pixGr[, incrementPixelGroup := .GRP, by = .(pixelGroupTminus1, pixelGroupT)]
-    sim$incrementPixelGroupMap[] <- pixGr$incrementPixelGroup 
+    sim$incrementPixelGroupMap[order(sim$pixelGroupMap[])] <- pixGr$incrementPixelGroup 
     sim$incrementPixelGroupMap <- mask(sim$incrementPixelGroupMap, mod$pixelGroupMapTminus1)
     pixGr <- na.omit(pixGr) |> unique()
     
