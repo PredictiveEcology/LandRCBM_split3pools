@@ -175,7 +175,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- PlotYieldTablesPools(sim)
       
       # spit AGB of cohorts into pools 
-      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","annualIncrements")
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualIncrements")
     },
     annualIncrements = {
       
@@ -183,7 +183,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- AnnualIncrements(sim)
       
       # do this for each timestep
-      sim <- scheduleEvent(sim, time(sim) + 1, "LandRCBM_split3pools", "annualIncrements")
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
     },
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
@@ -375,7 +375,8 @@ AnnualIncrements <- function(sim){
     # for increments
     sim$incrementPixelGroupMap <- rast(mod$pixelGroupMapTminus1)
     pixGr <- data.table(pixelGroupTminus1 = c(mod$pixelGroupMapTminus1[]),
-                        pixelGroupT = c(sim$pixelGroupMap[]))
+                        pixelGroupT = c(sim$pixelGroupMap[])) |>
+      setorder(pixelGroupT)
     pixGr[, incrementPixelGroup := .GRP, by = .(pixelGroupTminus1, pixelGroupT)]
     sim$incrementPixelGroupMap[] <- pixGr$incrementPixelGroup 
     sim$incrementPixelGroupMap <- mask(sim$incrementPixelGroupMap, mod$pixelGroupMapTminus1)
