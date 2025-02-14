@@ -29,6 +29,8 @@ defineModule(sim, list(
                     "Describes the simulation time at which the first plot event should occur."),
     defineParameter(".plotInterval", "numeric", NA, NA, NA,
                     "Describes the simulation time interval between plot events."),
+    defineParameter(".plotMaps", "logical", TRUE, NA, NA,
+                    desc = "Controls whether maps should be plotted or not. Set to `FALSE` if `P(sim)$.plots == NA`"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA,
                     "Describes the simulation time at which the first save event should occur."),
     defineParameter(".saveInterval", "numeric", NA, NA, NA,
@@ -189,6 +191,16 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # summarize simulation 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
+      
+      # plots
+      if (anyPlotting(P(sim)$.plots)) {
+        if (P(sim)$.plotMaps) {
+          sim <- scheduleEvent(sim, P(sim)$.plotInitialTime,
+                               "LandRCBM_split3pools", "plotMaps", eventPriority = 11)
+        }
+        sim <- scheduleEvent(sim, end(sim),
+                             "LandRCBM_split3pools", "plotSummaries", eventPriority = 12)
+      }
     },
     annualIncrements = {
       
@@ -221,6 +233,51 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 10, "LandRCBM_split3pools", "summarizeAGBPools")
     },
+    plotMaps = {
+      # get the sum of each pool per pixelGroups
+      poolSum <- sim$cohortPools[, lapply(.SD, sum), by = pixelGroup, .SDcols = c("totMerch", "fol", "other")]
+      
+      # rasterize
+      totMerchRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
+      folRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
+      otherRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
+      
+      # plot
+      Plots(totMerchRast,
+            fn = gg_agbpools,
+            types = P(sim)$.plots,
+            filename = paste0("totMerch", "_year_", round(time(sim))),
+            title = paste("Total merchantable biomass", "year", round(time(sim))))
+      Plots(folRast,
+            fn = gg_agbpools,
+            types = P(sim)$.plots,
+            filename = paste0("fol", "_year_", round(time(sim))),
+            title = paste("Foliage biomass", "year", round(time(sim))))
+      Plots(otherRast,
+            fn = gg_agbpools,
+            types = P(sim)$.plots,
+            filename = paste0("other", "_year_", round(time(sim))),
+            title = paste("Other above ground biomass", "year", round(time(sim))))
+      
+      # schedule next maps
+      sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval,
+                           "LandRCBM_split3pools", "plotMaps", eventPriority = 11)
+    },
+    plotSummaries = {
+      # Landscape summary
+      Plots(sim$summaryAGBPoolsLandscape,
+            fn = gg_landscapesummary,
+            types = P(sim)$.plots,
+            filename = paste0("LandscapeAGBPoolSummary")
+            )
+      # Species summary
+      Plots(sim$summaryAGBPoolsSpecies,
+            fn = gg_speciessummary,
+            types = P(sim)$.plots,
+            filename = paste0("SpeciesAGBPoolSummary")
+      )
+      
+    }
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
   )
@@ -461,6 +518,35 @@ AnnualIncrements <- function(sim){
   }
   mod$pixelGroupMapTminus1 <- sim$pixelGroupMap
   return(invisible(sim))
+}
+
+gg_agbpools <- function(x, title) {
+  gg <- ggplot() +
+    tidyterra::geom_spatraster(data = x) +
+    viridis::scale_fill_viridis(na.value = "transparent") +
+    ggtitle(title) + theme_bw()
+}
+
+gg_landscapesummary <- function(x) {
+  d <- as.data.table(x) |>
+    melt(id.vars = "year", variable.name = "pool", value.name = "biomass")
+  gg <- ggplot(d) + 
+    geom_line(aes(x = year, color = pool, y= biomass)) +
+    ggtitle("AGB by pool across pixels") +
+    labs(x = "Year", y = "Biomass") +
+    theme_bw()
+  
+}
+
+gg_speciessummary <- function(x) {
+  d <- as.data.frame(x) |>
+    melt(id.vars = c('species', "year"), variable.name = "pool", value.name = "biomass")
+  gg <- ggplot(d) + 
+    geom_line(aes(x = year, color = pool, y= biomass)) + 
+    facet_wrap(~species) +
+    ggtitle("AGB by pool and species across pixels") +
+    labs(x = "Year", y = "Biomass") +
+    theme_bw()
 }
 
 .inputObjects <- function(sim) {
