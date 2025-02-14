@@ -45,7 +45,7 @@ cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
     
     cumBiomList[[counter]] <- data.table(gcids = oneCurve$cohort_id, 
                                          species = oneCurve$speciesCode, 
-                                         pixelGroup = oneCurve$pixelGroup,
+                                         pixelGroupYield = oneCurve$pixelGroupYield,
                                          age = oneCurve$age, cumBiom)
   }
   cumPools <- rbindlist(cumBiomList)

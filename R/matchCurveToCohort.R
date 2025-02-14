@@ -1,11 +1,13 @@
-matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species, cohortData = NULL, CBM_speciesCodes = NULL){
+matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species, cohortData = NULL, yieldSpeciesCodes = NULL){
 
   if(!is.null(cohortData)){
-    if (!is.null(CBM_speciesCodes)) stop("either cohortData or CBM_speciesCodes need to be NULL")
+    if (!is.null(yieldSpeciesCodes)) stop("either cohortData or yieldSpeciesCodes need to be NULL")
     cohort_info <- cohortData
+    pixGrColumn <- "pixelGroup"
   }
-  if(!is.null(CBM_speciesCodes)){
-    cohort_info <- CBM_speciesCodes
+  if(!is.null(yieldSpeciesCodes)){
+    cohort_info <- yieldSpeciesCodes
+    pixGrColumn <- "pixelGroupYield"
   }
   
   # Spatial matching
@@ -16,6 +18,10 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
   pixelGroupEco <- data.table(pixelGroup = as.integer(pixelGroupMap[]),
                               SpatialUnitID = as.integer(spuRaster[]))
   pixelGroupEco <- na.omit(pixelGroupEco, cols = "pixelGroup")
+  if(!is.null(yieldSpeciesCodes)){
+    setnames(pixelGroupEco, old = "pixelGroup", pixGrColumn)
+  }
+  
   ### matching the ecozone to the admin
   pixelGroupEco <- merge(pixelGroupEco, cbmAdmin, by = "SpatialUnitID")
   pixelGroupEco[, c("SpatialUnitID", "AdminBoundaryID", "stump_parameter_id", "adminName") := NULL]
@@ -27,7 +33,7 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
   # putting it together
   allCohortInfo <- merge(cohort_info, sp_canfi, by = "speciesCode")
   # adding other columns
-  allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = "pixelGroup", allow.cartesian = TRUE)
+  allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = pixGrColumn, allow.cartesian = TRUE)
   
   return(allCohortInfo)
 }

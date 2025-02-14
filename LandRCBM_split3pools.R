@@ -57,12 +57,12 @@ defineModule(sim, list(
     ),    
     expectsInput(
       ## TODO Yield module will be modified to provide required format
-      objectName = "CBM_AGB", objectClass = "data.frame",
+      objectName = "yieldTables", objectClass = "data.frame",
       desc = "",
       sourceURL = "https://drive.google.com/file/d/1ANziym1UWZyDHPoVdRR5WHwrNw6b9Ms7/view?usp=sharing"
     ),
     expectsInput(
-      objectName = "CBM_speciesCodes", objectClass = "data.frame",
+      objectName = "yieldSpeciesCodes", objectClass = "data.frame",
       desc = paste(""),
       sourceURL = "https://drive.google.com/file/d/1GunHO8hN54WeMVgCh-MgWvxRaguPYuMJ/view?usp=drive_link"
     ),
@@ -285,7 +285,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 }
 
 PlotYieldTables <- function(sim){
-  nPixGroups <- length(unique(sim$CBM_speciesCodes$pixelGroup))
+  nPixGroups <- length(unique(sim$yieldSpeciesCodes$pixelGroupYield))
   nPlots <- P(sim)$numPixGroupPlots
   if (nPlots <= 0){
     stop("numPlots needs to be a positive integer")
@@ -294,25 +294,25 @@ PlotYieldTables <- function(sim){
             "plotting all pixelgroups.")
     nPlots <- nPixGroups
   } 
-  pixGroupToPlot <- sample(unique(sim$CBM_speciesCodes$pixelGroup), nPlots)
-  # numCohortPlots: we want to plot this number of cohorts per pixelGroup, 
+  pixGroupToPlot <- sample(unique(sim$yieldSpeciesCodes$pixelGroupYield), nPlots)
+  # numCohortPlots: we want to plot this number of cohorts per pixelGroupYield, 
   # keeping species that reach the highest biomass
-  max_B_per_cohort <- sim$CBM_AGB[, .(max_B = max(B)), by = .(pixelGroup, cohort_id)]
+  max_B_per_cohort <- sim$yieldTables[, .(max_B = max(B)), by = .(pixelGroupYield, cohort_id)]
   top_cohort_per_pixel <- max_B_per_cohort[, {
     # Order by max_B in descending order and keep the top 3, or all if fewer than 3
     .SD[order(-max_B)][1:min(P(sim)$numCohortPlots, .N)]
-  }, by = pixelGroup]
+  }, by = pixelGroupYield]
   # dt for plotting.
-  plot_dt <- sim$CBM_AGB[cohort_id %in% top_cohort_per_pixel$cohort_id]
-  plot_dt <- plot_dt[pixelGroup %in% pixGroupToPlot]
-  plot_dt <- merge(plot_dt, sim$CBM_speciesCodes, by = c("cohort_id", "pixelGroup"))
+  plot_dt <- sim$yieldTables[cohort_id %in% top_cohort_per_pixel$cohort_id]
+  plot_dt <- plot_dt[pixelGroupYield %in% pixGroupToPlot]
+  plot_dt <- merge(plot_dt, sim$yieldSpeciesCodes, by = c("cohort_id", "pixelGroupYield"))
   
   # convert g/m^2 into tonnes/ha
   plot_dt$B <- plot_dt$B/100
   
   # plot
   sim$yieldCurvePlots <- ggplot(plot_dt, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
-    facet_wrap(~pixelGroup)
+    facet_wrap(~pixelGroupYield)
   return(invisible(sim))
 }
 
@@ -327,15 +327,15 @@ SplitYieldTables <- function(sim) {
   # and ecozone. The canfi_species have numbers which we need to match with the 
   # parameters.
   allInfoYieldTables <- matchCurveToCohort(
-    CBM_speciesCodes = sim$CBM_speciesCodes,
-    pixelGroupMap = sim$pixelGroupMap,
+    yieldSpeciesCodes = sim$yieldSpeciesCodes,
+    pixelGroupMap = sim$yieldTablesMap,
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
     canfi_species = sim$canfi_species,
     cohortData = NULL
   )
   
-  sim$allInfoYieldTables <- merge(sim$CBM_AGB, allInfoYieldTables, allow.cartesian = TRUE)
+  sim$allInfoYieldTables <- merge(sim$yieldTables, allInfoYieldTables, allow.cartesian = TRUE)
   
   setnames(sim$allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
@@ -487,7 +487,7 @@ AnnualIncrements <- function(sim){
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
     canfi_species = sim$canfi_species,
-    CBM_speciesCodes = NULL
+    yieldSpeciesCodes = NULL
   )
   setnames(sim$allInfoCohortData, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
@@ -617,15 +617,15 @@ gg_speciessummary <- function(x) {
   ## these two next tables will be coming from the Yield module
   ## this one is the actual yields that are needed for the CBM spinup
   
-  if (!suppliedElsewhere("CBM_AGB", sim)) {
-    sim$CBM_AGB <- prepInputs(url = extractURL("CBM_AGB"),
+  if (!suppliedElsewhere("yieldTables", sim)) {
+    sim$yieldTables <- prepInputs(url = extractURL("yieldTables"),
                               fun = "data.table::fread",
                               destinationPath = inputPath(sim),
                               filename2 = "CBM_AGB.csv")
   }
   
-  if (!suppliedElsewhere("CBM_speciesCodes", sim)) {
-    sim$CBM_speciesCodes <- prepInputs(url = extractURL("CBM_speciesCodes"),
+  if (!suppliedElsewhere("yieldSpeciesCodes", sim)) {
+    sim$yieldSpeciesCodes <- prepInputs(url = extractURL("yieldSpeciesCodes"),
                                        fun = "data.table::fread",
                                        destinationPath = inputPath(sim),
                                        filename2 = "CBM_speciesCodes.csv")
