@@ -13,9 +13,8 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
-  reqdPkgs = list("PredictiveEcology/SpaDES.core@box", "PredictiveEcology/reproducible@AI", "data.table", "ggplot2", "terra",
-                  "PredictiveEcology/CBMutils@development",
-                  "PredictiveEcology/LandR@development"),
+  reqdPkgs = list("PredictiveEcology/SpaDES.core@box", "reproducible (>= 2.1.0)", "data.table", "ggplot2", "terra",
+                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
     defineParameter("numCohortPlots", "integer", 3L, NA, NA,
                     "When plotting the yield curves, this is how many unique cohorts per ",
@@ -264,20 +263,21 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
                            "LandRCBM_split3pools", "plotMaps", eventPriority = 11)
     },
     plotSummaries = {
-      # Landscape summary
-      Plots(sim$summaryAGBPoolsLandscape,
-            fn = gg_landscapesummary,
-            types = P(sim)$.plots,
-            filename = paste0("LandscapeAGBPoolSummary")
-            )
-      # Species summary
-      Plots(sim$summaryAGBPoolsSpecies,
-            fn = gg_speciessummary,
-            types = P(sim)$.plots,
-            filename = paste0("SpeciesAGBPoolSummary")
-      )
-      
-    }
+      if (time(sim) > start(sim)){
+        # Landscape summary
+        Plots(sim$summaryAGBPoolsLandscape,
+              fn = gg_landscapesummary,
+              types = P(sim)$.plots,
+              filename = paste0("LandscapeAGBPoolSummary")
+        )
+        # Species summary
+        Plots(sim$summaryAGBPoolsSpecies,
+              fn = gg_speciessummary,
+              types = P(sim)$.plots,
+              filename = paste0("SpeciesAGBPoolSummary")
+        )
+      }
+    },
     warning(paste("Undefined event type: \'", current(sim)[1, "eventType", with = FALSE],
                   "\' in module \'", current(sim)[1, "moduleName", with = FALSE], "\'", sep = ""))
   )
