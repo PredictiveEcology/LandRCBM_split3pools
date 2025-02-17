@@ -238,8 +238,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # rasterize
       totMerchRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
-      folRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
-      otherRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
+      folRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "fol", mapcode = "pixelGroup")
+      otherRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "other", mapcode = "pixelGroup")
       
       # plot
       Plots(totMerchRast,
@@ -285,7 +285,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 }
 
 PlotYieldTables <- function(sim){
-  nPixGroups <- length(unique(sim$yieldSpeciesCodes$pixelGroupYield))
+  nPixGroups <- length(unique(sim$yieldSpeciesCodes$yieldPixelGroup))
   nPlots <- P(sim)$numPixGroupPlots
   if (nPlots <= 0){
     stop("numPlots needs to be a positive integer")
@@ -294,25 +294,25 @@ PlotYieldTables <- function(sim){
             "plotting all pixelgroups.")
     nPlots <- nPixGroups
   } 
-  pixGroupToPlot <- sample(unique(sim$yieldSpeciesCodes$pixelGroupYield), nPlots)
-  # numCohortPlots: we want to plot this number of cohorts per pixelGroupYield, 
+  pixGroupToPlot <- sample(unique(sim$yieldSpeciesCodes$yieldPixelGroup), nPlots)
+  # numCohortPlots: we want to plot this number of cohorts per yieldPixelGroup, 
   # keeping species that reach the highest biomass
-  max_B_per_cohort <- sim$yieldTables[, .(max_B = max(B)), by = .(pixelGroupYield, cohort_id)]
+  max_B_per_cohort <- sim$yieldTables[, .(max_B = max(B)), by = .(yieldPixelGroup, cohort_id)]
   top_cohort_per_pixel <- max_B_per_cohort[, {
     # Order by max_B in descending order and keep the top 3, or all if fewer than 3
     .SD[order(-max_B)][1:min(P(sim)$numCohortPlots, .N)]
-  }, by = pixelGroupYield]
+  }, by = yieldPixelGroup]
   # dt for plotting.
   plot_dt <- sim$yieldTables[cohort_id %in% top_cohort_per_pixel$cohort_id]
-  plot_dt <- plot_dt[pixelGroupYield %in% pixGroupToPlot]
-  plot_dt <- merge(plot_dt, sim$yieldSpeciesCodes, by = c("cohort_id", "pixelGroupYield"))
+  plot_dt <- plot_dt[yieldPixelGroup %in% pixGroupToPlot]
+  plot_dt <- merge(plot_dt, sim$yieldSpeciesCodes, by = c("cohort_id", "yieldPixelGroup"))
   
   # convert g/m^2 into tonnes/ha
   plot_dt$B <- plot_dt$B/100
   
   # plot
   sim$yieldCurvePlots <- ggplot(plot_dt, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
-    facet_wrap(~pixelGroupYield)
+    facet_wrap(~yieldPixelGroup)
   return(invisible(sim))
 }
 
@@ -328,13 +328,12 @@ SplitYieldTables <- function(sim) {
   # parameters.
   allInfoYieldTables <- matchCurveToCohort(
     yieldSpeciesCodes = sim$yieldSpeciesCodes,
-    pixelGroupMap = sim$yieldTablesMap,
+    pixelGroupMap = sim$yieldPixelGroupMap,
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
     canfi_species = sim$canfi_species,
     cohortData = NULL
   )
-  
   sim$allInfoYieldTables <- merge(sim$yieldTables, allInfoYieldTables, allow.cartesian = TRUE)
   
   setnames(sim$allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
@@ -368,8 +367,9 @@ SplitYieldTables <- function(sim) {
   sim$allInfoYieldTables$B <- sim$allInfoYieldTables$B/100
   
   cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
-                                    table6 = sim$table6,
-                                    table7 = sim$table7)
+                                table6 = sim$table6,
+                                table7 = sim$table7,
+                                pixGroupCol = "yieldPixelGroup")
   
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
   colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
@@ -388,7 +388,7 @@ SplitYieldTables <- function(sim) {
   
   fiveOf7cols <- fill0s[carbonVars, on = "gcids"]
   
-  otherVars <- cumPools[,.(pixelGroup = unique(pixelGroup), species = unique(species)), by = "gcids"]
+  otherVars <- cumPools[,.(yieldPixelGroup = unique(yieldPixelGroup), species = unique(species)), by = "gcids"]
   add0s <- fiveOf7cols[otherVars, on = "gcids"]
   sim$cumPools <- rbind(cumPools,add0s)
   set(sim$cumPools, NULL, "age", as.numeric(sim$cumPools$age))
@@ -399,7 +399,7 @@ SplitYieldTables <- function(sim) {
   # This line calculates the first difference of each colNames, shifting it down 
   # by one row and filling the first entry with NA.
   sim$cumPools[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
-                  by = eval("gcids")]
+               by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
   if (!is.na(P(sim)$.plotInitialTime)){
     plot_dt <- sim$cumPools[gcids %in% unique(sim$yieldCurvePlots$data$cohort_id)]
@@ -410,7 +410,7 @@ SplitYieldTables <- function(sim) {
     message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
                         figurePath(sim)))
   }
-  sim$yieldIncrements <- sim$cumPools[,.(gcids, pixelGroup, age, incMerch, incFol, incOther)]
+  sim$yieldIncrements <- sim$cumPools[,.(gcids, yieldPixelGroup, age, incMerch, incFol, incOther)]
   
   return(invisible(sim))
 }
@@ -445,7 +445,7 @@ PlotYieldTablesPools <- function(sim){
   
   plot_dt <- melt(
     plot_dt, 
-    id.vars = c("gcids", "species", "pixelGroup", "age"),
+    id.vars = c("gcids", "species", "yieldPixelGroup", "age"),
     measure.vars = c("totMerch", "fol", "other"),
     variable.name = "pool",
     value.name = "B"
@@ -454,7 +454,7 @@ PlotYieldTablesPools <- function(sim){
   sim$yieldCurvePoolPlots <- ggplot(plot_dt, aes(age, B, fill = pool)) + 
     geom_area(position = position_stack()) + 
     theme_bw() +
-    facet_grid(species~pixelGroup) +
+    facet_grid(species~yieldPixelGroup) +
     theme(panel.background = element_rect(fill = "white", color = NA),
           panel.grid = element_blank())
   return(invisible(sim))
@@ -501,17 +501,17 @@ AnnualIncrements <- function(sim){
   # 4. append the cohortPools of the previous year
   if (time(sim) != start(sim)){
     annualIncrements <- merge(annualIncrements, 
-                            sim$cohortPools, 
-                            by.x = c("pixelGroupT", "species"), 
-                            by.y = c("pixelGroup", "species"))
+                              sim$cohortPools, 
+                              by.x = c("pixelGroupT", "species"), 
+                              by.y = c("pixelGroup", "species"))
     # adds biomass 0 when there is a new species in a pixelGroup
     setnafill(annualIncrements, fill = 0, 
               cols=c("totMerch", "fol", "other", "totMerchTminus1", "folTminus1", "otherTminus1"))
     
     # 5. take the difference
     annualIncrements[, `:=`(totMerch = totMerch - totMerchTminus1,
-                          fol = fol - folTminus1,
-                          other = other - otherTminus1)]
+                            fol = fol - folTminus1,
+                            other = other - otherTminus1)]
     
     sim$annualIncrements <- annualIncrements[,.(incrementPixelGroup, species, totMerch, fol, other)]
     
@@ -539,7 +539,7 @@ gg_landscapesummary <- function(x) {
 }
 
 gg_speciessummary <- function(x) {
-  d <- as.data.frame(x) |>
+  d <- as.data.table(x) |>
     melt(id.vars = c('species', "year"), variable.name = "pool", value.name = "biomass")
   gg <- ggplot(d) + 
     geom_line(aes(x = year, color = pool, y= biomass)) + 
@@ -619,16 +619,16 @@ gg_speciessummary <- function(x) {
   
   if (!suppliedElsewhere("yieldTables", sim)) {
     sim$yieldTables <- prepInputs(url = extractURL("yieldTables"),
-                              fun = "data.table::fread",
-                              destinationPath = inputPath(sim),
-                              filename2 = "CBM_AGB.csv")
+                                  fun = "data.table::fread",
+                                  destinationPath = inputPath(sim),
+                                  filename2 = "CBM_AGB.csv")
   }
   
   if (!suppliedElsewhere("yieldSpeciesCodes", sim)) {
     sim$yieldSpeciesCodes <- prepInputs(url = extractURL("yieldSpeciesCodes"),
-                                       fun = "data.table::fread",
-                                       destinationPath = inputPath(sim),
-                                       filename2 = "CBM_speciesCodes.csv")
+                                        fun = "data.table::fread",
+                                        destinationPath = inputPath(sim),
+                                        filename2 = "CBM_speciesCodes.csv")
   }
   
   ## pixel to pixelGroup map that gets updated annually

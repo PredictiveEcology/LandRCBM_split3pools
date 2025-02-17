@@ -1,15 +1,14 @@
 matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species, cohortData = NULL, yieldSpeciesCodes = NULL){
-
   if(!is.null(cohortData)){
-    if (!is.null(yieldSpeciesCodes)) stop("either cohortData or yieldSpeciesCodes need to be NULL")
-    cohort_info <- cohortData
-    pixGrColumn <- "pixelGroup"
+    if (!is.null(yieldSpeciesCodes)) stop("either cohortData or yieldSpeciesCodes need to be NULL") else {
+      cohort_info <- cohortData
+      pixGrColumn <- "pixelGroup"
+    }
   }
   if(!is.null(yieldSpeciesCodes)){
     cohort_info <- yieldSpeciesCodes
-    pixGrColumn <- "pixelGroupYield"
+    pixGrColumn <- "yieldPixelGroup"
   }
-  
   # Spatial matching
   ### need to match the pixel groups with the ecozones and juris_id
   if (length(pixelGroupMap[]) != length(spuRaster[])) {
@@ -19,7 +18,7 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
                               SpatialUnitID = as.integer(spuRaster[]))
   pixelGroupEco <- na.omit(pixelGroupEco, cols = "pixelGroup")
   if(!is.null(yieldSpeciesCodes)){
-    setnames(pixelGroupEco, old = "pixelGroup", pixGrColumn)
+    setnames(pixelGroupEco, old = "pixelGroup", new = pixGrColumn)
   }
   
   ### matching the ecozone to the admin

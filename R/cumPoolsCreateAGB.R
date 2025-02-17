@@ -3,7 +3,7 @@
 # 2. FORCS parameters are hard coded: minimum merchantable age, a, and b (used 
 #    to calculate the proportion of merchantable Stemwood)
 
-cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
+cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7, pixGroupCol = "pixelGroup"){
   counter <- 0L
   cumBiomList <- list()
   
@@ -42,11 +42,17 @@ cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7){
     #cumBiomList[[counter]] <- data.table(id = oneCurve$cohort_id, pixelGroup = oneCurve$pixelGroup,
     #                                     age = oneCurve$age, cumBiom)
     #################
+    if(pixGroupCol != "yieldPixelGroup") cohort_id <- NULL
     
-    cumBiomList[[counter]] <- data.table(gcids = oneCurve$cohort_id, 
-                                         species = oneCurve$speciesCode, 
-                                         pixelGroupYield = oneCurve$pixelGroupYield,
-                                         age = oneCurve$age, cumBiom)
+    cumBiomList[[counter]] <- oneCurve[, 
+                                       .(gcids = cohort_id,
+                                         species = speciesCode,
+                                         age = age,
+                                         pixGroupColValue = get(pixGroupCol))]  # Use get() to refer to pixGroupCol dynamically
+    setnames(cumBiomList[[counter]], "pixGroupColValue", pixGroupCol)
+    cumBiomList[[counter]] <- cbind(cumBiomList[[counter]],
+                                    cumBiom)
+    
   }
   cumPools <- rbindlist(cumBiomList)
   return(cumPools)
