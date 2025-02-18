@@ -59,12 +59,17 @@ defineModule(sim, list(
       ## TODO Yield module will be modified to provide required format
       objectName = "yieldTables", objectClass = "data.frame",
       desc = "",
-      sourceURL = "https://drive.google.com/file/d/1ANziym1UWZyDHPoVdRR5WHwrNw6b9Ms7/view?usp=sharing"
+      sourceURL = "https://drive.google.com/file/d/1IP2MxX3QYnH-D9eO_q0VATwvKw72xvDi/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "yieldSpeciesCodes", objectClass = "data.frame",
       desc = paste(""),
-      sourceURL = "https://drive.google.com/file/d/1GunHO8hN54WeMVgCh-MgWvxRaguPYuMJ/view?usp=drive_link"
+      sourceURL = "https://drive.google.com/file/d/1cFvyTMQVdpSC3efnq5289iZ8jXNgAx-7/view?usp=drive_link"
+    ),
+    expectsInput(
+      objectName = "yieldPixelGroupMap", objectClass = "SpatRaster",
+      desc = paste(""),
+      sourceURL = "https://drive.google.com/file/d/1Tk2ubV3Pe87SliDSwwkoaNxbzn2nqojB/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "cohortData", objectClass = "data.frame",
@@ -74,12 +79,12 @@ defineModule(sim, list(
     expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = "PixelGroup map from LandR",
-      sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
+      sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
       desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
-      sourceURL = "https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link"
+      sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "spuRaster", objectClass = "SpatRaster",
@@ -175,10 +180,10 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-      
+
       # plot the yield tables
       sim <- PlotYieldTables(sim)
-      
+
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
@@ -193,6 +198,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # plots
       if (anyPlotting(P(sim)$.plots)) {
+        sim <- scheduleEvent(sim, P(sim)$.plotInitialTime,
+                             "LandRCBM_split3pools", "plotYC", eventPriority = 5)
         if (P(sim)$.plotMaps) {
           sim <- scheduleEvent(sim, P(sim)$.plotInitialTime,
                                "LandRCBM_split3pools", "plotMaps", eventPriority = 11)
@@ -235,7 +242,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     plotMaps = {
       # get the sum of each pool per pixelGroups
       poolSum <- sim$cohortPools[, lapply(.SD, sum), by = pixelGroup, .SDcols = c("totMerch", "fol", "other")]
-      
       # rasterize
       totMerchRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
       folRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "fol", mapcode = "pixelGroup")
@@ -257,6 +263,33 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
             types = P(sim)$.plots,
             filename = paste0("other", "_year_", round(time(sim))),
             title = paste("Other above ground biomass", "year", round(time(sim))))
+      
+      # map increments
+      if (time(sim) != start(sim)){
+        incrementSum  <- sim$annualIncrements[, lapply(.SD, sum), by = incrementPixelGroup, .SDcols = c("totMerch", "fol", "other")]
+        # rasterize
+        totMerchRast <- rasterizeReduced(incrementSum, sim$incrementPixelGroupMap, newRasterCols = "totMerch", mapcode = "incrementPixelGroup")
+        folRast <- rasterizeReduced(incrementSum, sim$incrementPixelGroupMap, newRasterCols = "fol", mapcode = "incrementPixelGroup")
+        otherRast <- rasterizeReduced(incrementSum, sim$incrementPixelGroupMap, newRasterCols = "other", mapcode = "incrementPixelGroup")
+        
+        # plot
+        Plots(totMerchRast,
+              fn = gg_agbpools,
+              types = P(sim)$.plots,
+              filename = paste0("totMerchInc", "_year_", round(time(sim))),
+              title = paste("Total increment", "year", round(time(sim))))
+        Plots(folRast,
+              fn = gg_agbpools,
+              types = P(sim)$.plots,
+              filename = paste0("folInc", "_year_", round(time(sim))),
+              title = paste("Foliage increment", "year", round(time(sim))))
+        Plots(otherRast,
+              fn = gg_agbpools,
+              types = P(sim)$.plots,
+              filename = paste0("otherInc", "_year_", round(time(sim))),
+              title = paste("Other above increment", "year", round(time(sim))))
+      }
+      
       
       # schedule next maps
       sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval,
@@ -309,11 +342,21 @@ PlotYieldTables <- function(sim){
   
   # convert g/m^2 into tonnes/ha
   plot_dt$B <- plot_dt$B/100
+  mod$cohortPlotted <- unique(plot_dt$cohort_id)
   
   # plot
-  sim$yieldCurvePlots <- ggplot(plot_dt, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
-    facet_wrap(~yieldPixelGroup)
+  Plots(plot_dt, 
+        fn = gg_yieldCurves,
+        types = P(sim)$.plots,
+        filename = paste("yieldCurves"),
+        title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
+        )
   return(invisible(sim))
+}
+
+gg_yieldCurves <- function(x, title){
+  ggplot(x, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
+    facet_wrap(~yieldPixelGroup)
 }
 
 SplitYieldTables <- function(sim) {
@@ -402,7 +445,7 @@ SplitYieldTables <- function(sim) {
                by = eval("gcids")]
   colsToUse33 <- c("age", "gcids", incCols)
   if (!is.na(P(sim)$.plotInitialTime)){
-    plot_dt <- sim$cumPools[gcids %in% unique(sim$yieldCurvePlots$data$cohort_id)]
+    plot_dt <- sim$cumPools[gcids %in% mod$cohortPlotted]
     sim$rawIncPlots <- m3ToBiomPlots(inc = plot_dt[, ..colsToUse33],
                                      path = figurePath(sim),
                                      title = "Increments merch fol other by gc id",
@@ -439,8 +482,8 @@ SplitYieldTables <- function(sim) {
 PlotYieldTablesPools <- function(sim){
   #### HERE: What if the pixel groups cross across NFI spatial units?! The same
   #### Yield curve would produce different pools
-  cohortToPlot <- unique(sim$yieldCurvePlots$data$cohort_id)
-  
+  cohortToPlot <- mod$cohortPlotted
+
   plot_dt <- sim$cumPools[gcids %in% cohortToPlot]
   
   plot_dt <- melt(
@@ -451,14 +494,24 @@ PlotYieldTablesPools <- function(sim){
     value.name = "B"
   )
   # plot
-  sim$yieldCurvePoolPlots <- ggplot(plot_dt, aes(age, B, fill = pool)) + 
-    geom_area(position = position_stack()) + 
+  Plots(plot_dt, 
+        fn = gg_yieldCurvesPools,
+        types = P(sim)$.plots,
+        filename = paste("yieldCurvePools"),
+        title = paste("Yield curves for", length(unique(plot_dt$yieldPixelGroup)), "randomly selected pixel groups")
+  )
+  
+  return(invisible(sim))
+}
+
+gg_yieldCurvesPools <- function(x, title) {
+  ggplot(x, aes(age, B, fill = pool)) +
+    geom_area(position = position_stack()) +
     theme_bw() +
-    facet_grid(species~yieldPixelGroup) +
+    facet_grid(species ~ yieldPixelGroup) +
+    ggtitle(title) +
     theme(panel.background = element_rect(fill = "white", color = NA),
           panel.grid = element_blank())
-  return(invisible(sim))
-  
 }
 
 AnnualIncrements <- function(sim){
@@ -566,14 +619,16 @@ gg_speciessummary <- function(x) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
-                             filename2 = "appendix2_table6_tb.csv")
+                             filename2 = "appendix2_table6_tb.csv",
+                             overwrite = TRUE)
   }
   
   if (!suppliedElsewhere("table7", sim)) {
     sim$table7 <- prepInputs(url = extractURL("table7"),
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
-                             filename2 = "appendix2_table7_tb.csv")
+                             filename2 = "appendix2_table7_tb.csv",
+                             overwrite = TRUE)
   }
   
   # 2. CBM and NFI admin
@@ -581,14 +636,16 @@ gg_speciessummary <- function(x) {
     sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
                                fun = "data.table::fread",
                                destinationPath = inputPath(sim),
-                               filename2 = "cbmAdmin.csv")
+                               filename2 = "cbmAdmin.csv",
+                               overwrite = TRUE)
   }
   
   if (!suppliedElsewhere("canfi_species", sim)) {
     sim$canfi_species <- prepInputs(url = extractURL("canfi_species"),
                                     fun = "data.table::fread",
                                     destinationPath = inputPath(sim),
-                                    filename2 = "canfi_species.csv")
+                                    filename2 = "canfi_species.csv",
+                                    overwrite = TRUE)
   }
   if (!suppliedElsewhere("spuRaster", sim)){
     
@@ -621,15 +678,26 @@ gg_speciessummary <- function(x) {
     sim$yieldTables <- prepInputs(url = extractURL("yieldTables"),
                                   fun = "data.table::fread",
                                   destinationPath = inputPath(sim),
-                                  filename2 = "CBM_AGB.csv")
+                                  filename2 = "yieldTables.csv",
+                                  overwrite = TRUE)
   }
   
   if (!suppliedElsewhere("yieldSpeciesCodes", sim)) {
     sim$yieldSpeciesCodes <- prepInputs(url = extractURL("yieldSpeciesCodes"),
                                         fun = "data.table::fread",
                                         destinationPath = inputPath(sim),
-                                        filename2 = "CBM_speciesCodes.csv")
+                                        filename2 = "yieldSpeciesCodes.csv",
+                                        overwrite = TRUE)
   }
+  
+  ## pixel to pixelGroup map that gets updated annually
+  if (!suppliedElsewhere("yieldPixelGroupMap", sim))
+    sim$yieldPixelGroupMap <- prepInputs(url = extractURL("yieldPixelGroupMap"),
+                                    destinationPath = inputPath(sim),
+                                    fun = "terra::rast",
+                                    rasterToMatch = sim$rasterToMatch,
+                                    useCache = TRUE,
+                                    overwrite = TRUE)
   
   ## pixel to pixelGroup map that gets updated annually
   if (!suppliedElsewhere("pixelGroupMap", sim))

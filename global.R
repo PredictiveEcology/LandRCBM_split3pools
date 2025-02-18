@@ -4,7 +4,8 @@ repos <- c("predictiveecology.r-universe.dev", getOption("repos"))
 
 ## Objects
 parameters <- list(
-  LandRCBM_split3pools = list(.useCache = ".inputObjects", .plots = "png")
+  LandRCBM_split3pools = list(.useCache = ".inputObjects", .plots = "png",
+                              .plotInterval = 3)
   )
 
 modules <- list("LandRCBM_split3pools")
