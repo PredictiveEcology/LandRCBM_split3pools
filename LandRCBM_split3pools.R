@@ -181,14 +181,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     eventType,
     init = {
 
-      # plot the yield tables
-      sim <- PlotYieldTables(sim)
-
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
-      
-      # plot the yield tables with pools seperated
-      sim <- PlotYieldTablesPools(sim)
       
       # split AGB of cohorts into pools 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualIncrements")
@@ -207,6 +201,13 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         sim <- scheduleEvent(sim, end(sim),
                              "LandRCBM_split3pools", "plotSummaries", eventPriority = 12)
       }
+    },
+    plotYC = {
+      # plot the yield tables
+      sim <- PlotYieldTables(sim)
+      
+      # plot the yield tables with pools seperated
+      sim <- PlotYieldTablesPools(sim)
     },
     annualIncrements = {
       
@@ -443,17 +444,7 @@ SplitYieldTables <- function(sim) {
   # by one row and filling the first entry with NA.
   sim$cumPools[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
                by = eval("gcids")]
-  colsToUse33 <- c("age", "gcids", incCols)
-  if (!is.na(P(sim)$.plotInitialTime)){
-    plot_dt <- sim$cumPools[gcids %in% mod$cohortPlotted]
-    sim$rawIncPlots <- m3ToBiomPlots(inc = plot_dt[, ..colsToUse33],
-                                     path = figurePath(sim),
-                                     title = "Increments merch fol other by gc id",
-                                     filenameBase = "Increments")
-    message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
-                        figurePath(sim)))
-  }
-  sim$yieldIncrements <- sim$cumPools[,.(gcids, yieldPixelGroup, age, incMerch, incFol, incOther)]
+  sim$yieldIncrements <- sim$cumPools[,.(gcids, yieldPixelGroup, age, species, incMerch, incFol, incOther)]
   
   return(invisible(sim))
 }
@@ -485,7 +476,6 @@ PlotYieldTablesPools <- function(sim){
   cohortToPlot <- mod$cohortPlotted
 
   plot_dt <- sim$cumPools[gcids %in% cohortToPlot]
-  
   plot_dt <- melt(
     plot_dt, 
     id.vars = c("gcids", "species", "yieldPixelGroup", "age"),
@@ -497,9 +487,26 @@ PlotYieldTablesPools <- function(sim){
   Plots(plot_dt, 
         fn = gg_yieldCurvesPools,
         types = P(sim)$.plots,
-        filename = paste("yieldCurvePools"),
+        filename = "yieldCurvePools",
         title = paste("Yield curves for", length(unique(plot_dt$yieldPixelGroup)), "randomly selected pixel groups")
   )
+  
+  plot_dt <- sim$yieldIncrements[gcids %in% mod$cohortPlotted]
+  plot_dt <- melt(
+    plot_dt, 
+    id.vars = c("gcids", "species", "yieldPixelGroup", "age"),
+    measure.vars = c("incMerch", "incFol", "incOther"),
+    variable.name = "pool",
+    value.name = "B"
+  )
+  Plots(plot_dt, 
+        fn = gg_yieldCurvesPools,
+        types = P(sim)$.plots,
+        filename = "YieldIncrements",
+        title = "Increments merch fol other by species and pixel groups"
+        )
+    message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
+                        figurePath(sim)))
   
   return(invisible(sim))
 }
