@@ -563,7 +563,8 @@ AnnualIncrements <- function(sim){
     annualIncrements <- merge(annualIncrements, 
                               sim$cohortPools, 
                               by.x = c("pixelGroupT", "species"), 
-                              by.y = c("pixelGroup", "species"))
+                              by.y = c("pixelGroup", "species"),
+                              allow.cartesian = TRUE)
     # adds biomass 0 when there is a new species in a pixelGroup
     setnafill(annualIncrements, fill = 0, 
               cols=c("totMerch", "fol", "other", "totMerchTminus1", "folTminus1", "otherTminus1"))
@@ -573,8 +574,12 @@ AnnualIncrements <- function(sim){
                             fol = fol - folTminus1,
                             other = other - otherTminus1)]
     
-    sim$annualIncrements <- annualIncrements[,.(incrementPixelGroup, species, totMerch, fol, other)]
-    
+    sim$annualIncrements <- annualIncrements[,.(incrementPixelGroup, 
+                                                species,
+                                                age = age.y, 
+                                                totMerch, 
+                                                fol, 
+                                                other)]    
   }
   mod$pixelGroupMapTminus1 <- sim$pixelGroupMap
   return(invisible(sim))
