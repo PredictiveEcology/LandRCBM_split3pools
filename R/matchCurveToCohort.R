@@ -46,6 +46,3 @@ matchCanfi <- function(LandR_species, canfi_species){
                     canfi_species = canfi_code))
 }
 
-#Test
-# LandR_species = c("Abie_las", "Betu_pap", "Pice_gla", "Pice_mar", "Pinu_con", "Popu_tre")
-# canfi_species = c(304, 1303, 105, 101, 204, 1201)

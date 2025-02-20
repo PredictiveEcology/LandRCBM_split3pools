@@ -1,3 +1,40 @@
+
+
+# test matchCanfi
+LandR_species = c("Abie_las", "Betu_pap", "Pice_gla")
+
+canfi_sp <- reproducible::prepInputs(
+  url = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo",
+  fun = "data.table::fread",
+  filename2 = "canfi_species.csv",
+  destinationPath = "inputs"
+)
+
+
+
+
+# test with yieldCurves
+pixelGroupMap <- terra::rast(
+  matrix(data = c(rep(1,3), rep(2, 6), rep(3, 2), rep(4,5)), nrow = 4, ncol = 4)
+)
+
+spuRaster <- terra::rast(
+  matrix(data = c(rep(1,4), rep(2, 10), rep(3, 2)), nrow = 4, ncol = 4)
+)
+
+admin <- data.table(
+  SpatialUnitId = c(1:3),
+  abbreviation = c("a", "b", "b"),
+  EcoBoundaryID = c(1, 1, 2),
+  otherCol = 1
+)
+
+
+# test with cohortData
+
+
+
+
 source("R/matchCurveToCohort.R")
 library(data.table)
 CBM_AGB <- reproducible::prepInputs(
