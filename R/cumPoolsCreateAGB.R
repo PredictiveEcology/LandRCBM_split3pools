@@ -7,6 +7,14 @@ cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7, pixGroupCol = "pixel
   counter <- 0L
   cumBiomList <- list()
   
+  expectedColumns <- c("canfi_species", "juris_id", "ecozone", "age", "B", pixGroupCol)
+  if (pixGroupCol == "yieldPixelGroup") {
+    expectedColumns <- c(expectedColumns, "cohort_id")
+  }
+  if (any(!(expectedColumns %in% colnames(allInfoAGBin)))) {
+    stop("The AGB table needs the following columns ", paste(expectedColumns, collapse = " "))
+  }
+  
   # identify unique sp, juris_id, ecozone
   curves <- unique(allInfoAGBin[, .(canfi_species, juris_id, ecozone)])
   curves[,curve_id := .I]
