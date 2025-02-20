@@ -190,7 +190,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # summarize simulation 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
-      
       # plots
       if (anyPlotting(P(sim)$.plots)) {
         sim <- scheduleEvent(sim, P(sim)$.plotInitialTime,
@@ -204,6 +203,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       }
     },
     plotYC = {
+
       # plot the yield tables
       sim <- PlotYieldTables(sim)
       
@@ -470,7 +470,6 @@ PlotYieldTablesPools <- function(sim){
   #### HERE: What if the pixel groups cross across NFI spatial units?! The same
   #### Yield curve would produce different pools
   cohortToPlot <- mod$cohortPlotted
-
   plot_dt <- sim$cumPools[gcids %in% cohortToPlot]
   plot_dt <- melt(
     plot_dt, 

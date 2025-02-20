@@ -29,11 +29,11 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
   }
   
   ### matching the ecozone to the admin
-  if(any(!(c("SpatialUnitID", "abbreviation", "EcoBoundaryID") %in% colnames(cbmAdmin)))) {
-    stop("The object cbmAdmin needs at least the variables `SpatialUnitID`, `abbreviation`, `EcoBoundaryID`")
+  if(any(!(c("SpatialUnitID", "abreviation", "EcoBoundaryID") %in% colnames(cbmAdmin)))) {
+    stop("The object cbmAdmin needs at least the variables `SpatialUnitID`, `abreviation`, `EcoBoundaryID`")
   }
   pixelGroupEco <- merge(pixelGroupEco, cbmAdmin, by = "SpatialUnitID")
-  colToKeep <- c(pixGrColumn, "abbreviation", "EcoBoundaryID")
+  colToKeep <- c(pixGrColumn, "abreviation", "EcoBoundaryID")
   pixelGroupEco <- pixelGroupEco[, ..colToKeep]
   pixelGroupEco <- unique(pixelGroupEco)
   
