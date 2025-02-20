@@ -1,8 +1,9 @@
 Version: 1.0
+ProjectId: f7c3f2f6-5c96-44b5-a83f-62b5c3bdbd45
 
-RestoreWorkspace: No
-SaveWorkspace: No
-AlwaysSaveHistory: No
+RestoreWorkspace: Default
+SaveWorkspace: Default
+AlwaysSaveHistory: Default
 
 EnableCodeIndexing: Yes
 UseSpacesForTab: Yes
@@ -11,9 +12,3 @@ Encoding: UTF-8
 
 RnwWeave: Sweave
 LaTeX: pdfLaTeX
-
-AutoAppendNewline: Yes
-StripTrailingWhitespace: Yes
-
-QuitChildProcessesOnExit: Yes
-DisableExecuteRprofile: Yes

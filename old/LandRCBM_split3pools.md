@@ -1,7 +1,7 @@
 ---
 title: "LandRCBM_split3pools Manual"
 subtitle: "v.0.0.0.9000"
-date: "Last updated: 2025-02-03"
+date: "Last updated: 2022-11-17"
 output:
   bookdown::html_document2:
     toc: true
@@ -13,6 +13,7 @@ output:
 editor_options:
   chunk_output_type: console
   bibliography: citations/references_LandRCBM_split3pools.bib
+citation-style: citations/ecology-letters.csl
 link-citations: true
 always_allow_html: true
 ---
@@ -24,7 +25,7 @@ always_allow_html: true
 
 
 
-[![made-with-Markdown](figures/markdownBadge.png)](https://commonmark.org)
+[![made-with-Markdown](figures/markdownBadge.png)](http://commonmark.org)
 
 <!-- if knitting to pdf remember to add the pandoc_args: ["--extract-media", "."] option to yml in order to get the badge images -->
 
@@ -44,12 +45,10 @@ This is a template for module documentation, and should be changed to reflect yo
 
 ### Module inputs and parameters
 
-Describe input data required by the module and how to obtain it (e.g., directly from online sources or supplied by other modules)
-If `sourceURL` is specified, `downloadData("LandRCBM_split3pools", "..")` may be sufficient.
 Table \@ref(tab:moduleInputs-LandRCBM-split3pools) shows the full list of module inputs.
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
-<caption>(\#tab:moduleInputs-LandRCBM-split3pools)(\#tab:moduleInputs-LandRCBM-split3pools)List of (ref:LandRCBM-split3pools) input objects and their description.</caption>
+<caption>(\#tab:moduleInputs-LandRCBM-split3pools)List of (ref:LandRCBM-split3pools) input objects and their description.</caption>
  <thead>
   <tr>
    <th style="text-align:left;"> objectName </th>
@@ -60,57 +59,9 @@ Table \@ref(tab:moduleInputs-LandRCBM-split3pools) shows the full list of module
  </thead>
 <tbody>
   <tr>
-   <td style="text-align:left;"> canfi_species </td>
-   <td style="text-align:left;"> data.frame </td>
-   <td style="text-align:left;"> File containing the possible species in the Boudewyn table </td>
-   <td style="text-align:left;"> https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> cbmAdmin </td>
-   <td style="text-align:left;"> data.frame </td>
-   <td style="text-align:left;"> Provides equivalent between provincial boundaries, CBM-id for provincial boundaries and CBM-spatial unit ids </td>
-   <td style="text-align:left;"> https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> CBM_AGB </td>
-   <td style="text-align:left;"> data.frame </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;"> https://drive.google.com/file/d/1ANziym1UWZyDHPoVdRR5WHwrNw6b9Ms7/view?usp=sharing </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> CBM_speciesCodes </td>
-   <td style="text-align:left;"> data.frame </td>
-   <td style="text-align:left;">  </td>
-   <td style="text-align:left;"> https://drive.google.com/file/d/1GunHO8hN54WeMVgCh-MgWvxRaguPYuMJ/view?usp=drive_link </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> cohortData </td>
-   <td style="text-align:left;"> data.frame </td>
-   <td style="text-align:left;"> Above ground biomass of cohorts in pixel groups </td>
-   <td style="text-align:left;"> https://drive.google.com/file/d/17VSBMgnvJtcDYgeaLXZWUA36DbsnLDyF/view?usp=drive_link </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> pixelGroupMap </td>
-   <td style="text-align:left;"> SpatRaster </td>
-   <td style="text-align:left;"> PixelGroup map from LandR </td>
-   <td style="text-align:left;"> https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> rasterToMatch </td>
-   <td style="text-align:left;"> SpatRaster </td>
-   <td style="text-align:left;"> template raster to use for simulations; defaults to RIA study area </td>
-   <td style="text-align:left;"> https://drive.google.com/file/d/18FuRnQHPgY9-K3jkhKKQFTpGGbs0PmOT/view?usp=drive_link </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> spuRaster </td>
-   <td style="text-align:left;"> SpatRaster </td>
-   <td style="text-align:left;"> Raster has spatial units for each pixel </td>
-   <td style="text-align:left;"> https://drive.google.com/file/d/1D3O0Uj-s_QEgMW7_X-NhVsEZdJ29FBed </td>
-  </tr>
-  <tr>
    <td style="text-align:left;"> table6 </td>
    <td style="text-align:left;"> data.frame </td>
-   <td style="text-align:left;"> Proportion model parameters similar to Boudewyn et al 2007, but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha </td>
+   <td style="text-align:left;"> Proportion model parameters similar to Boudewyn et al 2007,but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha </td>
    <td style="text-align:left;"> https://drive.google.com/file/d/1gvtV-LKBNbqD7hmlL4X0i40P3du75oJc </td>
   </tr>
   <tr>
@@ -119,6 +70,48 @@ Table \@ref(tab:moduleInputs-LandRCBM-split3pools) shows the full list of module
    <td style="text-align:left;"> Caps on proportion models similar to Boudewyn et al. 2007 but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha </td>
    <td style="text-align:left;"> https://drive.google.com/file/d/16nQgTGW2p_IYF_Oavcc7WbWbgWl5uywt </td>
   </tr>
+  <tr>
+   <td style="text-align:left;"> cbmAdmin </td>
+   <td style="text-align:left;"> data.frame </td>
+   <td style="text-align:left;"> Provides equivalent between provincial boundaries, CBM-id for provincial boundaries and CBM-spatial unit ids </td>
+   <td style="text-align:left;"> https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> ecozone </td>
+   <td style="text-align:left;"> RasterLayer </td>
+   <td style="text-align:left;"> Ecozones of Canada </td>
+   <td style="text-align:left;"> http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> canfi_species </td>
+   <td style="text-align:left;"> data.frame </td>
+   <td style="text-align:left;"> File containing the possible species in the Boudewyn table </td>
+   <td style="text-align:left;"> https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> CBM_AGB </td>
+   <td style="text-align:left;"> data.frame </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;"> https://drive.google.com/file/d/1xxfG-8ZJKPlO5HguHpVtqio5TXdcRGy7 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> CBM_speciesCodes </td>
+   <td style="text-align:left;"> data.frame </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;"> https://drive.google.com/file/d/1sVsDoT1E-CDgo2hnCU2pgqV6PpVic2Fe </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> pixelGroupMap </td>
+   <td style="text-align:left;"> RasterLayer </td>
+   <td style="text-align:left;"> PixelGroup map from LandR </td>
+   <td style="text-align:left;"> https://drive.google.com/file/d/1Pso52N9DFVJ46OFxtvtqrVX9VzOVhcf3 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> rasterToMatch </td>
+   <td style="text-align:left;"> RasterLayer </td>
+   <td style="text-align:left;"> template raster to use for simulations; defaults to RIA study area </td>
+   <td style="text-align:left;"> https://drive.google.com/file/d/1h7gK44g64dwcoqhij24F2K54hs5e35Ci </td>
+  </tr>
 </tbody>
 </table>
 
@@ -126,7 +119,7 @@ Provide a summary of user-visible parameters (Table \@ref(tab:moduleParams-LandR
 
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
-<caption>(\#tab:moduleParams-LandRCBM-split3pools)(\#tab:moduleParams-LandRCBM-split3pools)List of (ref:LandRCBM-split3pools) parameters and their description.</caption>
+<caption>(\#tab:moduleParams-LandRCBM-split3pools)List of (ref:LandRCBM-split3pools) parameters and their description.</caption>
  <thead>
   <tr>
    <th style="text-align:left;"> paramName </th>
@@ -139,22 +132,6 @@ Provide a summary of user-visible parameters (Table \@ref(tab:moduleParams-LandR
  </thead>
 <tbody>
   <tr>
-   <td style="text-align:left;"> numCohortPlots </td>
-   <td style="text-align:left;"> integer </td>
-   <td style="text-align:left;"> 3 </td>
-   <td style="text-align:left;"> NA </td>
-   <td style="text-align:left;"> NA </td>
-   <td style="text-align:left;"> When plotting the yield curves, this is how many unique cohorts per pixelGroup plotted. </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> numPixGroupPlots </td>
-   <td style="text-align:left;"> integer </td>
-   <td style="text-align:left;"> 10 </td>
-   <td style="text-align:left;"> NA </td>
-   <td style="text-align:left;"> NA </td>
-   <td style="text-align:left;"> When plotting the yield curves, this is how many unique pixel groups will be randomly selected and plotted. </td>
-  </tr>
-  <tr>
    <td style="text-align:left;"> .plots </td>
    <td style="text-align:left;"> character </td>
    <td style="text-align:left;"> screen </td>
@@ -165,7 +142,7 @@ Provide a summary of user-visible parameters (Table \@ref(tab:moduleParams-LandR
   <tr>
    <td style="text-align:left;"> .plotInitialTime </td>
    <td style="text-align:left;"> numeric </td>
-   <td style="text-align:left;"> 0 </td>
+   <td style="text-align:left;"> start(sim) </td>
    <td style="text-align:left;"> NA </td>
    <td style="text-align:left;"> NA </td>
    <td style="text-align:left;"> Describes the simulation time at which the first plot event should occur. </td>
@@ -238,7 +215,7 @@ Write what is saved.
 Description of the module outputs (Table \@ref(tab:moduleOutputs-LandRCBM-split3pools)).
 
 <table class="table" style="margin-left: auto; margin-right: auto;">
-<caption>(\#tab:moduleOutputs-LandRCBM-split3pools)(\#tab:moduleOutputs-LandRCBM-split3pools)List of (ref:LandRCBM-split3pools) outputs and their description.</caption>
+<caption>(\#tab:moduleOutputs-LandRCBM-split3pools)List of (ref:LandRCBM-split3pools) outputs and their description.</caption>
  <thead>
   <tr>
    <th style="text-align:left;"> objectName </th>
@@ -248,54 +225,24 @@ Description of the module outputs (Table \@ref(tab:moduleOutputs-LandRCBM-split3
  </thead>
 <tbody>
   <tr>
-   <td style="text-align:left;"> allInfoCohortData </td>
-   <td style="text-align:left;"> data.table </td>
-   <td style="text-align:left;"> Above ground biomass (in tonnes of g/m2) of each cohort per pixelGroup provided by LandR with additionnal information to match with Boudewyn et al. equations. Gets updated each timestep </td>
+   <td style="text-align:left;"> CBM_yieldOut </td>
+   <td style="text-align:left;"> data.frame </td>
+   <td style="text-align:left;"> AGB values by pixel/pixelGroup, cohort (species and age) will be provided by the Yield module </td>
   </tr>
   <tr>
-   <td style="text-align:left;"> allInfoYieldTables </td>
-   <td style="text-align:left;"> data.table </td>
-   <td style="text-align:left;"> Yield table provided by the biomass_yieldTables module with additionnal information to match with Boudewyn et al. equations. </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> cohortPools </td>
-   <td style="text-align:left;"> data.table </td>
-   <td style="text-align:left;"> Cumulative biomass in each aboveground pool for each cohort per pixelGroup. </td>
+   <td style="text-align:left;"> CBM_AGBplots </td>
+   <td style="text-align:left;"> plot </td>
+   <td style="text-align:left;"> Plot of the AGB values per cohort provided by the Yield module </td>
   </tr>
   <tr>
    <td style="text-align:left;"> cumPools </td>
-   <td style="text-align:left;"> data.table </td>
-   <td style="text-align:left;"> Cumulative biomass in each aboveground biomass pool for each yield curve (in tonnes of carbon/ha). </td>
+   <td style="text-align:left;"> data.frame </td>
+   <td style="text-align:left;"> Cumulative carbon in three pools, totMerch, fol, and other per cohort </td>
   </tr>
   <tr>
-   <td style="text-align:left;"> cumPoolsRaw </td>
-   <td style="text-align:left;"> data.table </td>
-   <td style="text-align:left;"> Same as cumPools with additionnal lines for age 0 of each cohort. </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> increments </td>
-   <td style="text-align:left;"> data.table </td>
-   <td style="text-align:left;"> Increments for each yield curve (in tonnes of carbon/ha). </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> rawIncPlots </td>
-   <td style="text-align:left;"> ggplot </td>
-   <td style="text-align:left;"> Plot of the increments for yield curves of randomly selected pixelGroup </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> yieldCurvePlots </td>
-   <td style="text-align:left;"> ggplot </td>
-   <td style="text-align:left;"> Plot of the yield curves of randomly selected pixelGroup provided by the biomass_yieldTables module </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> yieldCurvePlotsStacked </td>
-   <td style="text-align:left;"> ggplot </td>
-   <td style="text-align:left;"> Plot of the AGB values per cohort of randomly selected pixelGroup provided by the biomass_yieldTables module </td>
-  </tr>
-  <tr>
-   <td style="text-align:left;"> yieldCurvePoolPlots </td>
-   <td style="text-align:left;"> ggplot </td>
-   <td style="text-align:left;"> Plot of the cumulative biomass of the three AGB pools for randomly selected pixelGroup. </td>
+   <td style="text-align:left;"> growth_incForSpinup </td>
+   <td style="text-align:left;"> matrix </td>
+   <td style="text-align:left;"> Matrix of the 1/2 increment for every age provided per cohort </td>
   </tr>
 </tbody>
 </table>
