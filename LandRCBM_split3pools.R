@@ -219,9 +219,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
     },
     summarizeAGBPools = {
-      sumLandscape <- sim$cohortPools[, lapply(.SD, sum), .SDcols = c("totMerch", "fol", "other")]
+      sumLandscape <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), .SDcols = c("totMerch", "fol", "other")]
       sumLandscape$year <- time(sim)[1]
-      sumBySpecies <- sim$cohortPools[, lapply(.SD, sum), by = species, .SDcols = c("totMerch", "fol", "other")]
+      sumBySpecies <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), by = species, .SDcols = c("totMerch", "fol", "other")]
       sumBySpecies$year <- time(sim)[1]
       
       if (time(sim) == start(sim)){
@@ -243,7 +243,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     plotMaps = {
       # get the sum of each pool per pixelGroups
-      poolSum <- sim$cohortPools[, lapply(.SD, sum), by = pixelGroup, .SDcols = c("totMerch", "fol", "other")]
+      poolSum <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), by = pixelGroup, .SDcols = c("totMerch", "fol", "other")]
       # rasterize
       totMerchRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
       folRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "fol", mapcode = "pixelGroup")
@@ -268,7 +268,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        incrementSum  <- sim$annualIncrements[, lapply(.SD, sum), by = incrementPixelGroup, .SDcols = c("totMerch", "fol", "other")]
+        incrementSum  <- sim$annualIncrements[, lapply(.SD, sum, na.rm = TRUE), by = incrementPixelGroup, .SDcols = c("totMerch", "fol", "other")]
         # rasterize
         totMerchRast <- rasterizeReduced(incrementSum, sim$incrementPixelGroupMap, newRasterCols = "totMerch", mapcode = "incrementPixelGroup")
         folRast <- rasterizeReduced(incrementSum, sim$incrementPixelGroupMap, newRasterCols = "fol", mapcode = "incrementPixelGroup")
@@ -279,7 +279,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
               fn = gg_agbpools,
               types = P(sim)$.plots,
               filename = paste0("totMerchInc", "_year_", round(time(sim))),
-              title = paste("Total increment", "year", round(time(sim))))
+              title = paste("Total merchantable increment", "year", round(time(sim))))
         Plots(folRast,
               fn = gg_agbpools,
               types = P(sim)$.plots,
