@@ -92,6 +92,8 @@ defineModule(sim, list(
       desc = "Raster has spatial units for each pixel",
       sourceURL = "https://drive.google.com/file/d/1D3O0Uj-s_QEgMW7_X-NhVsEZdJ29FBed"
     ),
+    expectsInput("sppColorVect", "character",
+                 desc = paste("A named vector of colors to use for plotting.")),
     expectsInput(
       objectName = "table6", objectClass = "data.frame",
       desc = paste("Proportion model parameters similar to Boudewyn et al 2007,",
@@ -309,7 +311,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         Plots(sim$summaryAGBPoolsSpecies,
               fn = gg_speciessummary,
               types = P(sim)$.plots,
-              filename = paste0("SpeciesAGBPoolSummary")
+              filename = paste0("SpeciesAGBPoolSummary",),
+              colors = sim$sppColorVect
         )
       }
     },
@@ -351,7 +354,8 @@ PlotYieldTables <- function(sim){
         fn = gg_yieldCurves,
         types = P(sim)$.plots,
         filename = paste("yieldCurves"),
-        title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
+        title = paste("Yield curves for", nPlots, "randomly selected pixel groups"),
+        colors = sim$sppColorVect
         )
   return(invisible(sim))
 }
@@ -683,6 +687,12 @@ AnnualIncrements <- function(sim){
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
                                  filename2 = "cohortData.csv")
+  
+  if (!suppliedElsewhere("sppColorVect", sim)){
+    sp <- sort(unique(sim$cohortData))
+    sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), palette = 'Accent')
+    names(sim$sppColorVect) <- sp
+  }
   
   return(invisible(sim))
 }
