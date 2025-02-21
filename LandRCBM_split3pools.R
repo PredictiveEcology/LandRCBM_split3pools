@@ -14,7 +14,7 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
-  reqdPkgs = list("PredictiveEcology/SpaDES.core@box", "reproducible (>= 2.1.0)", "data.table", "ggplot2", "terra",
+  reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
     defineParameter("numCohortPlots", "integer", 3L, NA, NA,

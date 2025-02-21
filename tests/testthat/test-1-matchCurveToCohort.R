@@ -3,11 +3,12 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   # test matchCanfi
   LandR_species = c("Abie_las", "Betu_pap", "Pice_gla")
   
+  
   canfi_sp <- reproducible::prepInputs(
     url = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo",
     fun = "data.table::fread",
     filename2 = "canfi_species.csv",
-    destinationPath = "inputs"
+    destinationPath = spadesTestPaths$temp$inputs
   )
   
   out <- matchCanfi(LandR_species, canfi_sp)
