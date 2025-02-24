@@ -3,13 +3,20 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
     if (!is.null(yieldSpeciesCodes)) stop("either cohortData or yieldSpeciesCodes need to be NULL") else {
       cohort_info <- cohortData
       pixGrColumn <- "pixelGroup"
+      obj <- "cohortData"
     }
   }
   if(!is.null(yieldSpeciesCodes)){
     cohort_info <- yieldSpeciesCodes
     pixGrColumn <- "yieldPixelGroup"
+    obj <- "yieldSpeciesCodes"
   }
-  # Spatial matching
+  
+  if(any(!(c(pixGrColumn, "speciesCode") %in% colnames(cohort_info)))) {
+    stop("The object ", obj, " needs at least the variables ", pixGrColumn, " and speciesCode")
+  }
+  
+  # 1. Spatial matching
   ### need to match the pixel groups with the ecozones and juris_id
   if (length(pixelGroupMap[]) != length(spuRaster[])) {
     stop("There is a problem: the spuRaster and the pixelGroupMap are not equal")
@@ -22,14 +29,21 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
   }
   
   ### matching the ecozone to the admin
+  if(any(!(c("SpatialUnitID", "abreviation", "EcoBoundaryID") %in% colnames(cbmAdmin)))) {
+    stop("The object cbmAdmin needs at least the variables `SpatialUnitID`, `abreviation`, `EcoBoundaryID`")
+  }
   pixelGroupEco <- merge(pixelGroupEco, cbmAdmin, by = "SpatialUnitID")
-  pixelGroupEco[, c("SpatialUnitID", "AdminBoundaryID", "stump_parameter_id", "adminName") := NULL]
+  colToKeep <- c(pixGrColumn, "abreviation", "EcoBoundaryID")
+  pixelGroupEco <- pixelGroupEco[, ..colToKeep]
   pixelGroupEco <- unique(pixelGroupEco)
   
-  # Species matching
+  # 2. Species matching
+  if(any(!(c("genus", "species", "canfi_species") %in% colnames(canfi_species)))) {
+    stop("The object canfi_species needs at least the variables `genus`, `species`, `canfi_species`")
+  }
   sp_canfi <- matchCanfi(unique(cohort_info$speciesCode), canfi_species)
   
-  # putting it together
+  # 3. putting it together
   allCohortInfo <- merge(cohort_info, sp_canfi, by = "speciesCode")
   # adding other columns
   allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = pixGrColumn, allow.cartesian = TRUE)
@@ -39,13 +53,10 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
 
 matchCanfi <- function(LandR_species, canfi_species){
   speciesCode <- LandR_species
-  NFI <- LandR::sppEquivalencies_CA$NFI[match(speciesCode, LandR::sppEquivalencies_CA$LandR)]
-  canfi_species[, NFI := .(paste(genus, species, sep = "_"))]
-  canfi_code <- canfi_species$canfi_species[match(NFI, canfi_species$NFI)]
+  NFIcode <- LandR::sppEquivalencies_CA$NFI[match(speciesCode, LandR::sppEquivalencies_CA$LandR)]
+  canfi_species$NFIcode = paste(canfi_species$genus, canfi_species$species, sep = "_")
+  canfi_code <- canfi_species$canfi_species[match(NFIcode, canfi_species$NFIcode)]
   return(data.table(speciesCode = speciesCode,
                     canfi_species = canfi_code))
 }
 
-#Test
-# LandR_species = c("Abie_las", "Betu_pap", "Pice_gla", "Pice_mar", "Pinu_con", "Popu_tre")
-# canfi_species = c(304, 1303, 105, 101, 204, 1201)
