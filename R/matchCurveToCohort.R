@@ -16,7 +16,7 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
     stop("The object ", obj, " needs at least the variables ", pixGrColumn, " and speciesCode")
   }
   
-  # Spatial matching
+  # 1. Spatial matching
   ### need to match the pixel groups with the ecozones and juris_id
   if (length(pixelGroupMap[]) != length(spuRaster[])) {
     stop("There is a problem: the spuRaster and the pixelGroupMap are not equal")
@@ -37,13 +37,13 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
   pixelGroupEco <- pixelGroupEco[, ..colToKeep]
   pixelGroupEco <- unique(pixelGroupEco)
   
-  # Species matching
+  # 2. Species matching
   if(any(!(c("genus", "species", "canfi_species") %in% colnames(canfi_species)))) {
     stop("The object canfi_species needs at least the variables `genus`, `species`, `canfi_species`")
   }
   sp_canfi <- matchCanfi(unique(cohort_info$speciesCode), canfi_species)
   
-  # putting it together
+  # 3. putting it together
   allCohortInfo <- merge(cohort_info, sp_canfi, by = "speciesCode")
   # adding other columns
   allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = pixGrColumn, allow.cartesian = TRUE)

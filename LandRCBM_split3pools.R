@@ -46,34 +46,37 @@ defineModule(sim, list(
   inputObjects = bindrows(
     expectsInput(
       objectName = "canfi_species",
-      objectClass = "data.frame",
+      objectClass = "data.table",
       desc = "File containing the possible species in the Boudewyn table",
       sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo"
     ),
     expectsInput(
-      objectName = "cbmAdmin", objectClass = "data.frame",
+      objectName = "cbmAdmin", objectClass = "data.table",
       desc = paste("Provides equivalent between provincial boundaries,",
                    "CBM-id for provincial boundaries and CBM-spatial unit ids"),
       sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
     ),    
     expectsInput(
       ## TODO Yield module will be modified to provide required format
-      objectName = "yieldTables", objectClass = "data.frame",
-      desc = "",
+      objectName = "yieldTables", objectClass = "data.table",
+      desc = "A data.table supplying the requirements for CBM growth increments object.",
+      "Columns are `yieldPixelGroup`, `age`, `cohort_id`, `B`. The last ",
+      "column represent aboveground biomass of that `cohort_id` at that age.",
       sourceURL = "https://drive.google.com/file/d/1IP2MxX3QYnH-D9eO_q0VATwvKw72xvDi/view?usp=drive_link"
     ),
     expectsInput(
-      objectName = "yieldSpeciesCodes", objectClass = "data.frame",
-      desc = paste(""),
+      objectName = "yieldSpeciesCodes", objectClass = "data.table",
+      desc = paste("An object with 3 columns: `yieldPixelGroup`, `cohort_id`, and `speciesCode`. This provides the species ",
+                   "mapping for the `yieldTables` object"),
       sourceURL = "https://drive.google.com/file/d/1cFvyTMQVdpSC3efnq5289iZ8jXNgAx-7/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "yieldPixelGroupMap", objectClass = "SpatRaster",
-      desc = paste(""),
+      desc = paste("Map of the pixel groups of the yieldTable and yieldSpeciesCodes objects"),
       sourceURL = "https://drive.google.com/file/d/1Tk2ubV3Pe87SliDSwwkoaNxbzn2nqojB/view?usp=drive_link"
     ),
     expectsInput(
-      objectName = "cohortData", objectClass = "data.frame",
+      objectName = "cohortData", objectClass = "data.table",
       desc = "Above ground biomass (g/m^2) of cohorts in pixel groups",
       sourceURL = "https://drive.google.com/file/d/17VSBMgnvJtcDYgeaLXZWUA36DbsnLDyF/view?usp=drive_link" 
     ),
@@ -95,13 +98,13 @@ defineModule(sim, list(
     expectsInput("sppColorVect", "character",
                  desc = paste("A named vector of colors to use for plotting.")),
     expectsInput(
-      objectName = "table6", objectClass = "data.frame",
+      objectName = "table6", objectClass = "data.table",
       desc = paste("Proportion model parameters similar to Boudewyn et al 2007,",
                    "but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha"),
       sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv"
     ),
     expectsInput(
-      objectName = "table7", objectClass = "data.frame",
+      objectName = "table7", objectClass = "data.table",
       desc = paste("Caps on proportion models similar to Boudewyn et al. 2007",
                    "but recalculated using total biomass (metric tonnes of tree biomass/ha)",
                    "instead of vol/ha"),
@@ -145,11 +148,6 @@ defineModule(sim, list(
       desc = "Raster of the pixelGroups for the annual increments."
     ),
     createsOutput(
-      objectName = "rawIncPlots",
-      objectClass = "ggplot",
-      desc = "Plot of the increments for yield curves of randomly selected pixelGroup"
-    ),
-    createsOutput(
       objectName = "summaryAGBPoolsLandscape",
       objectClass = "ggplot",
       desc = "Sum biomass for each of the three pools on the landscape per year."
@@ -159,18 +157,6 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = "Biomass of each of the AG pools per species and year."
     ),
-    createsOutput(
-      objectName = "yieldCurvePlots",
-      objectClass = "ggplot",
-      desc = paste("Plot of the yield curves of randomly selected pixelGroup provided",
-                   "by the biomass_yieldTables module")
-    ),
-    createsOutput(
-      objectName = "yieldCurvePoolPlots",
-      objectClass = "ggplot",
-      desc = paste("Plot of the cumulative biomass of the three AGB pools for randomly",
-                   "selected pixelGroup.")
-    ),    
     createsOutput(
       objectName = "yieldIncrements",
       objectClass = "data.table",
@@ -363,11 +349,9 @@ SplitYieldTables <- function(sim) {
   ##############################################################################
   # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
-  # with the pixelGroup and speciesCode. pixelGroup gives us the location. 
-  # Location let's us figure out which ecozone, and admin. These will be used to
-  # match with juris_id (abreviation - can do this using cbmAdmin or a raster) 
-  # and ecozone. The canfi_species have numbers which we need to match with the 
-  # parameters.
+  # with the yieldPixelGroup and speciesCode. yieldPixelGroup gives us the location. 
+  # Location let's us figure out which ecozone, and admin. The canfi_species have 
+  # numbers which we need to match with the parameters.
   allInfoYieldTables <- matchCurveToCohort(
     yieldSpeciesCodes = sim$yieldSpeciesCodes,
     pixelGroupMap = sim$yieldPixelGroupMap,
@@ -383,7 +367,7 @@ SplitYieldTables <- function(sim) {
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
   
-  #2.1 Calculating the cumPools
+  # Calculating the cumPools
   
   ##TODO
   ## add new functions to CBMutils. Only two of the three functions needed to be
@@ -394,16 +378,6 @@ SplitYieldTables <- function(sim) {
   # - cumPoolsCreateAGB.R (modified from cumPoolsCreate)
   # - convertM3biom (modified from cumPoolsCreate)
   # - biomProp (as is from CBMutils)
-  
-  ##testing done with 3 pixelGroups
-  # > unique(allInfoAGBin[,.(speciesCode,pixelGroup)])
-  # speciesCode pixelGroup
-  # 1:    Betu_pap          1
-  # 2:    Betu_pap          2
-  # 3:    Betu_pap          3
-  # 4:    Pice_gla          2
-  # 5:    Pice_mar          2
-  # 6:    Pice_mar          3
   
   # convert m^2 into tonnes/ha
   sim$allInfoYieldTables$B <- sim$allInfoYieldTables$B/100
@@ -416,11 +390,13 @@ SplitYieldTables <- function(sim) {
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
   colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
   
-  #2.2 MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
-  #connection, but might be needed for future connection to other sources of
-  #AGB).
+  #TODO
+  # MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
+  # connection, but might be needed for future connection to other sources of
+  # AGB).
   ### if not, we need to extrapolate to make them annual
   
+  # add missing years (e.g., Boudewyn equation do not handle age 0)
   minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
   fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcids"]
   carbonVars <- data.table(gcids = unique(fill0s$gcids),
@@ -436,7 +412,7 @@ SplitYieldTables <- function(sim) {
   set(sim$cumPools, NULL, "age", as.numeric(sim$cumPools$age))
   setorderv(sim$cumPools, c("gcids", "age"))
   
-  # 2.4 Calculating Increments
+  # 3 Calculating Increments
   incCols <- c("incMerch", "incFol", "incOther")
   # This line calculates the first difference of each colNames, shifting it down 
   # by one row and filling the first entry with NA.
@@ -448,29 +424,12 @@ SplitYieldTables <- function(sim) {
 }
 
 
-# 2.3 Plot the curves that are directly out of the Boudewyn-translation
-# TODO
-# check that this is working. We only need to plot these when we are at the
-# beginning of a sim. Plotting the yearly translations will not be useful.
-# plotting and save the plots of the raw-translation
-## plotting is off - maybe turn it on?
-# if (!is.na(P(sim)$.plotInitialTime)){
-#   cumPoolsRawToPlot <- sim$cumPoolsRaw[pixelGroup %in% pixelGroupsToPlot]
-#   sim$plotsRawCumulativeBiomass <- m3ToBiomPlots(inc = sim$cumPoolsRaw,
-#                                                  id_col = c("gcids","pixelGroup"),
-#                                                  path = figurePath(sim),
-#                                                  filenameBase = "rawCumBiomass_")
-# }
-# Some of these curves may still be wonky. But there is not much that can be
-# done unless we get better pool-splitting methods. The "matching" made in
-# Biomass_speciesParameters to the PSP makes this as good as the data we
-# have (PSPs).
-# Note: Fixing of non-smooth curves done in CBM_vol2biomass would not help
-# here. The smoothing to match PSP is done and cohort-level growth will only
-# match a Chapman-Richard form is there is only one cohort on the pixel.
+# Plot the curves that are directly out of the Boudewyn-translation
 PlotYieldTablesPools <- function(sim){
   #### HERE: What if the pixel groups cross across NFI spatial units?! The same
   #### Yield curve would produce different pools
+  
+  # We want to plot the same cohorts across figures
   cohortToPlot <- mod$cohortPlotted
   plot_dt <- sim$cumPools[gcids %in% cohortToPlot]
   plot_dt <- melt(
@@ -480,7 +439,7 @@ PlotYieldTablesPools <- function(sim){
     variable.name = "pool",
     value.name = "B"
   )
-  # plot
+  # plot total yield curves
   Plots(plot_dt, 
         fn = gg_yieldCurvesPools,
         types = P(sim)$.plots,
@@ -488,6 +447,7 @@ PlotYieldTablesPools <- function(sim){
         title = paste("Yield curves for", length(unique(plot_dt$yieldPixelGroup)), "randomly selected pixel groups")
   )
   
+  # plot increments
   plot_dt <- sim$yieldIncrements[gcids %in% mod$cohortPlotted]
   plot_dt <- melt(
     plot_dt, 
@@ -508,6 +468,7 @@ PlotYieldTablesPools <- function(sim){
   return(invisible(sim))
 }
 
+# Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
   if (time(sim) != start(sim)){
     
@@ -575,48 +536,36 @@ AnnualIncrements <- function(sim){
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   
+  # 1. Spatial information
+  
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(
       url = extractURL("rasterToMatch"),
       fun = "terra::rast",
       destinationPath = inputPath(sim),
       overwrite = TRUE
-    ) |> Cache() ## TODO: confirm
+    ) |> Cache()
   }
   
-  # 1. NFIparams
-  if (!suppliedElsewhere("table6", sim)) {
-    sim$table6 <- prepInputs(url = extractURL("table6"),
-                             fun = "data.table::fread",
-                             destinationPath = inputPath(sim),
-                             filename2 = "appendix2_table6_tb.csv",
-                             overwrite = TRUE)
-  }
-  
-  if (!suppliedElsewhere("table7", sim)) {
-    sim$table7 <- prepInputs(url = extractURL("table7"),
-                             fun = "data.table::fread",
-                             destinationPath = inputPath(sim),
-                             filename2 = "appendix2_table7_tb.csv",
-                             overwrite = TRUE)
-  }
-  
-  # 2. CBM and NFI admin
-  if (!suppliedElsewhere("cbmAdmin", sim)) {
-    sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
-                               fun = "data.table::fread",
-                               destinationPath = inputPath(sim),
-                               filename2 = "cbmAdmin.csv",
-                               overwrite = TRUE)
-  }
-  
-  if (!suppliedElsewhere("canfi_species", sim)) {
-    sim$canfi_species <- prepInputs(url = extractURL("canfi_species"),
-                                    fun = "data.table::fread",
+  # pixel groups from vegetation data that gets updated annually
+  if (!suppliedElsewhere("pixelGroupMap", sim))
+    sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
                                     destinationPath = inputPath(sim),
-                                    filename2 = "canfi_species.csv",
+                                    fun = "terra::rast",
+                                    rasterToMatch = sim$rasterToMatch,
+                                    useCache = TRUE,
                                     overwrite = TRUE)
-  }
+  
+  # pixel groups for yield curves
+  if (!suppliedElsewhere("yieldPixelGroupMap", sim))
+    sim$yieldPixelGroupMap <- prepInputs(url = extractURL("yieldPixelGroupMap"),
+                                         destinationPath = inputPath(sim),
+                                         fun = "terra::rast",
+                                         rasterToMatch = sim$rasterToMatch,
+                                         useCache = TRUE,
+                                         overwrite = TRUE)
+  
+  # spatial unit raster to match data to parameters
   if (!suppliedElsewhere("spuRaster", sim)){
     
     if (!suppliedElsewhere("spuRasterURL", sim, where = "user")) message(
@@ -640,19 +589,46 @@ AnnualIncrements <- function(sim){
     ) |> Cache()
   }
   
-  ## pixel to pixelGroup map that gets updated annually
-  if (!suppliedElsewhere("yieldPixelGroupMap", sim))
-    sim$yieldPixelGroupMap <- prepInputs(url = extractURL("yieldPixelGroupMap"),
-                                         destinationPath = inputPath(sim),
-                                         fun = "terra::rast",
-                                         rasterToMatch = sim$rasterToMatch,
-                                         useCache = TRUE,
-                                         overwrite = TRUE)
   
-  # 3. Information from LandR
-  ## these two next tables will be coming from the Yield module
-  ## this one is the actual yields that are needed for the CBM spinup
+  # 2. NFI params
+  if (!suppliedElsewhere("table6", sim)) {
+    sim$table6 <- prepInputs(url = extractURL("table6"),
+                             fun = "data.table::fread",
+                             destinationPath = inputPath(sim),
+                             filename2 = "appendix2_table6_tb.csv",
+                             overwrite = TRUE)
+  }
   
+  if (!suppliedElsewhere("table7", sim)) {
+    sim$table7 <- prepInputs(url = extractURL("table7"),
+                             fun = "data.table::fread",
+                             destinationPath = inputPath(sim),
+                             filename2 = "appendix2_table7_tb.csv",
+                             overwrite = TRUE)
+  }
+  
+  # 3. CBM and NFI admin
+  if (!suppliedElsewhere("cbmAdmin", sim)) {
+    sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
+                               fun = "data.table::fread",
+                               destinationPath = inputPath(sim),
+                               filename2 = "cbmAdmin.csv",
+                               overwrite = TRUE)
+  }
+  
+  if (!suppliedElsewhere("canfi_species", sim)) {
+    sim$canfi_species <- prepInputs(url = extractURL("canfi_species"),
+                                    fun = "data.table::fread",
+                                    destinationPath = inputPath(sim),
+                                    filename2 = "canfi_species.csv",
+                                    overwrite = TRUE)
+  }
+
+
+  
+  # 3. Yield curve data
+  
+  # actual yiel curves
   if (!suppliedElsewhere("yieldTables", sim)) {
     sim$yieldTables <- prepInputs(url = extractURL("yieldTables"),
                                   fun = "data.table::fread",
@@ -662,6 +638,7 @@ AnnualIncrements <- function(sim){
     sim$yieldTables <- sim$yieldTables[yieldPixelGroup %in% sim$yieldPixelGroupMap[]]
   }
   
+  # reference for species to cohort_id
   if (!suppliedElsewhere("yieldSpeciesCodes", sim)) {
     sim$yieldSpeciesCodes <- prepInputs(url = extractURL("yieldSpeciesCodes"),
                                         fun = "data.table::fread",
@@ -671,16 +648,9 @@ AnnualIncrements <- function(sim){
     sim$yieldSpeciesCodes <- sim$yieldSpeciesCodes[yieldPixelGroup %in% sim$yieldPixelGroupMap[]]
   }
 
-  ## pixel to pixelGroup map that gets updated annually
-  if (!suppliedElsewhere("pixelGroupMap", sim))
-    sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
-                                    destinationPath = inputPath(sim),
-                                    fun = "terra::rast",
-                                    rasterToMatch = sim$rasterToMatch,
-                                    useCache = TRUE,
-                                    overwrite = TRUE)
-  
-  ## biomass per cohort and pixel group that gets updated annually
+
+  #4. Cohort data. Information on biomass for each cohort and pixel group. Gets updated
+  # annually.
   if (!suppliedElsewhere("cohortData", sim))
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
                                  destinationPath = inputPath(sim),
@@ -688,6 +658,7 @@ AnnualIncrements <- function(sim){
                                  overwrite = TRUE,
                                  filename2 = "cohortData.csv")
   
+  # TODO will be used for plotting to keep the same colors of species as in LandR modules
   if (!suppliedElsewhere("sppColorVect", sim)){
     sp <- sort(unique(sim$yieldSpeciesCodes$SpeciesCode))
     sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
