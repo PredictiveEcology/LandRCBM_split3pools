@@ -19,13 +19,3 @@ spadesTestPaths <- SpaDEStestSetUpDirectories(require = 'googledrive')
 
 # Source the functions
 lapply(list.files(file.path(spadesTestPaths$RProj, "R"), full.names = TRUE), source)
-
-# Download some inputs
-
-# Download gcMetaEg usually provided by CBM_vol2biomass
-withr::with_options(
-  c(googledrive_quiet = TRUE),
-  googledrive::drive_download(
-    "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo",
-    path = file.path(spadesTestPaths$temp$inputs, "canfi_species.csv")
-  ))

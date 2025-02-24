@@ -150,14 +150,14 @@ defineModule(sim, list(
       desc = "Plot of the increments for yield curves of randomly selected pixelGroup"
     ),
     createsOutput(
-      objectName = "summaryAGBPoolsSpecies",
-      objectClass = "data.table",
-      desc = "Biomass of each of the AG pools per species and year."
-    ),
-    createsOutput(
       objectName = "summaryAGBPoolsLandscape",
       objectClass = "ggplot",
       desc = "Sum biomass for each of the three pools on the landscape per year."
+    ),
+    createsOutput(
+      objectName = "summaryAGBPoolsSpecies",
+      objectClass = "data.table",
+      desc = "Biomass of each of the AG pools per species and year."
     ),
     createsOutput(
       objectName = "yieldCurvePlots",
@@ -172,7 +172,7 @@ defineModule(sim, list(
                    "selected pixelGroup.")
     ),    
     createsOutput(
-      objectName = "yieldIincrements",
+      objectName = "yieldIncrements",
       objectClass = "data.table",
       desc = "Increments for each yield curve (in tonnes of carbon/ha)."
     )
@@ -311,8 +311,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         Plots(sim$summaryAGBPoolsSpecies,
               fn = gg_speciessummary,
               types = P(sim)$.plots,
-              filename = paste0("SpeciesAGBPoolSummary",),
-              colors = sim$sppColorVect
+              filename = paste0("SpeciesAGBPoolSummary")
         )
       }
     },
@@ -354,8 +353,7 @@ PlotYieldTables <- function(sim){
         fn = gg_yieldCurves,
         types = P(sim)$.plots,
         filename = paste("yieldCurves"),
-        title = paste("Yield curves for", nPlots, "randomly selected pixel groups"),
-        colors = sim$sppColorVect
+        title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
         )
   return(invisible(sim))
 }
@@ -642,6 +640,15 @@ AnnualIncrements <- function(sim){
     ) |> Cache()
   }
   
+  ## pixel to pixelGroup map that gets updated annually
+  if (!suppliedElsewhere("yieldPixelGroupMap", sim))
+    sim$yieldPixelGroupMap <- prepInputs(url = extractURL("yieldPixelGroupMap"),
+                                         destinationPath = inputPath(sim),
+                                         fun = "terra::rast",
+                                         rasterToMatch = sim$rasterToMatch,
+                                         useCache = TRUE,
+                                         overwrite = TRUE)
+  
   # 3. Information from LandR
   ## these two next tables will be coming from the Yield module
   ## this one is the actual yields that are needed for the CBM spinup
@@ -652,6 +659,7 @@ AnnualIncrements <- function(sim){
                                   destinationPath = inputPath(sim),
                                   filename2 = "yieldTables.csv",
                                   overwrite = TRUE)
+    sim$yieldTables <- sim$yieldTables[yieldPixelGroup %in% sim$yieldPixelGroupMap[]]
   }
   
   if (!suppliedElsewhere("yieldSpeciesCodes", sim)) {
@@ -660,17 +668,9 @@ AnnualIncrements <- function(sim){
                                         destinationPath = inputPath(sim),
                                         filename2 = "yieldSpeciesCodes.csv",
                                         overwrite = TRUE)
+    sim$yieldSpeciesCodes <- sim$yieldSpeciesCodes[yieldPixelGroup %in% sim$yieldPixelGroupMap[]]
   }
-  
-  ## pixel to pixelGroup map that gets updated annually
-  if (!suppliedElsewhere("yieldPixelGroupMap", sim))
-    sim$yieldPixelGroupMap <- prepInputs(url = extractURL("yieldPixelGroupMap"),
-                                    destinationPath = inputPath(sim),
-                                    fun = "terra::rast",
-                                    rasterToMatch = sim$rasterToMatch,
-                                    useCache = TRUE,
-                                    overwrite = TRUE)
-  
+
   ## pixel to pixelGroup map that gets updated annually
   if (!suppliedElsewhere("pixelGroupMap", sim))
     sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
@@ -689,8 +689,8 @@ AnnualIncrements <- function(sim){
                                  filename2 = "cohortData.csv")
   
   if (!suppliedElsewhere("sppColorVect", sim)){
-    sp <- sort(unique(sim$cohortData))
-    sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), palette = 'Accent')
+    sp <- sort(unique(sim$yieldSpeciesCodes$SpeciesCode))
+    sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
     names(sim$sppColorVect) <- sp
   }
   

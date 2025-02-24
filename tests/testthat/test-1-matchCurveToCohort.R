@@ -8,7 +8,8 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
     url = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo",
     fun = "data.table::fread",
     filename2 = "canfi_species.csv",
-    destinationPath = spadesTestPaths$temp$inputs
+    destinationPath = spadesTestPaths$temp$inputs,
+    overwrite = TRUE
   )
   
   out <- matchCanfi(LandR_species, canfi_sp)

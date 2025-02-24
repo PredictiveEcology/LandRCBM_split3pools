@@ -6,7 +6,7 @@ gg_agbpools <- function(x, title) {
 }
 
 gg_landscapesummary <- function(x, 
-                                pools = c("totmerch", "fol", "other"),
+                                pools = c("totMerch", "fol", "other"),
                                 colors = RColorBrewer::brewer.pal(3, 'Set1')) {
   d <- as.data.table(x) |>
     melt(id.vars = "year", variable.name = "pool", value.name = "biomass")
@@ -20,12 +20,12 @@ gg_landscapesummary <- function(x,
   return(gg)
 }
 
-gg_speciessummary <- function(x, colors) {
+gg_speciessummary <- function(x) {
   d <- as.data.table(x) |>
     melt(id.vars = c('species', "year"), variable.name = "pool", value.name = "biomass")
   gg <- ggplot(d) + 
     geom_area(aes(x = year, fill = species, y= biomass)) + 
-    scale_fill_manual(values = colors) +
+    #scale_fill_manual(values = colors) +
     facet_grid(pool~., scales = "free_y") +
     ggtitle("AGB by pool and species across pixels") +
     labs(x = "Year", y = "Biomass") +
@@ -33,18 +33,18 @@ gg_speciessummary <- function(x, colors) {
   return(gg)
 }
 
-gg_yieldCurves <- function(x, title, colors){
+gg_yieldCurves <- function(x, title){
   ggplot(x, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
-    scale_color_manual(values = colors) +
-    facet_wrap(yieldPixelGroup) +
+    #scale_color_manual(values = colors) +
+    facet_wrap(~yieldPixelGroup) +
     labs(title = title, x = "Age", y = 'Biomass', color = "Species") +
     theme_bw()
 }
 
-gg_yieldCurvesPools <- function(x, title, colors) {
+gg_yieldCurvesPools <- function(x, title) {
   ggplot(x, aes(age, B, fill = species)) +
     geom_area(position = position_stack()) +
-    scale_fill_manual(values = colors) +
+    #scale_fill_manual(values = colors) +
     theme_bw() +
     facet_grid(yieldPixelGroup ~ pool) +
     ggtitle(title) +
