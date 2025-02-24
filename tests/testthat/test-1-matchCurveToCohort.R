@@ -16,7 +16,7 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   
   expect_equal(out$speciesCode, LandR_species)
   expect_equal(out$canfi_species, c(304, 1303, 105))
-  expect_true(all(colnames(out) == c("speciesCode", "canfi_species")))
+  expect_named(out, c("speciesCode", "canfi_species"))
   
   # try adding a species that is not in canfi
   LandR_species = c("Abie_las", "Betu_pap", "Pice_gla", "Betu_sp")
@@ -49,7 +49,7 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
                              admin, 
                              canfi_sp, 
                              yieldSpeciesCodes = yieldSpeciesCodes)
-  expect_true(all(c("yieldPixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID") %in% colnames(out1)))
+  expect_named(out1, c("yieldPixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID"))
   # spatial matching
   expect_true(all(out1$abreviation[out1$yieldPixelGroup == 1] == "a"))
   expect_true(all(out1$abreviation[out1$yieldPixelGroup %in% c(3,4)] == "b"))
@@ -70,7 +70,7 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
                              admin, 
                              canfi_sp, 
                              cohortData = cohortData)
-  expect_true(all(c("pixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID") %in% colnames(out2)))
+  expect_named(out2, c("pixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID"))
   expect_equivalent(out1, out2)
   
   # test errors and warnings
