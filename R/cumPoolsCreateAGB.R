@@ -62,7 +62,7 @@ convertAGB2pools <- function(oneCurve, table6, table7){
   params7 <- table7[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
   
   # get the proportions of each pool
-  pVect <- CBMutils::biomProp(table6 = params6, table7 = params7, vol = oneCurve$B)
+  pVect <- biomProp2(table6 = params6, table7 = params7, vol = oneCurve$B, type = "biomass")
   
   totTree <-  oneCurve$B
   totalStemWood <- totTree * pVect[, 1]
@@ -104,3 +104,67 @@ convertAGB2pools <- function(oneCurve, table6, table7){
   return(biomCumulative)
 }
 
+biomProp2 <- function(table6, table7, vol, type = "volume") {
+  if (type == "volume"){
+    if(any(!(c("vol_min", "vol_max") %in% colnames(table7)))) {
+      stop("The parameter tables do not have the correct columns for ", type, " inputs.")
+    }
+    caps <- table7[,c("vol_min", "vol_max")]
+  } else if (type == "biomass") {
+    if(any(!(c("biom_min", "biom_max") %in% colnames(table7)))) {
+      stop("The parameter tables do not have the correct columns for ", type, " inputs.")
+    }
+    caps <- table7[,c("biom_min", "biom_max")]
+  } else {
+    stop("The argument type in biomProp() needs to be `volume` or `biomass`")
+  }
+  # flag if vol in below vol_min or above vol_max (when not NA)
+  # the model was developed on
+  if (length(is.na(unique(table7$vol_min))) > 0) {
+    testVec <- min(vol) < unique(table7$vol_min)
+    if (any(testVec)) {
+      message("Some volumes in the growth information provided are smaller than the minumum volume ",
+              "the proportions model was developed with.")
+    }
+  }
+  
+  if (length(is.na(unique(table7$vol_max))) > 0) {
+    testVec <- max(vol) > unique(table7$vol_max)
+    if (any(testVec)) {
+      message("Some volumes in the growth information provided are larger than the maximumum ",
+              "volume the proportions model was developed with.")
+    }
+  }
+  
+  lvol <- log(vol + 5)
+  
+  ## denominator is the same for all 4 equations
+  denom <- (1 + exp(table6[, a1] + table6[, a2] * vol + table6[, a3] * lvol) +
+              exp(table6[, b1] + table6[, b2] * vol + table6[, b3] * lvol) +
+              exp(table6[, c1] + table6[, c2] * vol + table6[, c3] * lvol))
+  
+  ## for each proportion, enforce caps per table 7
+  pstem <- 1 / denom
+  pstem[which(vol < caps[,1])] <- table7$p_sw_low
+  pstem[which(vol > caps[,2])] <- table7$p_sw_high
+  
+  pbark <- exp(table6[, a1] + table6[, a2] * vol + table6[, a3] * lvol) / denom
+  pbark[which(vol < caps[,1])] <- table7$p_sb_low
+  pbark[which(vol > caps[,2])] <- table7$p_sb_high
+  
+  pbranches <- exp(table6[, b1] + table6[, b2] * vol + table6[, b3] * lvol) / denom
+  pbranches[which(vol < caps[,1])] <- table7$p_br_low
+  pbranches[which(vol > caps[,2])] <- table7$p_br_high
+  
+  pfol <- exp(table6[, c1] + table6[, c2] * vol + table6[, c3] * lvol) / denom
+  pfol[which(vol < caps[,1])] <- table7$p_fl_low
+  pfol[which(vol > caps[,2])] <- table7$p_fl_high
+  
+  propVect <- cbind(pstem = pstem, pbark = pbark, pbranches = pbranches, pfol = pfol)
+  
+  if(any(rowSums(propVect) - 1 > 0.01)) {
+    stop("The sums of biomass proportions do not sum to 1...")
+  }
+  
+  return(propVect)
+}
