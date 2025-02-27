@@ -474,7 +474,7 @@ AnnualIncrements <- function(sim){
     
     # 1. match pixelGroups of previous year and of this year to create pixelGroups
     # for increments
-    sim$incrementPixelGroupMap <- rast(mod$pixelGroupMapTminus1)
+    sim$incrementPixelGroupMap <- mod$pixelGroupMapTminus1
     pixGr <- data.table(pixelGroupTminus1 = c(mod$pixelGroupMapTminus1[]),
                         pixelGroupT = c(sim$pixelGroupMap[])) |>
       setorder(pixelGroupT, na.last = TRUE)
@@ -485,6 +485,7 @@ AnnualIncrements <- function(sim){
     
     # 2. append the cohortPools of the previous year
     annualIncrements <- merge(pixGr, sim$cohortPools, by.x = "pixelGroupTminus1", by.y = "pixelGroup")
+    annualIncrements$age <- annualIncrements$age + 1
     setnames(annualIncrements, old = c("totMerch", "fol", "other"), new = c("totMerchTminus1", "folTminus1", "otherTminus1"))
   }
   
@@ -512,7 +513,9 @@ AnnualIncrements <- function(sim){
                               sim$cohortPools, 
                               by.x = c("pixelGroupT", "species"), 
                               by.y = c("pixelGroup", "species"),
-                              allow.cartesian = TRUE)
+                              all = TRUE)
+    annualIncrements[pixGr, on = .(pixelGroupT), incrementPixelGroup := i.incrementPixelGroup]    
+    
     # adds biomass 0 when there is a new species in a pixelGroup
     setnafill(annualIncrements, fill = 0, 
               cols=c("totMerch", "fol", "other", "totMerchTminus1", "folTminus1", "otherTminus1"))
@@ -659,11 +662,11 @@ AnnualIncrements <- function(sim){
                                  filename2 = "cohortData.csv")
   
   # TODO will be used for plotting to keep the same colors of species as in LandR modules
-  if (!suppliedElsewhere("sppColorVect", sim)){
-    sp <- sort(unique(sim$yieldSpeciesCodes$SpeciesCode))
-    sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
-    names(sim$sppColorVect) <- sp
-  }
+  # if (!suppliedElsewhere("sppColorVect", sim)){
+  #   sp <- sort(unique(sim$yieldSpeciesCodes$SpeciesCode))
+  #   sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
+  #   names(sim$sppColorVect) <- sp
+  # }
   
   return(invisible(sim))
 }
