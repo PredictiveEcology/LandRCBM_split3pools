@@ -64,6 +64,7 @@ convertAGB2pools <- function(oneCurve, table6, table7){
     )
   params6 <- EquatParams$params6
   params7 <- EquatParams$params7
+  if(any(is.na(params6)) | length(params7) == 0)
   
   # get the proportions of each pool
   pVect <- biomProp2(table6 = params6, table7 = params7, vol = oneCurve$B, type = "biomass")
@@ -140,7 +141,6 @@ biomProp2 <- function(table6, table7, vol, type = "volume") {
     }
   }
   
-  if(any(is.na(table6)) | length(table6) == 9) browser()
   
   lvol <- log(vol + 5)
   
@@ -182,16 +182,15 @@ getParameters <- function(table6, table7, canfi_species, ecozone, juris_id){
   params6 <- table6[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
   params7 <- table7[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
   
-  if(nrow(params6) == 0){
-    browser()
+  if(any(is.na(params6))){
     missing_species <- LandR::sppEquivalencies_CA[CanfiCode == spec, LandR][1]
     params6 <- table6[canfi_spec == spec & ecozone == ez,][1]
     params7 <- table7[canfi_spec == spec & ecozone == ez,][1]
-    if(nrow(params6) == 0) {
+    if(any(is.na(params6))) {
       params6 <- table6[canfi_spec == spec & juris_id == admin,][1]
       params7 <- table7[canfi_spec == spec & juris_id == admin,][1]
 
-      if(nrow(params6) == 0) {
+      if(any(is.na(params6))) {
         params6 <- table6[canfi_spec == spec,][1]
         params7 <- table7[canfi_spec == spec,][1]
         
