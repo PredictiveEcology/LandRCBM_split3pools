@@ -55,11 +55,15 @@ cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7, pixGroupCol = "pixel
 convertAGB2pools <- function(oneCurve, table6, table7){
   
   # get the parameters
-  spec <- as.integer(unique(oneCurve$canfi_species))
-  ez <- unique(oneCurve$ecozone)
-  admin <- unique(oneCurve$juris_id)
-  params6 <- table6[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
-  params7 <- table7[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
+  EquatParams <- getParameters(
+    table6,
+    table7,
+    unique(oneCurve$canfi_species), 
+    unique(oneCurve$ecozone), 
+    unique(oneCurve$juris_id)
+    )
+  params6 <- EquatParams$params6
+  params7 <- EquatParams$params7
   
   # get the proportions of each pool
   pVect <- biomProp2(table6 = params6, table7 = params7, vol = oneCurve$B, type = "biomass")
@@ -120,21 +124,23 @@ biomProp2 <- function(table6, table7, vol, type = "volume") {
   }
   # flag if vol in below vol_min or above vol_max (when not NA)
   # the model was developed on
-  if (length(is.na(unique(table7$vol_min))) > 0) {
-    testVec <- min(vol) < unique(table7$vol_min)
+  if (length(is.na(unique(caps[,1]))) > 0) {
+    testVec <- min(vol) < unique(caps[,1])
     if (any(testVec)) {
-      message("Some volumes in the growth information provided are smaller than the minumum volume ",
-              "the proportions model was developed with.")
+      message("Some ", type, "s in the growth information provided are smaller than the minimum ", type,
+              " the proportions model was developed with.")
     }
   }
   
-  if (length(is.na(unique(table7$vol_max))) > 0) {
-    testVec <- max(vol) > unique(table7$vol_max)
+  if (length(is.na(unique(caps[,2]))) > 0) {
+    testVec <- max(vol) > unique(caps[,2])
     if (any(testVec)) {
-      message("Some volumes in the growth information provided are larger than the maximumum ",
-              "volume the proportions model was developed with.")
+      message("Some ", type, "s in the growth information provided are smaller than the maximum ", type,
+              " the proportions model was developed with.")
     }
   }
+  
+  if(any(is.na(table6)) | length(table6) == 9) browser()
   
   lvol <- log(vol + 5)
   
@@ -167,4 +173,43 @@ biomProp2 <- function(table6, table7, vol, type = "volume") {
   }
   
   return(propVect)
+}
+
+getParameters <- function(table6, table7, canfi_species, ecozone, juris_id){
+  spec <- as.integer(canfi_species)
+  ez <- ecozone
+  admin <- juris_id
+  params6 <- table6[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
+  params7 <- table7[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
+  
+  if(nrow(params6) == 0){
+    browser()
+    missing_species <- LandR::sppEquivalencies_CA[CanfiCode == spec, LandR][1]
+    params6 <- table6[canfi_spec == spec & ecozone == ez,][1]
+    params7 <- table7[canfi_spec == spec & ecozone == ez,][1]
+    if(nrow(params6) == 0) {
+      params6 <- table6[canfi_spec == spec & juris_id == admin,][1]
+      params7 <- table7[canfi_spec == spec & juris_id == admin,][1]
+
+      if(nrow(params6) == 0) {
+        params6 <- table6[canfi_spec == spec,][1]
+        params7 <- table7[canfi_spec == spec,][1]
+        
+        message("No parameters for species ", missing_species, " in ecozone ", 
+                ez, " and juridiction ", juris_id, " using parameters of species ",
+                missing_species, "in ecozone ", params6$ecozone, " and juridiction ",
+                params6$juris_id, ".")
+      } else {
+        message("No parameters for species ", missing_species, " in ecozone ", 
+                ez, " using parameters of species ", missing_species, "in ecozone ", 
+                params6$ecozone, " and the same juridictions.")
+      }
+    } else {
+      message("No parameters for species ", missing_species, " in  juridiction ", 
+              juris_id, " using parameters of species ", missing_species, 
+              "the same ecozone, but in juridiction ", params6$juris_id, ".")
+    }
+  }
+  return(out = list(params6 = params6,
+                    params7 = params7))
 }

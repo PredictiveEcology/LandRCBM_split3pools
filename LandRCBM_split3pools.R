@@ -45,12 +45,6 @@ defineModule(sim, list(
   ),
   inputObjects = bindrows(
     expectsInput(
-      objectName = "canfi_species",
-      objectClass = "data.table",
-      desc = "File containing the possible species in the Boudewyn table",
-      sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo"
-    ),
-    expectsInput(
       objectName = "cbmAdmin", objectClass = "data.table",
       desc = paste("Provides equivalent between provincial boundaries,",
                    "CBM-id for provincial boundaries and CBM-spatial unit ids"),
@@ -357,7 +351,6 @@ SplitYieldTables <- function(sim) {
     pixelGroupMap = sim$yieldPixelGroupMap,
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
-    canfi_species = sim$canfi_species,
     cohortData = NULL
   )
   sim$allInfoYieldTables <- merge(sim$yieldTables, allInfoYieldTables, allow.cartesian = TRUE)
@@ -495,7 +488,6 @@ AnnualIncrements <- function(sim){
     pixelGroupMap = sim$pixelGroupMap,
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
-    canfi_species = sim$canfi_species,
     yieldSpeciesCodes = NULL
   )
   setnames(sim$allInfoCohortData, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
@@ -618,16 +610,6 @@ AnnualIncrements <- function(sim){
                                filename2 = "cbmAdmin.csv",
                                overwrite = TRUE)
   }
-  
-  if (!suppliedElsewhere("canfi_species", sim)) {
-    sim$canfi_species <- prepInputs(url = extractURL("canfi_species"),
-                                    fun = "data.table::fread",
-                                    destinationPath = inputPath(sim),
-                                    filename2 = "canfi_species.csv",
-                                    overwrite = TRUE)
-  }
-
-
   
   # 3. Yield curve data
   
