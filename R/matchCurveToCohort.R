@@ -1,4 +1,4 @@
-matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species, cohortData = NULL, yieldSpeciesCodes = NULL){
+matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, cohortData = NULL, yieldSpeciesCodes = NULL){
   if(!is.null(cohortData)){
     if (!is.null(yieldSpeciesCodes)) stop("either cohortData or yieldSpeciesCodes need to be NULL") else {
       cohort_info <- cohortData
@@ -36,12 +36,18 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
   colToKeep <- c(pixGrColumn, "abreviation", "EcoBoundaryID")
   pixelGroupEco <- pixelGroupEco[, ..colToKeep]
   pixelGroupEco <- unique(pixelGroupEco)
+
+    # 2. Species matching
+  speciesCode <- unique(cohort_info$speciesCode)
+  canfi_species <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), CanfiCode]
   
-  # 2. Species matching
-  if(any(!(c("genus", "species", "canfi_species") %in% colnames(canfi_species)))) {
-    stop("The object canfi_species needs at least the variables `genus`, `species`, `canfi_species`")
+  if(any(is.na(canfi_species))) {
+    missing_species <- speciesCode[which(is.na(canfi_species))]
+    stop("no species match found for in Boudewyn tables: ", paste(missing_species, collapse = ", "))
   }
-  sp_canfi <- matchCanfi(unique(cohort_info$speciesCode), canfi_species)
+  
+  sp_canfi <- data.table(speciesCode = speciesCode,
+                         canfi_species = canfi_species)
   
   # 3. putting it together
   allCohortInfo <- merge(cohort_info, sp_canfi, by = "speciesCode")
@@ -51,12 +57,4 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
   return(allCohortInfo)
 }
 
-matchCanfi <- function(LandR_species, canfi_species){
-  speciesCode <- LandR_species
-  NFIcode <- LandR::sppEquivalencies_CA$NFI[match(speciesCode, LandR::sppEquivalencies_CA$LandR)]
-  canfi_species$NFIcode = paste(canfi_species$genus, canfi_species$species, sep = "_")
-  canfi_code <- canfi_species$canfi_species[match(NFIcode, canfi_species$NFIcode)]
-  return(data.table(speciesCode = speciesCode,
-                    canfi_species = canfi_code))
-}
 
