@@ -123,21 +123,23 @@ biomProp2 <- function(table6, table7, vol, type = "volume") {
   }
   # flag if vol in below vol_min or above vol_max (when not NA)
   # the model was developed on
-  if (length(is.na(unique(caps[,1]))) > 0) {
-    testVec <- min(vol) < unique(caps[,1])
-    if (any(testVec)) {
-      message("Some ", type, "s in the growth information provided are smaller than the minimum ", type,
-              " the proportions model was developed with.")
-    }
-  }
-  
-  if (length(is.na(unique(caps[,2]))) > 0) {
-    testVec <- max(vol) > unique(caps[,2])
-    if (any(testVec)) {
-      message("Some ", type, "s in the growth information provided are smaller than the maximum ", type,
-              " the proportions model was developed with.")
-    }
-  }
+  # if (length(is.na(unique(caps[,1]))) > 0) {
+  #   testVec <- min(vol) < unique(caps[,1])
+  #   if (any(testVec)) {
+  #     pluralType <- ifelse(type == "volume", "volumes", "biomasses")
+  #     message("Some ", pluralType, "s in the growth information provided are smaller than the minimum ", type,
+  #             " the proportions model was developed with.")
+  #   }
+  # }
+  # 
+  # if (length(is.na(unique(caps[,2]))) > 0) {
+  #   testVec <- max(vol) > unique(caps[,2])
+  #   if (any(testVec)) {
+  #     pluralType <- ifelse(type == "volume", "volumes", "biomasses")
+  #     message("Some ", pluralType, "s in the growth information provided are smaller than the maximum ", type,
+  #             " the proportions model was developed with.")
+  #   }
+  # }
   
   
   lvol <- log(vol + 5)
