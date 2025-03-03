@@ -64,11 +64,9 @@ convertAGB2pools <- function(oneCurve, table6, table7){
     )
   params6 <- EquatParams$params6
   params7 <- EquatParams$params7
-  if(any(is.na(params6)) | length(params7) == 0)
-  
+
   # get the proportions of each pool
   pVect <- biomProp2(table6 = params6, table7 = params7, vol = oneCurve$B, type = "biomass")
-  
   totTree <-  oneCurve$B
   totalStemWood <- totTree * pVect[, 1]
   

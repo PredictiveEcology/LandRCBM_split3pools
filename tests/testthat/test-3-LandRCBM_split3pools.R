@@ -33,7 +33,6 @@ test_that("module runs with small example", {
   simTest <-  SpaDEStestMuffleOutput(
     SpaDES.core::spades(simTestInit)
   )
-  
   expect_s4_class(simTest, "simList")
   expect_equal(time(simTest)[[1]], 2016)
   
@@ -46,7 +45,7 @@ test_that("module runs with small example", {
     )
   expect_in(simTest$allInfoCohortData$pixelGroup, simTest$pixelGroupMap[])
   expect_in(simTest$allInfoCohortData$speciesCode, simTest$allInfoYieldTables$speciesCode)
-  expect_in(simTest$allInfoCohortData$canfi_species, simTest$canfi_species$canfi_species)
+  expect_in(simTest$allInfoCohortData$canfi_species, simTest$table6$canfi_spec)
   expect_true(all(simTest$allInfoCohortData$juris_id == "BC"))
   expect_true(all(simTest$allInfoCohortData$ecozone == 14))
   
@@ -59,7 +58,7 @@ test_that("module runs with small example", {
   )
   expect_in(simTest$allInfoYieldTables$yieldPixelGroup, simTest$yieldPixelGroupMap[])
   expect_in(simTest$allInfoYieldTables$cohort_id, simTest$yieldTables$cohort_id)
-  expect_in(simTest$allInfoYieldTables$canfi_species, simTest$canfi_species$canfi_species)
+  expect_in(simTest$allInfoYieldTables$canfi_species, simTest$table6$canfi_spec)
   expect_true(all(simTest$allInfoYieldTables$juris_id == "BC"))
   expect_true(all(simTest$allInfoYieldTables$ecozone == 14))
   
