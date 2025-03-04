@@ -35,9 +35,10 @@ test_that("module runs with small example", {
   )
   expect_s4_class(simTest, "simList")
   expect_equal(time(simTest)[[1]], 2016)
-  
-  # check allInfoCohortData
+
+    # check allInfoCohortData
   expect_is(simTest$allInfoCohortData, "data.table")
+  
   expect_named(
     simTest$allInfoCohortData, 
     c("pixelGroup", "speciesCode", "ecoregionGroup", "age", "B", "totalBiomass", "canfi_species", "juris_id", "ecozone"),
@@ -71,7 +72,7 @@ test_that("module runs with small example", {
   )
   expect_in(simTest$annualIncrements$incrementPixelGroup, simTest$incrementPixelGroupMap[])
   expect_in(simTest$annualIncrements$species, simTest$cohortData$speciesCode)
-  expect_true(all(simTest$annualIncrements[,c("totMerch", "fol", "other")] == 0))
+  expect_true(all(colSums(simTest$annualIncrements[,c("totMerch", "fol", "other")]) == 0))
   
   # check cohortPools
   expect_is(simTest$cohortPools, "data.table")

@@ -503,8 +503,8 @@ AnnualIncrements <- function(sim){
   if (time(sim) != start(sim)){
     annualIncrements <- merge(annualIncrements, 
                               sim$cohortPools, 
-                              by.x = c("pixelGroupT", "species"), 
-                              by.y = c("pixelGroup", "species"),
+                              by.x = c("pixelGroupT", "species", "age"), 
+                              by.y = c("pixelGroup", "species", "age"),
                               all = TRUE)
     annualIncrements[pixGr, on = .(pixelGroupT), incrementPixelGroup := i.incrementPixelGroup]    
     
@@ -519,7 +519,7 @@ AnnualIncrements <- function(sim){
     
     sim$annualIncrements <- annualIncrements[,.(incrementPixelGroup, 
                                                 species,
-                                                age = age.y, 
+                                                age = age, 
                                                 totMerch, 
                                                 fol, 
                                                 other)]    
