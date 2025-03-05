@@ -36,8 +36,17 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, cohortData = 
   colToKeep <- c(pixGrColumn, "abreviation", "EcoBoundaryID")
   pixelGroupEco <- pixelGroupEco[, ..colToKeep]
   pixelGroupEco <- unique(pixelGroupEco)
-
-    # 2. Species matching
+  
+  # add new pixelGroup for when the ecolocation for Boudewyn and for LandR do not fit.
+  if (pixGrColumn == "yieldPixelGroup"){
+    setorder(pixelGroupEco, yieldPixelGroup, abreviation, EcoBoundaryID)
+    pixelGroupEco[, poolsPixelGroup := .GRP, by = .(yieldPixelGroup, abreviation, EcoBoundaryID)] 
+  } else {
+    setorder(pixelGroupEco, pixelGroup, abreviation, EcoBoundaryID)
+    pixelGroupEco[, poolsPixelGroup := .GRP, by = .(pixelGroup, abreviation, EcoBoundaryID)] 
+  }
+  
+  # 2. Species matching
   speciesCode <- unique(cohort_info$speciesCode)
   canfi_species <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), CanfiCode]
   
@@ -52,7 +61,7 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, cohortData = 
   # 3. putting it together
   allCohortInfo <- merge(cohort_info, sp_canfi, by = "speciesCode")
   # adding other columns
-  allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = pixGrColumn, allow.cartesian = TRUE)
+  allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = pixGrColumn)
   
   return(allCohortInfo)
 }

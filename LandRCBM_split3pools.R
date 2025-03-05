@@ -225,11 +225,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     plotMaps = {
       # get the sum of each pool per pixelGroups
-      poolSum <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), by = pixelGroup, .SDcols = c("totMerch", "fol", "other")]
+      poolSum <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), by = poolsPixelGroup, .SDcols = c("totMerch", "fol", "other")]
       # rasterize
-      totMerchRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
-      folRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "fol", mapcode = "pixelGroup")
-      otherRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "other", mapcode = "pixelGroup")
+      totMerchRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "totMerch")
+      folRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "fol")
+      otherRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "other")
       
       # plot
       Plots(totMerchRast,
@@ -467,17 +467,16 @@ AnnualIncrements <- function(sim){
     
     # 1. match pixelGroups of previous year and of this year to create pixelGroups
     # for increments
-    sim$incrementPixelGroupMap <- mod$pixelGroupMapTminus1
-    pixGr <- data.table(pixelGroupTminus1 = c(mod$pixelGroupMapTminus1[]),
-                        pixelGroupT = c(sim$pixelGroupMap[])) |>
-      setorder(pixelGroupT, na.last = TRUE)
-    pixGr[, incrementPixelGroup := .GRP, by = .(pixelGroupTminus1, pixelGroupT)]
-    sim$incrementPixelGroupMap[order(sim$pixelGroupMap[])] <- pixGr$incrementPixelGroup 
-    sim$incrementPixelGroupMap <- mask(sim$incrementPixelGroupMap, mod$pixelGroupMapTminus1)
-    pixGr <- na.omit(pixGr) |> unique()
+    sim$incrementPixelGroupMap <- mod$poolsPixelGroupMapTminus1
+    sim$poolsPixelGroupMap <- mergeMaps(sim$pixelGroupMap, sim$cbmAdmin, out = "map", indexName = "poolsPixelGroup")
+    
+    incrementPixGr <- mergeMaps(sim$poolsPixelGroupMap, mod$poolsPixelGroupMapTminus1, out = "both", indexName = "incrementPixelGroup")
+    sim$incrementPixelGroupMap <- incrementPixGr$map
+    pixGr <- incrementPixGr$dt
+    colnames(pixGr) <- c("poolsPixelGroupT", "poolsPixelGroupTminus1", "incrementPixelGroup")
     
     # 2. append the cohortPools of the previous year
-    annualIncrements <- merge(pixGr, sim$cohortPools, by.x = "pixelGroupTminus1", by.y = "pixelGroup")
+    annualIncrements <- merge(pixGr, sim$cohortPools, by.x = "poolsPixelGroupTminus1", by.y = "poolsPixelGroup")
     annualIncrements$age <- annualIncrements$age + 1
     setnames(annualIncrements, old = c("totMerch", "fol", "other"), new = c("totMerchTminus1", "folTminus1", "otherTminus1"))
   }
@@ -503,10 +502,10 @@ AnnualIncrements <- function(sim){
   if (time(sim) != start(sim)){
     annualIncrements <- merge(annualIncrements, 
                               sim$cohortPools, 
-                              by.x = c("pixelGroupT", "species", "age"), 
-                              by.y = c("pixelGroup", "species", "age"),
+                              by.x = c("poolsPixelGroupT", "species", "age"), 
+                              by.y = c("poolsPixelGroup", "species", "age"),
                               all = TRUE)
-    annualIncrements[pixGr, on = .(pixelGroupT), incrementPixelGroup := i.incrementPixelGroup]    
+    annualIncrements[pixGr, on = .(poolsPixelGroupT), incrementPixelGroup := i.incrementPixelGroup]    
     
     # adds biomass 0 when there is a new species in a pixelGroup
     setnafill(annualIncrements, fill = 0, 
@@ -524,7 +523,7 @@ AnnualIncrements <- function(sim){
                                                 fol, 
                                                 other)]    
   }
-  mod$pixelGroupMapTminus1 <- sim$pixelGroupMap
+  mod$poolsPixelGroupMapTminus1 <- sim$poolsPixelGroupMap
   return(invisible(sim))
 }
 

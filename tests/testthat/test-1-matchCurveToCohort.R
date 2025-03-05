@@ -26,7 +26,7 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
                              spuRaster, 
                              admin, 
                              yieldSpeciesCodes = yieldSpeciesCodes)
-  expect_named(out1, c("yieldPixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID"))
+  expect_named(out1, c("yieldPixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID", "poolsPixelGroup"))
   
   # species match
   expect_true(all(!is.na(out1$canfi_species)))
@@ -53,7 +53,7 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
                              spuRaster, 
                              admin, 
                              cohortData = cohortData)
-  expect_named(out2, c("pixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID"))
+  expect_named(out2, c("pixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID", "poolsPixelGroup"))
   expect_equivalent(out1, out2)
   
   # test errors and warnings
