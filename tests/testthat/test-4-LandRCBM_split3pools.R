@@ -41,7 +41,7 @@ test_that("module runs with small example", {
   
   expect_named(
     simTest$allInfoCohortData, 
-    c("pixelGroup", "speciesCode", "ecoregionGroup", "age", "B", "totalBiomass", "canfi_species", "juris_id", "ecozone"),
+    c("pixelGroup", "poolsPixelGroup", "speciesCode", "ecoregionGroup", "age", "B", "totalBiomass", "canfi_species", "juris_id", "ecozone"),
     ignore.order = TRUE
     )
   expect_in(simTest$allInfoCohortData$pixelGroup, simTest$pixelGroupMap[])
@@ -78,13 +78,13 @@ test_that("module runs with small example", {
   expect_is(simTest$cohortPools, "data.table")
   expect_named(
     simTest$cohortPools, 
-    c("species", "age", "pixelGroup", "totMerch", "fol", "other"),
+    c("species", "age", "poolsPixelGroup", "totMerch", "fol", "other"),
     ignore.order = TRUE
   )
-  setorder(simTest$cohortPools, pixelGroup, species)
-  setorder(simTest$allInfoCohortData, pixelGroup, speciesCode)
-  expect_equivalent(simTest$cohortPools[,c("species", "age", "pixelGroup")], 
-                    simTest$allInfoCohortData[,c("speciesCode", "age", "pixelGroup")])
+  setorder(simTest$cohortPools, poolsPixelGroup, species)
+  setorder(simTest$allInfoCohortData, poolsPixelGroup, speciesCode)
+  expect_equivalent(simTest$cohortPools[,c("species", "age", "poolsPixelGroup")], 
+                    simTest$allInfoCohortData[,c("speciesCode", "age", "poolsPixelGroup")])
   expect_equivalent(rowSums(simTest$cohortPools[,c("totMerch", "fol", "other")]), simTest$allInfoCohortData$B/2)
   
   #check cumPools

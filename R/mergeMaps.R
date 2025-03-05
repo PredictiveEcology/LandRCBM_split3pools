@@ -1,7 +1,7 @@
 mergeMaps <- function(map1, map2, out = "map", indexName = "newIndex") {
-  dt <- data.table(index1 = as.integet(map1[]),
+  dt <- data.table(index1 = as.integer(map1[]),
                    index2 = as.integer(map2[])) |>
-    setorder(col1, na.last = TRUE)
+    setorder(index1, na.last = TRUE)
   dt[, newIndex := .GRP, by = .(index1, index2)]
   
   if(out == "map") {

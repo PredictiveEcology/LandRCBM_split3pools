@@ -2,7 +2,7 @@
 #    FORCS parameters are hard coded: minimum merchantable age, a, and b (used 
 #    to calculate the proportion of merchantable Stemwood)
 
-cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7, pixGroupCol = "pixelGroup"){
+cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7, pixGroupCol = "poolsPixelGroup"){
   counter <- 0L
   cumBiomList <- list()
   

@@ -463,12 +463,12 @@ PlotYieldTablesPools <- function(sim){
 
 # Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
+  sim$poolsPixelGroupMap <- mergeMaps(sim$pixelGroupMap, sim$spuRaster, out = "map", indexName = "poolsPixelGroup")
   if (time(sim) != start(sim)){
     
     # 1. match pixelGroups of previous year and of this year to create pixelGroups
     # for increments
     sim$incrementPixelGroupMap <- mod$poolsPixelGroupMapTminus1
-    sim$poolsPixelGroupMap <- mergeMaps(sim$pixelGroupMap, sim$cbmAdmin, out = "map", indexName = "poolsPixelGroup")
     
     incrementPixGr <- mergeMaps(sim$poolsPixelGroupMap, mod$poolsPixelGroupMapTminus1, out = "both", indexName = "incrementPixelGroup")
     sim$incrementPixelGroupMap <- incrementPixGr$map
@@ -493,7 +493,6 @@ AnnualIncrements <- function(sim){
   
   # convert m^2 into tonnes/ha
   sim$allInfoCohortData$B <- sim$allInfoCohortData$B/100
-  
   sim$cohortPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
                                        table6 = sim$table6,
                                        table7 = sim$table7)
