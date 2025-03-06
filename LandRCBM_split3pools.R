@@ -122,13 +122,13 @@ defineModule(sim, list(
     createsOutput(
       objectName = "annualIncrements",
       objectClass = "data.table",
-      desc = paste("Increments for each cohort and pixelGroups (in tonnes of carbon/ha).")
+      desc = paste("Increments for each cohort and incrementPixelGroups (in tonnes of carbon/ha).")
     ),
     
     createsOutput(
       objectName = "cohortPools",
       objectClass = "data.table",
-      desc = "Cumulative biomass in each aboveground pool for each cohort per pixelGroup."
+      desc = "Cumulative biomass in each aboveground pool for each cohort per poolsPixelGroup."
     ),
     createsOutput(
       objectName = "cumPools",
@@ -138,8 +138,14 @@ defineModule(sim, list(
     ),
     createsOutput(
       objectName = "incrementPixelGroupMap",
-      objectClass = "spatRaster",
-      desc = "Raster of the pixelGroups for the annual increments."
+      objectClass = "SpatRaster",
+      desc = "Raster of the pixel groups for the annual increments."
+    ),
+    createsOutput(
+      objectName = "poolsPixelGroupMap",
+      objectClass = "SpatRaster",
+      desc = paste("Pixels sharing species composition, LandR ecolocation, and CBM",
+                   "spatial unit. Links to the columns poolPixelGroups in cohortPools.")
     ),
     createsOutput(
       objectName = "summaryAGBPoolsLandscape",
