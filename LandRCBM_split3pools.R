@@ -45,12 +45,6 @@ defineModule(sim, list(
   ),
   inputObjects = bindrows(
     expectsInput(
-      objectName = "canfi_species",
-      objectClass = "data.table",
-      desc = "File containing the possible species in the Boudewyn table",
-      sourceURL = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo"
-    ),
-    expectsInput(
       objectName = "cbmAdmin", objectClass = "data.table",
       desc = paste("Provides equivalent between provincial boundaries,",
                    "CBM-id for provincial boundaries and CBM-spatial unit ids"),
@@ -128,13 +122,13 @@ defineModule(sim, list(
     createsOutput(
       objectName = "annualIncrements",
       objectClass = "data.table",
-      desc = paste("Increments for each cohort and pixelGroups (in tonnes of carbon/ha).")
+      desc = paste("Increments for each cohort and incrementPixelGroups (in tonnes of carbon/ha).")
     ),
     
     createsOutput(
       objectName = "cohortPools",
       objectClass = "data.table",
-      desc = "Cumulative biomass in each aboveground pool for each cohort per pixelGroup."
+      desc = "Cumulative biomass in each aboveground pool for each cohort per poolsPixelGroup."
     ),
     createsOutput(
       objectName = "cumPools",
@@ -144,8 +138,14 @@ defineModule(sim, list(
     ),
     createsOutput(
       objectName = "incrementPixelGroupMap",
-      objectClass = "spatRaster",
-      desc = "Raster of the pixelGroups for the annual increments."
+      objectClass = "SpatRaster",
+      desc = "Raster of the pixel groups for the annual increments."
+    ),
+    createsOutput(
+      objectName = "poolsPixelGroupMap",
+      objectClass = "SpatRaster",
+      desc = paste("Pixels sharing species composition, LandR ecolocation, and CBM",
+                   "spatial unit. Links to the columns poolPixelGroups in cohortPools.")
     ),
     createsOutput(
       objectName = "summaryAGBPoolsLandscape",
@@ -231,11 +231,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     plotMaps = {
       # get the sum of each pool per pixelGroups
-      poolSum <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), by = pixelGroup, .SDcols = c("totMerch", "fol", "other")]
+      poolSum <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), by = poolsPixelGroup, .SDcols = c("totMerch", "fol", "other")]
       # rasterize
-      totMerchRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "totMerch", mapcode = "pixelGroup")
-      folRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "fol", mapcode = "pixelGroup")
-      otherRast <- rasterizeReduced(poolSum, sim$pixelGroupMap, newRasterCols = "other", mapcode = "pixelGroup")
+      totMerchRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "totMerch")
+      folRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "fol")
+      otherRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "other")
       
       # plot
       Plots(totMerchRast,
@@ -357,7 +357,6 @@ SplitYieldTables <- function(sim) {
     pixelGroupMap = sim$yieldPixelGroupMap,
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
-    canfi_species = sim$canfi_species,
     cohortData = NULL
   )
   sim$allInfoYieldTables <- merge(sim$yieldTables, allInfoYieldTables, allow.cartesian = TRUE)
@@ -470,21 +469,21 @@ PlotYieldTablesPools <- function(sim){
 
 # Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
+  sim$poolsPixelGroupMap <- mergeMaps(sim$pixelGroupMap, sim$spuRaster, out = "map", indexName = "poolsPixelGroup")
   if (time(sim) != start(sim)){
     
     # 1. match pixelGroups of previous year and of this year to create pixelGroups
     # for increments
-    sim$incrementPixelGroupMap <- rast(mod$pixelGroupMapTminus1)
-    pixGr <- data.table(pixelGroupTminus1 = c(mod$pixelGroupMapTminus1[]),
-                        pixelGroupT = c(sim$pixelGroupMap[])) |>
-      setorder(pixelGroupT, na.last = TRUE)
-    pixGr[, incrementPixelGroup := .GRP, by = .(pixelGroupTminus1, pixelGroupT)]
-    sim$incrementPixelGroupMap[order(sim$pixelGroupMap[])] <- pixGr$incrementPixelGroup 
-    sim$incrementPixelGroupMap <- mask(sim$incrementPixelGroupMap, mod$pixelGroupMapTminus1)
-    pixGr <- na.omit(pixGr) |> unique()
+    sim$incrementPixelGroupMap <- mod$poolsPixelGroupMapTminus1
+    
+    incrementPixGr <- mergeMaps(sim$poolsPixelGroupMap, mod$poolsPixelGroupMapTminus1, out = "both", indexName = "incrementPixelGroup")
+    sim$incrementPixelGroupMap <- incrementPixGr$map
+    pixGr <- incrementPixGr$dt
+    colnames(pixGr) <- c("poolsPixelGroupT", "poolsPixelGroupTminus1", "incrementPixelGroup")
     
     # 2. append the cohortPools of the previous year
-    annualIncrements <- merge(pixGr, sim$cohortPools, by.x = "pixelGroupTminus1", by.y = "pixelGroup")
+    annualIncrements <- merge(pixGr, sim$cohortPools, by.x = "poolsPixelGroupTminus1", by.y = "poolsPixelGroup")
+    annualIncrements$age <- annualIncrements$age + 1
     setnames(annualIncrements, old = c("totMerch", "fol", "other"), new = c("totMerchTminus1", "folTminus1", "otherTminus1"))
   }
   
@@ -494,14 +493,12 @@ AnnualIncrements <- function(sim){
     pixelGroupMap = sim$pixelGroupMap,
     spuRaster = sim$spuRaster,
     cbmAdmin = sim$cbmAdmin,
-    canfi_species = sim$canfi_species,
     yieldSpeciesCodes = NULL
   )
   setnames(sim$allInfoCohortData, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
   # convert m^2 into tonnes/ha
   sim$allInfoCohortData$B <- sim$allInfoCohortData$B/100
-  
   sim$cohortPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
                                        table6 = sim$table6,
                                        table7 = sim$table7)
@@ -510,9 +507,11 @@ AnnualIncrements <- function(sim){
   if (time(sim) != start(sim)){
     annualIncrements <- merge(annualIncrements, 
                               sim$cohortPools, 
-                              by.x = c("pixelGroupT", "species"), 
-                              by.y = c("pixelGroup", "species"),
-                              allow.cartesian = TRUE)
+                              by.x = c("poolsPixelGroupT", "species", "age"), 
+                              by.y = c("poolsPixelGroup", "species", "age"),
+                              all = TRUE)
+    annualIncrements[pixGr, on = .(poolsPixelGroupT), incrementPixelGroup := i.incrementPixelGroup]    
+    
     # adds biomass 0 when there is a new species in a pixelGroup
     setnafill(annualIncrements, fill = 0, 
               cols=c("totMerch", "fol", "other", "totMerchTminus1", "folTminus1", "otherTminus1"))
@@ -524,12 +523,12 @@ AnnualIncrements <- function(sim){
     
     sim$annualIncrements <- annualIncrements[,.(incrementPixelGroup, 
                                                 species,
-                                                age = age.y, 
+                                                age = age, 
                                                 totMerch, 
                                                 fol, 
                                                 other)]    
   }
-  mod$pixelGroupMapTminus1 <- sim$pixelGroupMap
+  mod$poolsPixelGroupMapTminus1 <- sim$poolsPixelGroupMap
   return(invisible(sim))
 }
 
@@ -616,16 +615,6 @@ AnnualIncrements <- function(sim){
                                overwrite = TRUE)
   }
   
-  if (!suppliedElsewhere("canfi_species", sim)) {
-    sim$canfi_species <- prepInputs(url = extractURL("canfi_species"),
-                                    fun = "data.table::fread",
-                                    destinationPath = inputPath(sim),
-                                    filename2 = "canfi_species.csv",
-                                    overwrite = TRUE)
-  }
-
-
-  
   # 3. Yield curve data
   
   # actual yiel curves
@@ -659,11 +648,11 @@ AnnualIncrements <- function(sim){
                                  filename2 = "cohortData.csv")
   
   # TODO will be used for plotting to keep the same colors of species as in LandR modules
-  if (!suppliedElsewhere("sppColorVect", sim)){
-    sp <- sort(unique(sim$yieldSpeciesCodes$SpeciesCode))
-    sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
-    names(sim$sppColorVect) <- sp
-  }
+  # if (!suppliedElsewhere("sppColorVect", sim)){
+  #   sp <- sort(unique(sim$yieldSpeciesCodes$SpeciesCode))
+  #   sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
+  #   names(sim$sppColorVect) <- sp
+  # }
   
   return(invisible(sim))
 }

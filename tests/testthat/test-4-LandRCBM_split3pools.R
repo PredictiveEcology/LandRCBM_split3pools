@@ -33,20 +33,20 @@ test_that("module runs with small example", {
   simTest <-  SpaDEStestMuffleOutput(
     SpaDES.core::spades(simTestInit)
   )
-  
   expect_s4_class(simTest, "simList")
   expect_equal(time(simTest)[[1]], 2016)
-  
-  # check allInfoCohortData
+
+    # check allInfoCohortData
   expect_is(simTest$allInfoCohortData, "data.table")
+  
   expect_named(
     simTest$allInfoCohortData, 
-    c("pixelGroup", "speciesCode", "ecoregionGroup", "age", "B", "totalBiomass", "canfi_species", "juris_id", "ecozone"),
+    c("pixelGroup", "poolsPixelGroup", "speciesCode", "ecoregionGroup", "age", "B", "totalBiomass", "canfi_species", "juris_id", "ecozone"),
     ignore.order = TRUE
     )
   expect_in(simTest$allInfoCohortData$pixelGroup, simTest$pixelGroupMap[])
   expect_in(simTest$allInfoCohortData$speciesCode, simTest$allInfoYieldTables$speciesCode)
-  expect_in(simTest$allInfoCohortData$canfi_species, simTest$canfi_species$canfi_species)
+  expect_in(simTest$allInfoCohortData$canfi_species, simTest$table6$canfi_spec)
   expect_true(all(simTest$allInfoCohortData$juris_id == "BC"))
   expect_true(all(simTest$allInfoCohortData$ecozone == 14))
   
@@ -59,7 +59,7 @@ test_that("module runs with small example", {
   )
   expect_in(simTest$allInfoYieldTables$yieldPixelGroup, simTest$yieldPixelGroupMap[])
   expect_in(simTest$allInfoYieldTables$cohort_id, simTest$yieldTables$cohort_id)
-  expect_in(simTest$allInfoYieldTables$canfi_species, simTest$canfi_species$canfi_species)
+  expect_in(simTest$allInfoYieldTables$canfi_species, simTest$table6$canfi_spec)
   expect_true(all(simTest$allInfoYieldTables$juris_id == "BC"))
   expect_true(all(simTest$allInfoYieldTables$ecozone == 14))
   
@@ -72,19 +72,19 @@ test_that("module runs with small example", {
   )
   expect_in(simTest$annualIncrements$incrementPixelGroup, simTest$incrementPixelGroupMap[])
   expect_in(simTest$annualIncrements$species, simTest$cohortData$speciesCode)
-  expect_true(all(simTest$annualIncrements[,c("totMerch", "fol", "other")] == 0))
+  expect_true(all(colSums(simTest$annualIncrements[,c("totMerch", "fol", "other")]) == 0))
   
   # check cohortPools
   expect_is(simTest$cohortPools, "data.table")
   expect_named(
     simTest$cohortPools, 
-    c("species", "age", "pixelGroup", "totMerch", "fol", "other"),
+    c("species", "age", "poolsPixelGroup", "totMerch", "fol", "other"),
     ignore.order = TRUE
   )
-  setorder(simTest$cohortPools, pixelGroup, species)
-  setorder(simTest$allInfoCohortData, pixelGroup, speciesCode)
-  expect_equivalent(simTest$cohortPools[,c("species", "age", "pixelGroup")], 
-                    simTest$allInfoCohortData[,c("speciesCode", "age", "pixelGroup")])
+  setorder(simTest$cohortPools, poolsPixelGroup, species)
+  setorder(simTest$allInfoCohortData, poolsPixelGroup, speciesCode)
+  expect_equivalent(simTest$cohortPools[,c("species", "age", "poolsPixelGroup")], 
+                    simTest$allInfoCohortData[,c("speciesCode", "age", "poolsPixelGroup")])
   expect_equivalent(rowSums(simTest$cohortPools[,c("totMerch", "fol", "other")]), simTest$allInfoCohortData$B/2)
   
   #check cumPools

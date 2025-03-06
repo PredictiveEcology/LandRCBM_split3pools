@@ -3,28 +3,6 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   # test matchCanfi
   LandR_species = c("Abie_las", "Betu_pap", "Pice_gla")
   
-  
-  canfi_sp <- reproducible::prepInputs(
-    url = "https://drive.google.com/file/d/1l9b9V7czTZdiCIFX3dsvAsKpQxmN-Epo",
-    fun = "data.table::fread",
-    filename2 = "canfi_species.csv",
-    destinationPath = spadesTestPaths$temp$inputs,
-    overwrite = TRUE
-  )
-  
-  out <- matchCanfi(LandR_species, canfi_sp)
-  
-  expect_equal(out$speciesCode, LandR_species)
-  expect_equal(out$canfi_species, c(304, 1303, 105))
-  expect_named(out, c("speciesCode", "canfi_species"))
-  
-  # try adding a species that is not in canfi
-  LandR_species = c("Abie_las", "Betu_pap", "Pice_gla", "Betu_sp")
-  
-  out <- matchCanfi(LandR_species, canfi_sp)
-  expect_equal(out$canfi_species, c(304, 1303, 105, NA))
-  
-  # test matchCurveCohort with yieldCurves
   pixelGroupMap <- terra::rast(
     matrix(data = c(rep(1,3), rep(2, 6), rep(3, 2), rep(4,5)), nrow = 4, ncol = 4)
   )
@@ -47,9 +25,15 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   out1 <- matchCurveToCohort(pixelGroupMap, 
                              spuRaster, 
                              admin, 
-                             canfi_sp, 
                              yieldSpeciesCodes = yieldSpeciesCodes)
-  expect_named(out1, c("yieldPixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID"))
+  expect_named(out1, c("yieldPixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID", "poolsPixelGroup"))
+  
+  # species match
+  expect_true(all(!is.na(out1$canfi_species)))
+  expect_true(all(out1$canfi_species[out1$speciesCode == "Abie_las"] == 304))
+  expect_true(all(out1$canfi_species[out1$speciesCode == "Betu_pap"] == 1303))
+  expect_true(all(out1$canfi_species[out1$speciesCode == "Pice_gla"] == 105))
+  
   # spatial matching
   expect_true(all(out1$abreviation[out1$yieldPixelGroup == 1] == "a"))
   expect_true(all(out1$abreviation[out1$yieldPixelGroup %in% c(3,4)] == "b"))
@@ -68,38 +52,49 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   out2 <- matchCurveToCohort(pixelGroupMap, 
                              spuRaster, 
                              admin, 
-                             canfi_sp, 
                              cohortData = cohortData)
-  expect_named(out2, c("pixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID"))
+  expect_named(out2, c("pixelGroup", "speciesCode", "canfi_species", "abreviation", "EcoBoundaryID", "poolsPixelGroup"))
   expect_equivalent(out1, out2)
   
   # test errors and warnings
   expect_error(matchCurveToCohort(pixelGroupMap, 
                                   spuRaster, 
                                   admin, 
-                                  canfi_sp, 
                                   cohortData = cohortData,
                                   yieldSpeciesCodes = yieldSpeciesCodes))
   # missing variable
   expect_error(matchCurveToCohort(pixelGroupMap, 
                                   spuRaster, 
                                   admin, 
-                                  yieldSpeciesCodes = yieldSpeciesCodes))
-  expect_error(matchCurveToCohort(pixelGroupMap, 
-                                  spuRaster, 
-                                  admin, 
-                                  canfi_sp, 
                                   yieldSpeciesCodes = yieldSpeciesCodes[,2]))
   expect_error(matchCurveToCohort(pixelGroupMap, 
                                   spuRaster, 
-                                  admin, 
-                                  canfi_sp[,-1], 
+                                  admin[,-2], 
                                   yieldSpeciesCodes = yieldSpeciesCodes))
+  
+  # missing species
+  LandR_species = c("Abie_las", "Betu_pap", "NOTASPECIES")
+  yieldSpeciesCodes <- data.table(
+    expand.grid(speciesCode = LandR_species, 
+                yieldPixelGroup = c(1:4))
+  )
   expect_error(matchCurveToCohort(pixelGroupMap, 
                                   spuRaster, 
-                                  admin[,-2], 
-                                  canfi_sp, 
+                                  admin, 
                                   yieldSpeciesCodes = yieldSpeciesCodes))
+  
+  # species as more than a single entry in sppEquivalencies_CA
+  LandR_species = c("Abie_las", "Betu_pap", "Alnu_inc")
+  yieldSpeciesCodes <- data.table(
+    expand.grid(speciesCode = LandR_species, 
+                yieldPixelGroup = c(1:4))
+  )
+  out <- matchCurveToCohort(pixelGroupMap, 
+                            spuRaster, 
+                            admin, 
+                            yieldSpeciesCodes = yieldSpeciesCodes)
+  expect_equal(sort(unique(out$canfi_species)), c(304, 1303, 1805))
+  
   
   # different raster sizes
   spuRaster <- terra::rast(
@@ -108,6 +103,5 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   expect_error(matchCurveToCohort(pixelGroupMap, 
                                   spuRaster, 
                                   admin, 
-                                  canfi_sp, 
                                   yieldSpeciesCodes = yieldSpeciesCodes))
 })

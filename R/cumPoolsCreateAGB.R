@@ -2,7 +2,7 @@
 #    FORCS parameters are hard coded: minimum merchantable age, a, and b (used 
 #    to calculate the proportion of merchantable Stemwood)
 
-cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7, pixGroupCol = "pixelGroup"){
+cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7, pixGroupCol = "poolsPixelGroup"){
   counter <- 0L
   cumBiomList <- list()
   
@@ -55,15 +55,18 @@ cumPoolsCreateAGB <- function(allInfoAGBin, table6, table7, pixGroupCol = "pixel
 convertAGB2pools <- function(oneCurve, table6, table7){
   
   # get the parameters
-  spec <- as.integer(unique(oneCurve$canfi_species))
-  ez <- unique(oneCurve$ecozone)
-  admin <- unique(oneCurve$juris_id)
-  params6 <- table6[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
-  params7 <- table7[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
-  
+  EquatParams <- getParameters(
+    table6,
+    table7,
+    unique(oneCurve$canfi_species), 
+    unique(oneCurve$ecozone), 
+    unique(oneCurve$juris_id)
+    )
+  params6 <- EquatParams$params6
+  params7 <- EquatParams$params7
+
   # get the proportions of each pool
-  pVect <- CBMutils::biomProp(table6 = params6, table7 = params7, vol = oneCurve$B)
-  
+  pVect <- biomProp2(table6 = params6, table7 = params7, vol = oneCurve$B, type = "biomass")
   totTree <-  oneCurve$B
   totalStemWood <- totTree * pVect[, 1]
   
@@ -104,3 +107,108 @@ convertAGB2pools <- function(oneCurve, table6, table7){
   return(biomCumulative)
 }
 
+biomProp2 <- function(table6, table7, vol, type = "volume") {
+  if (type == "volume"){
+    if(any(!(c("vol_min", "vol_max") %in% colnames(table7)))) {
+      stop("The parameter tables do not have the correct columns for ", type, " inputs.")
+    }
+    caps <- table7[,c("vol_min", "vol_max")]
+  } else if (type == "biomass") {
+    if(any(!(c("biom_min", "biom_max") %in% colnames(table7)))) {
+      stop("The parameter tables do not have the correct columns for ", type, " inputs.")
+    }
+    caps <- table7[,c("biom_min", "biom_max")]
+  } else {
+    stop("The argument type in biomProp() needs to be `volume` or `biomass`")
+  }
+  # flag if vol in below vol_min or above vol_max (when not NA)
+  # the model was developed on
+  # if (length(is.na(unique(caps[,1]))) > 0) {
+  #   testVec <- min(vol) < unique(caps[,1])
+  #   if (any(testVec)) {
+  #     pluralType <- ifelse(type == "volume", "volumes", "biomasses")
+  #     message("Some ", pluralType, "s in the growth information provided are smaller than the minimum ", type,
+  #             " the proportions model was developed with.")
+  #   }
+  # }
+  # 
+  # if (length(is.na(unique(caps[,2]))) > 0) {
+  #   testVec <- max(vol) > unique(caps[,2])
+  #   if (any(testVec)) {
+  #     pluralType <- ifelse(type == "volume", "volumes", "biomasses")
+  #     message("Some ", pluralType, "s in the growth information provided are smaller than the maximum ", type,
+  #             " the proportions model was developed with.")
+  #   }
+  # }
+  
+  
+  lvol <- log(vol + 5)
+  
+  ## denominator is the same for all 4 equations
+  denom <- (1 + exp(table6[, a1] + table6[, a2] * vol + table6[, a3] * lvol) +
+              exp(table6[, b1] + table6[, b2] * vol + table6[, b3] * lvol) +
+              exp(table6[, c1] + table6[, c2] * vol + table6[, c3] * lvol))
+  
+  ## for each proportion, enforce caps per table 7
+  pstem <- 1 / denom
+  pstem[which(vol < caps[,1])] <- table7$p_sw_low
+  pstem[which(vol > caps[,2])] <- table7$p_sw_high
+  
+  pbark <- exp(table6[, a1] + table6[, a2] * vol + table6[, a3] * lvol) / denom
+  pbark[which(vol < caps[,1])] <- table7$p_sb_low
+  pbark[which(vol > caps[,2])] <- table7$p_sb_high
+  
+  pbranches <- exp(table6[, b1] + table6[, b2] * vol + table6[, b3] * lvol) / denom
+  pbranches[which(vol < caps[,1])] <- table7$p_br_low
+  pbranches[which(vol > caps[,2])] <- table7$p_br_high
+  
+  pfol <- exp(table6[, c1] + table6[, c2] * vol + table6[, c3] * lvol) / denom
+  pfol[which(vol < caps[,1])] <- table7$p_fl_low
+  pfol[which(vol > caps[,2])] <- table7$p_fl_high
+  
+  propVect <- cbind(pstem = pstem, pbark = pbark, pbranches = pbranches, pfol = pfol)
+  
+  if(any(rowSums(propVect) - 1 > 0.01)) {
+    stop("The sums of biomass proportions do not sum to 1...")
+  }
+  
+  return(propVect)
+}
+
+getParameters <- function(table6, table7, canfi_species, ecozone, juris_id){
+  spec <- as.integer(canfi_species)
+  ez <- ecozone
+  admin <- juris_id
+  params6 <- table6[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
+  params7 <- table7[canfi_spec == spec & ecozone == ez & juris_id == admin,][1]
+  
+  if(any(is.na(params6))){
+    missing_species <- LandR::sppEquivalencies_CA[CanfiCode == spec, LandR][1]
+    params6 <- table6[canfi_spec == spec & ecozone == ez,][1]
+    params7 <- table7[canfi_spec == spec & ecozone == ez,][1]
+    if(any(is.na(params6))) {
+      params6 <- table6[canfi_spec == spec & juris_id == admin,][1]
+      params7 <- table7[canfi_spec == spec & juris_id == admin,][1]
+
+      if(any(is.na(params6))) {
+        params6 <- table6[canfi_spec == spec,][1]
+        params7 <- table7[canfi_spec == spec,][1]
+        
+        message("No parameters for species ", missing_species, " in ecozone ", 
+                ez, " and juridiction ", juris_id, " using parameters of species ",
+                missing_species, "in ecozone ", params6$ecozone, " and juridiction ",
+                params6$juris_id, ".")
+      } else {
+        message("No parameters for species ", missing_species, " in ecozone ", 
+                ez, " using parameters of species ", missing_species, "in ecozone ", 
+                params6$ecozone, " and the same juridictions.")
+      }
+    } else {
+      message("No parameters for species ", missing_species, " in  juridiction ", 
+              juris_id, " using parameters of species ", missing_species, 
+              "the same ecozone, but in juridiction ", params6$juris_id, ".")
+    }
+  }
+  return(out = list(params6 = params6,
+                    params7 = params7))
+}

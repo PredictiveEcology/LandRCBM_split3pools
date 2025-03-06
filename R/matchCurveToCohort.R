@@ -1,4 +1,4 @@
-matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species, cohortData = NULL, yieldSpeciesCodes = NULL){
+matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, cohortData = NULL, yieldSpeciesCodes = NULL){
   if(!is.null(cohortData)){
     if (!is.null(yieldSpeciesCodes)) stop("either cohortData or yieldSpeciesCodes need to be NULL") else {
       cohort_info <- cohortData
@@ -37,26 +37,33 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, canfi_species
   pixelGroupEco <- pixelGroupEco[, ..colToKeep]
   pixelGroupEco <- unique(pixelGroupEco)
   
-  # 2. Species matching
-  if(any(!(c("genus", "species", "canfi_species") %in% colnames(canfi_species)))) {
-    stop("The object canfi_species needs at least the variables `genus`, `species`, `canfi_species`")
+  # add new pixelGroup for when the ecolocation for Boudewyn and for LandR do not fit.
+  if (pixGrColumn == "yieldPixelGroup"){
+    setorder(pixelGroupEco, yieldPixelGroup, abreviation, EcoBoundaryID)
+    pixelGroupEco[, poolsPixelGroup := .GRP, by = .(yieldPixelGroup, abreviation, EcoBoundaryID)] 
+  } else {
+    setorder(pixelGroupEco, pixelGroup, abreviation, EcoBoundaryID)
+    pixelGroupEco[, poolsPixelGroup := .GRP, by = .(pixelGroup, abreviation, EcoBoundaryID)] 
   }
-  sp_canfi <- matchCanfi(unique(cohort_info$speciesCode), canfi_species)
+  
+  # 2. Species matching
+  speciesCode <- unique(cohort_info$speciesCode)
+  canfi_species <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), CanfiCode]
+  
+  if(any(is.na(canfi_species))) {
+    missing_species <- speciesCode[which(is.na(canfi_species))]
+    stop("no species match found for in Boudewyn tables: ", paste(missing_species, collapse = ", "))
+  }
+  
+  sp_canfi <- data.table(speciesCode = speciesCode,
+                         canfi_species = canfi_species)
   
   # 3. putting it together
   allCohortInfo <- merge(cohort_info, sp_canfi, by = "speciesCode")
   # adding other columns
-  allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = pixGrColumn, allow.cartesian = TRUE)
+  allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = pixGrColumn)
   
   return(allCohortInfo)
 }
 
-matchCanfi <- function(LandR_species, canfi_species){
-  speciesCode <- LandR_species
-  NFIcode <- LandR::sppEquivalencies_CA$NFI[match(speciesCode, LandR::sppEquivalencies_CA$LandR)]
-  canfi_species$NFIcode = paste(canfi_species$genus, canfi_species$species, sep = "_")
-  canfi_code <- canfi_species$canfi_species[match(NFIcode, canfi_species$NFIcode)]
-  return(data.table(speciesCode = speciesCode,
-                    canfi_species = canfi_code))
-}
 

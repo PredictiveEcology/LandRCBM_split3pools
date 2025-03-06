@@ -33,23 +33,23 @@ test_that("functions to split AGB into pools work", {
                 age = c(3,15, 35),
                 ecozone = 4,
                 juris_id = "AB",
-                pixelGroup = c(1,2)
+                poolsPixelGroup = c(1,2)
     ) 
   )
   dt$B <- round(runif(nrow(dt), 1, 100))
   dt$speciesCode[dt$canfi_species == 204] <- "PINU_CON"
   dt$speciesCode[dt$canfi_species == 1201] <- "POPU_TRE"
-  setorder(dt, speciesCode, age, pixelGroup)
+  setorder(dt, speciesCode, age, poolsPixelGroup)
   
   out2 <- cumPoolsCreateAGB(dt, table6 = table6, table7 = table7)
   
   expect_equal(rowSums(out2[,c("totMerch", "fol", "other")]), dt$B/2)
   expect_true(all(out2[dt$age < 15, "totMerch"] ==  0))
   expect_equal(nrow(out2), nrow(dt))
-  expect_true(all(colnames(out2) == c("species", "age", "pixelGroup", "totMerch", "fol", "other")))
+  expect_true(all(colnames(out2) == c("species", "age", "poolsPixelGroup", "totMerch", "fol", "other")))
   
-  dt$yieldPixelGroup <- dt$pixelGroup
-  dt$pixelGroup <- NULL
+  dt$yieldPixelGroup <- dt$poolsPixelGroup
+  dt$poolsPixelGroup <- NULL
   dt$cohort_id <- c(1:nrow(dt))
   out3 <- cumPoolsCreateAGB(dt, table6 = table6, table7 = table7, pixGroupCol = "yieldPixelGroup")
   expect_equal(out3$gcids, dt$cohort_id)
