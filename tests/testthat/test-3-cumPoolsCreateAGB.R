@@ -18,7 +18,7 @@ test_that("functions to split AGB into pools work", {
     ) 
   )
   dt$B <- round(runif(nrow(dt), 1, 100))
-  out <- convertAGB2pools(dt, table6 = table6, table7 = table7)
+  out <- CBMutils::convertAGB2pools(dt, table6 = table6, table7 = table7)
   
   #sum of the pools equal total AGB
   expect_equal(rowSums(out), dt$B)
@@ -41,7 +41,7 @@ test_that("functions to split AGB into pools work", {
   dt$speciesCode[dt$canfi_species == 1201] <- "POPU_TRE"
   setorder(dt, speciesCode, age, poolsPixelGroup)
   
-  out2 <- cumPoolsCreateAGB(dt, table6 = table6, table7 = table7)
+  out2 <- CBMutils::cumPoolsCreateAGB(dt, table6 = table6, table7 = table7)
   
   expect_equal(rowSums(out2[,c("totMerch", "fol", "other")]), dt$B/2)
   expect_true(all(out2[dt$age < 15, "totMerch"] ==  0))
@@ -51,7 +51,7 @@ test_that("functions to split AGB into pools work", {
   dt$yieldPixelGroup <- dt$poolsPixelGroup
   dt$poolsPixelGroup <- NULL
   dt$cohort_id <- c(1:nrow(dt))
-  out3 <- cumPoolsCreateAGB(dt, table6 = table6, table7 = table7, pixGroupCol = "yieldPixelGroup")
+  out3 <- CBMutils::cumPoolsCreateAGB(dt, table6 = table6, table7 = table7, pixGroupCol = "yieldPixelGroup")
   expect_equal(out3$gcids, dt$cohort_id)
   expect_equivalent(out2, out3[,-c("gcids")])
 })
