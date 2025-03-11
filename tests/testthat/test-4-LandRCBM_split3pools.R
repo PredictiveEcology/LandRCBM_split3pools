@@ -54,7 +54,7 @@ test_that("module runs with small example", {
   expect_is(simTest$allInfoYieldTables, "data.table")
   expect_named(
     simTest$allInfoYieldTables, 
-    c("yieldPixelGroup", "cohort_id", "speciesCode", "age", "B", "canfi_species", "juris_id", "ecozone"),
+    c("yieldPixelGroup", "cohort_id", "speciesCode", "age", "B", "canfi_species", "juris_id", "ecozone", "poolsPixelGroup"),
     ignore.order = TRUE
   )
   expect_in(simTest$allInfoYieldTables$yieldPixelGroup, simTest$yieldPixelGroupMap[])
