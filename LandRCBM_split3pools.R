@@ -381,7 +381,7 @@ SplitYieldTables <- function(sim) {
   # convert m^2 into tonnes/ha
   sim$allInfoYieldTables$B <- sim$allInfoYieldTables$B/100
   
-  cumPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
+  cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
                                 table6 = sim$table6,
                                 table7 = sim$table7,
                                 pixGroupCol = "yieldPixelGroup")
@@ -499,7 +499,7 @@ AnnualIncrements <- function(sim){
   
   # convert m^2 into tonnes/ha
   sim$allInfoCohortData$B <- sim$allInfoCohortData$B/100
-  sim$cohortPools <- cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
+  sim$cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
                                        table6 = sim$table6,
                                        table7 = sim$table7)
   

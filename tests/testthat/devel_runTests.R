@@ -26,5 +26,4 @@ testthat::test_dir(file.path("tests", "testthat"), reporter = testthat::SummaryR
 ## RUN INDIVIDUAL TESTS ----
 testthat::test_file(file.path("tests", "testthat", "test-1-mergeMaps.R"))
 testthat::test_file(file.path("tests", "testthat", "test-2-matchCurveToCohort.R"))
-testthat::test_file(file.path("tests", "testthat", "test-3-cumPoolsCreateAGB.R"))
-testthat::test_file(file.path("tests", "testthat", "test-4-LandRCBM_split3pools.R"))
+testthat::test_file(file.path("tests", "testthat", "test-3-LandRCBM_split3pools.R"))
