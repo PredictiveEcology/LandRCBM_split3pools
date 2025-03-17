@@ -45,122 +45,108 @@ defineModule(sim, list(
   ),
   inputObjects = bindrows(
     expectsInput(
-      objectName = "cbmAdmin", objectClass = "data.table",
-      desc = paste("Provides equivalent between provincial boundaries,",
-                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
-      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
-    ),    
-    expectsInput(
-      ## TODO Yield module will be modified to provide required format
-      objectName = "yieldTables", objectClass = "data.table",
-      desc = "A data.table supplying the requirements for CBM growth increments object.",
-      "Columns are `yieldPixelGroup`, `age`, `cohort_id`, `B`. The last ",
-      "column represent aboveground biomass of that `cohort_id` at that age.",
-      sourceURL = "https://drive.google.com/file/d/1IP2MxX3QYnH-D9eO_q0VATwvKw72xvDi/view?usp=drive_link"
-    ),
-    expectsInput(
-      objectName = "yieldSpeciesCodes", objectClass = "data.table",
-      desc = paste("An object with 3 columns: `yieldPixelGroup`, `cohort_id`, and `speciesCode`. This provides the species ",
-                   "mapping for the `yieldTables` object"),
-      sourceURL = "https://drive.google.com/file/d/1cFvyTMQVdpSC3efnq5289iZ8jXNgAx-7/view?usp=drive_link"
-    ),
-    expectsInput(
-      objectName = "yieldPixelGroupMap", objectClass = "SpatRaster",
-      desc = paste("Map of the pixel groups of the yieldTable and yieldSpeciesCodes objects"),
-      sourceURL = "https://drive.google.com/file/d/1Tk2ubV3Pe87SliDSwwkoaNxbzn2nqojB/view?usp=drive_link"
-    ),
-    expectsInput(
       objectName = "cohortData", objectClass = "data.table",
-      desc = "Above ground biomass (g/m^2) of cohorts in pixel groups",
+      desc = "Above ground biomass (g/m^2) of cohorts in pixel groups.",
       sourceURL = "https://drive.google.com/file/d/17VSBMgnvJtcDYgeaLXZWUA36DbsnLDyF/view?usp=drive_link" 
     ),
     expectsInput(
+      objectName = "ecozones", objectClass = "data.table",
+      desc = paste("A data.table with the ecozone for each pixelId. Used to determine",
+                   "the equation parameters to split the above ground biomass into",
+                   "carbon pools."),
+      sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
+    ),
+    expectsInput(
+      objectName = "juridictions", objectClass = "data.table",
+      desc = paste("A data.table with the province/territory for each pixelId.", 
+                   "Used to determine the equation parameters to split the above", 
+                   "ground biomass into carbon pools."),
+      sourceURL = "https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lpr_000a21a_e.zip"
+    ),
+    expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
-      desc = "PixelGroup map from LandR",
+      desc = paste("PixelGroup map from LandR. Group of pixels that shares the same.",
+                   "cohort composition"),
       sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
-      desc = "template raster to use for simulations; defaults to RIA study area", ## TODO
+      desc = "Template raster to use for simulations; defaults is the RIA study area.", 
       sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
     ),
     expectsInput(
-      objectName = "spuRaster", objectClass = "SpatRaster",
-      desc = "Raster has spatial units for each pixel",
-      sourceURL = "https://drive.google.com/file/d/1D3O0Uj-s_QEgMW7_X-NhVsEZdJ29FBed"
+      objectName = "studyArea", objectClass =  "SpatRaster",
+      desc = "Polygon to use as the study area; default is the RIA study area.", 
+      sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
     ),
-    expectsInput("sppColorVect", "character",
-                 desc = paste("A named vector of colors to use for plotting.")),
     expectsInput(
       objectName = "table6", objectClass = "data.table",
       desc = paste("Proportion model parameters similar to Boudewyn et al 2007,",
-                   "but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha"),
+                   "but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha."),
       sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv"
     ),
     expectsInput(
       objectName = "table7", objectClass = "data.table",
       desc = paste("Caps on proportion models similar to Boudewyn et al. 2007",
                    "but recalculated using total biomass (metric tonnes of tree biomass/ha)",
-                   "instead of vol/ha"),
+                   "instead of vol/ha."),
       sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv"
+    ),
+    expectsInput(
+      objectName = "yieldTablesCumulative", objectClass = "data.table",
+      desc = paste("Yield Tables intended to supply the requirements for a CBM spinup.",
+                   "Columns are `gcid`, `age`, `speciesCode`, `biomass`. `gcid` is the",
+                   "growth curve identifier that depends on species combination.",
+                   "`biomass` is the biomass for the given species at the pixel age."),
+      sourceURL = "https://drive.google.com/file/d/1IP2MxX3QYnH-D9eO_q0VATwvKw72xvDi/view?usp=drive_link"
+    ),
+    expectsInput(
+      objectName = "yieldTablesId", objectClass = "data.table",
+      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelId` and `gcid`.")
     )
+    # expectsInput("sppColorVect", "character",
+    #              desc = paste("A named vector of colors to use for plotting."))
   ),
   outputObjects = bindrows(
     createsOutput(
-      objectName = "allInfoCohortData",
+      objectName = "aboveGroundBiomass",
       objectClass = "data.table",
-      desc = paste("Above ground biomass (metric tonnes of tree biomass/ha) of each cohort per",
-                   "pixelGroup provided by LandR with additionnal information to",
-                   "match with Boudewyn et al. equations. Gets updated each timestep")
+      desc = paste("Above ground biomass (metric tonnes of tree biomass/ha) in each pool",
+                   "for each pixel and cohort. Gets updated at each timestep.",
+                   "Columns are `pixelId`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
     ),
     createsOutput(
-      objectName = "allInfoYieldTables",
+      objectName = "aboveGroundIncrements",
       objectClass = "data.table",
-      desc = paste("Yield table provided by the biomass_yieldTables module with",
-                   "additionnal information to match with Boudewyn et al. equations.")
+      desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
+                   "for each pixel and cohort. Gets updated at each timestep.",
+                   "Columns are `pixelId`, `speciesCode`, `age`, `merchInc`, `foliageInc`, and `otherInc`.")
     ),    
     createsOutput(
-      objectName = "annualIncrements",
+      objectName = "summaryAGB",
       objectClass = "data.table",
-      desc = paste("Increments for each cohort and incrementPixelGroups (in tonnes of carbon/ha).")
+      desc = paste("Sum of biomass and increments for each species and above ground", 
+                   "pool at each timestep across the landscape. Columns are `year`,",
+                   "`speciesCode`, `merch`, `foliage`, `other`, merchInc`,",
+                   "`foliageInc`, and `otherInc`.")
     ),
-    
     createsOutput(
-      objectName = "cohortPools",
+      objectName = "yieldTablesCumulative",
       objectClass = "data.table",
-      desc = "Cumulative biomass in each aboveground pool for each cohort per poolsPixelGroup."
+      desc = paste("Yield tables divided into above ground pools. Columns are",
+                   "`gcid`, `age`, `speciesCode`, `merch`, `foliage`, `other`.)")
     ),
     createsOutput(
-      objectName = "cumPools",
+      objectName = "yieldTablesId",
       objectClass = "data.table",
-      desc = paste("Cumulative biomass in each aboveground biomass pool for each",
-                   "yield curve (in tonnes of carbon/ha).")
+      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelId` and `gcid`.")
     ),
     createsOutput(
-      objectName = "incrementPixelGroupMap",
-      objectClass = "SpatRaster",
-      desc = "Raster of the pixel groups for the annual increments."
-    ),
-    createsOutput(
-      objectName = "poolsPixelGroupMap",
-      objectClass = "SpatRaster",
-      desc = paste("Pixels sharing species composition, LandR ecolocation, and CBM",
-                   "spatial unit. Links to the columns poolPixelGroups in cohortPools.")
-    ),
-    createsOutput(
-      objectName = "summaryAGBPoolsLandscape",
-      objectClass = "ggplot",
-      desc = "Sum biomass for each of the three pools on the landscape per year."
-    ),
-    createsOutput(
-      objectName = "summaryAGBPoolsSpecies",
+      objectName = "yieldTablesIncrements",
       objectClass = "data.table",
-      desc = "Biomass of each of the AG pools per species and year."
-    ),
-    createsOutput(
-      objectName = "yieldIncrements",
-      objectClass = "data.table",
-      desc = "Increments for each yield curve (in tonnes of carbon/ha)."
+      desc = paste("Yield tables divided into above ground pools and represented",
+                   "yearly increments. Columns are `gcid`, `age`, `speciesCode`,",
+                   "`merch`, `foliage`, `other`.")
     )
   )
 ))
