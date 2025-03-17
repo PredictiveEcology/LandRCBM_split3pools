@@ -75,7 +75,7 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
     ),
     expectsInput(
-      objectName = "studyArea", objectClass =  "SpatRaster",
+      objectName = "studyArea", objectClass =  "sfc",
       desc = "Polygon to use as the study area; default is the RIA study area.", 
       sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
     ),
@@ -522,7 +522,6 @@ AnnualIncrements <- function(sim){
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   
   # 1. Spatial information
-  
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(
       url = extractURL("rasterToMatch"),
@@ -532,48 +531,62 @@ AnnualIncrements <- function(sim){
     ) |> Cache()
   }
   
-  # pixel groups from vegetation data that gets updated annually
-  if (!suppliedElsewhere("pixelGroupMap", sim))
-    sim$pixelGroupMap <- prepInputs(url = extractURL("pixelGroupMap"),
-                                    destinationPath = inputPath(sim),
-                                    fun = "terra::rast",
-                                    rasterToMatch = sim$rasterToMatch,
-                                    useCache = TRUE,
-                                    overwrite = TRUE)
-  
-  # pixel groups for yield curves
-  if (!suppliedElsewhere("yieldPixelGroupMap", sim))
-    sim$yieldPixelGroupMap <- prepInputs(url = extractURL("yieldPixelGroupMap"),
-                                         destinationPath = inputPath(sim),
-                                         fun = "terra::rast",
-                                         rasterToMatch = sim$rasterToMatch,
-                                         useCache = TRUE,
-                                         overwrite = TRUE)
-  
-  # spatial unit raster to match data to parameters
-  if (!suppliedElsewhere("spuRaster", sim)){
-    
-    if (!suppliedElsewhere("spuRasterURL", sim, where = "user")) message(
-      "User has not supplied a spatial units raster ('spuRaster' or 'spuRasterURL'). ",
-      "Default for Canada will be used.")
-    
-    spuSF <- prepInputs(
+  if (!suppliedElsewhere("studyArea", sim)) {
+    sim$rasterToMatch <- prepInputs(
+      url = extractURL("studyArea"),
+      fun = "sf::st_read",
       destinationPath = inputPath(sim),
-      url         = extractURL("spuRaster"),
-      filename1   = "spUnit_Locator.zip",
-      alsoExtract = "similar",
-      fun         = "sf::st_read",
-      to = sim$rasterToMatch,
-      overwrite      = TRUE
-    ) |> Cache()
-    
-    sim$spuRaster <- terra::rasterize(
-      terra::vect(spuSF),
-      sim$rasterToMatch,
-      field = "spu_id"
+      overwrite = TRUE
     ) |> Cache()
   }
   
+  # pixel groups from vegetation data that gets updated annually
+  if (!suppliedElsewhere("pixelGroupMap", sim)) {
+    sim$pixelGroupMap <- prepInputs(
+      url = extractURL("pixelGroupMap"),
+      destinationPath = inputPath(sim),
+      fun = "terra::rast",
+      to = sim$rasterToMatch,
+      overwrite = TRUE
+    ) |> Cache()
+  }
+
+  # ecozones
+  if (!suppliedElsewhere("ecozones", sim)) {
+    ecozones <- prepInputs(
+      url = extractURL("ecozones"),
+      destinationPath = inputPath(sim),
+      fun = "terra::vect",
+      to = sim$studyArea,
+      overwrite = TRUE
+    ) |> Cache()
+    ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
+    sim$ecozones <- data.table(
+      ecozone = as.integer(ez[])
+    )
+    sim$ecozones[, pixelId := .I] |> na.omit()
+    setcolorder(sim$ecozones, c("pixelId", "ecozone"))
+  }
+  
+  if (!suppliedElsewhere("juridictions", sim)) {
+    dt <- data.table(
+      PRUID = as.factor(c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62)),
+      juris_id = c("NL", "PE", "NS", "NB", "QC", "ON", "MB", "SK", "AB", "BC", "YT", "NT", "NU")
+    )
+    
+    juridictions <- prepInputs(
+      url = extractURL("juridictions"),
+      destinationPath = inputPath(sim),
+      fun = "terra::vect",
+      to = sim$studyArea,
+      overwrite = TRUE
+    ) |> Cache()
+    juris_id <- rasterize(juridictions, sim$rasterToMatch, field = "PRUID")
+    juris_id <- as.data.table(juris_id)
+    sim$juridictions <- dt[juris_id, on = "PRUID"]
+    sim$juridictions[, pixelId := .I] |> na.omit()
+    setcolorder(sim$juridictions, c("pixelId", "PRUID", "juris_id"))
+  }
   
   # 2. NFI params
   if (!suppliedElsewhere("table6", sim)) {
@@ -581,7 +594,7 @@ AnnualIncrements <- function(sim){
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table6_tb.csv",
-                             overwrite = TRUE)
+                             overwrite = TRUE) |> Cache()
   }
   
   if (!suppliedElsewhere("table7", sim)) {
@@ -589,38 +602,28 @@ AnnualIncrements <- function(sim){
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv",
-                             overwrite = TRUE)
+                             overwrite = TRUE) |> Cache()
   }
   
-  # 3. CBM and NFI admin
-  if (!suppliedElsewhere("cbmAdmin", sim)) {
-    sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
-                               fun = "data.table::fread",
-                               destinationPath = inputPath(sim),
-                               filename2 = "cbmAdmin.csv",
-                               overwrite = TRUE)
-  }
   
   # 3. Yield curve data
   
   # actual yiel curves
-  if (!suppliedElsewhere("yieldTables", sim)) {
-    sim$yieldTables <- prepInputs(url = extractURL("yieldTables"),
+  if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
+    sim$yieldTables <- prepInputs(url = extractURL("yieldTablesCumulative"),
                                   fun = "data.table::fread",
                                   destinationPath = inputPath(sim),
-                                  filename2 = "yieldTables.csv",
-                                  overwrite = TRUE)
-    sim$yieldTables <- sim$yieldTables[yieldPixelGroup %in% sim$yieldPixelGroupMap[]]
+                                  filename2 = "yieldTablesCumulative.csv",
+                                  overwrite = TRUE) |> Cache()
   }
   
   # reference for species to cohort_id
-  if (!suppliedElsewhere("yieldSpeciesCodes", sim)) {
-    sim$yieldSpeciesCodes <- prepInputs(url = extractURL("yieldSpeciesCodes"),
+  if (!suppliedElsewhere("yieldTablesId", sim)) {
+    sim$yieldSpeciesCodes <- prepInputs(url = extractURL("yieldTablesId"),
                                         fun = "data.table::fread",
                                         destinationPath = inputPath(sim),
-                                        filename2 = "yieldSpeciesCodes.csv",
-                                        overwrite = TRUE)
-    sim$yieldSpeciesCodes <- sim$yieldSpeciesCodes[yieldPixelGroup %in% sim$yieldPixelGroupMap[]]
+                                        filename2 = "yieldTablesId.csv",
+                                        overwrite = TRUE) |> Cache()
   }
 
 
@@ -631,7 +634,7 @@ AnnualIncrements <- function(sim){
                                  destinationPath = inputPath(sim),
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
-                                 filename2 = "cohortData.csv")
+                                 filename2 = "cohortData.csv") |> Cache()
   
   # TODO will be used for plotting to keep the same colors of species as in LandR modules
   # if (!suppliedElsewhere("sppColorVect", sim)){
