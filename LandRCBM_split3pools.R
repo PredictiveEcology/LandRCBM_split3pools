@@ -72,12 +72,12 @@ defineModule(sim, list(
     expectsInput(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
       desc = "Template raster to use for simulations; defaults is the RIA study area.", 
-      sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
+      sourceURL = "https://drive.google.com/file/d/1LUEiVMUWd_rlG9AAFan7zKyoUs22YIX2/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
       desc = "Polygon to use as the study area; default is the RIA study area.", 
-      sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
+      sourceURL = "https://drive.google.com/file/d/1M8jGAuq1wuavSb40c-s9HKyigCuTt9Rf/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "table6", objectClass = "data.table",
@@ -338,16 +338,32 @@ SplitYieldTables <- function(sim) {
   # with the yieldPixelGroup and speciesCode. yieldPixelGroup gives us the location. 
   # Location let's us figure out which ecozone, and admin. The canfi_species have 
   # numbers which we need to match with the parameters.
-  allInfoYieldTables <- matchCurveToCohort(
-    yieldSpeciesCodes = sim$yieldSpeciesCodes,
-    pixelGroupMap = sim$yieldPixelGroupMap,
-    spuRaster = sim$spuRaster,
-    cbmAdmin = sim$cbmAdmin,
-    cohortData = NULL
-  )
-  sim$allInfoYieldTables <- merge(sim$yieldTables, allInfoYieldTables, allow.cartesian = TRUE)
   
-  setnames(sim$allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
+  # Spatial Matching
+  spatialDT <- spatialMatch(
+    pixelGroupMap = sim$yieldTablesId,
+    juridictions = sim$juridictions,
+    ecozones = sim$ecozones
+  )
+  
+  spatialDT[, gcid := .GRP, by = .(gcid, ecozone, juris_id)]
+  
+  # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
+  # We should get a number of gcid >= than the number before the spatial matching.
+  sim$yieldTablesId <- spatialDT[, .c(pixelId, gcid)] |> na.omit()
+  
+  spatialUnits <- unique(spatialDT[, pixelId := NULL])
+  
+  allInfoYieldTables <- addSpatialUnits(
+    cohortData = sim$yieldTablesCumulative,
+    spatialUnits = spatialUnits
+  )
+  
+  allInfoYieldTables <- addCanfiCode(
+    cohortData = allInfoYieldTables
+  )
+  
+  setnames(allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
   
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
