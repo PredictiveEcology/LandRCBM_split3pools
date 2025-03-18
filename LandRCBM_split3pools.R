@@ -335,7 +335,7 @@ SplitYieldTables <- function(sim) {
   ##############################################################################
   # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
-  # with the yieldPixelGroup and speciesCode. yieldPixelGroup gives us the location. 
+  # with the yieldTablesId and speciesCode. yieldTablesId gives us the location. 
   # Location let's us figure out which ecozone, and admin. The canfi_species have 
   # numbers which we need to match with the parameters.
   
@@ -370,7 +370,7 @@ SplitYieldTables <- function(sim) {
   # Calculating the yieldTablesCumulative
   
   # set correct column names
-  setnames(allInfoYieldTables, c("juridiction", "biomass", "gcid"), c("juris_id", "B", "yieldPixelGroup"))
+  setnames(allInfoYieldTables, c("juridiction", "biomass"), c("juris_id", "B"))
   
   # convert m^2 into tonnes/ha
   allInfoYieldTables$B <- allInfoYieldTables$B/100
@@ -378,9 +378,8 @@ SplitYieldTables <- function(sim) {
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
                                 table6 = sim$table6,
                                 table7 = sim$table7,
-                                pixGroupCol = "yieldPixelGroup")
-  
-  setnames(cumPools)
+                                pixGroupCol = "gcid")
+  browser()
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
   colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
   
@@ -529,7 +528,6 @@ AnnualIncrements <- function(sim){
 
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
-  
   # 1. Spatial information
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(
@@ -541,7 +539,7 @@ AnnualIncrements <- function(sim){
   }
   
   if (!suppliedElsewhere("studyArea", sim)) {
-    sim$rasterToMatch <- prepInputs(
+    sim$studyArea <- prepInputs(
       url = extractURL("studyArea"),
       fun = "sf::st_read",
       destinationPath = inputPath(sim),
@@ -596,7 +594,6 @@ AnnualIncrements <- function(sim){
     sim$juridictions[, pixelId := .I] |> na.omit()
     setcolorder(sim$juridictions, c("pixelId", "PRUID", "juris_id"))
   }
-  
   # 2. NFI params
   if (!suppliedElsewhere("table6", sim)) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
