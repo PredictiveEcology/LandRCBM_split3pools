@@ -1,13 +1,13 @@
 spatialMatch <- function(pixelGroupMap, juridictions, ecozones){
-  if(is.data.table(pixelGroups)) {
-    if(all(c("pixelId", "gcid") %in% colnames(pixelGroups))) {
+  if(is.data.table(pixelGroupMap)) {
+    if(all(c("pixelId", "gcid") %in% names(pixelGroupMap))) {
       spatialMatch <- pixelGroupMap
     } else {
       stop("The data table pixelGroupMap need to have the column `pixelId`and `gcid`")
     }
   } else if (inherits(pixelGroupMap, "SpatRaster")) {
     spatialMatch <- data.table(
-      pixelGroup = as.integer(pixelGroupMap[]),
+      pixelGroup = as.integer(pixelGroupMap[])
     ) 
     spatialMatch[, pixelId := .I] |> na.omit()
   } else {
@@ -29,12 +29,16 @@ addSpatialUnits <- function(cohortData, spatialUnits) {
   if ("gcid" %in% names(spatialUnits)) {
     if("gcid" %in% names(cohortData)){
       allInfoCohortData <- merge(cohortData, spatialUnits, by = "gcid", allow.cartesian = TRUE)
+      allInfoCohortData[, gcid := NULL]
+      setnames(allInfoCohortData, old = "newgcid", new = "gcid")
     } else {
       stop("The object cohortData need the column gcid")
     }
   } else if ("pixelGroup" %in% colnames(spatialUnits)) {
     if("pixelGroup" %in% names(cohortData)){
       allInfoCohortData <- merge(cohortData, spatialUnits, by = "pixelGroup", allow.cartesian = TRUE)
+      allInfoCohortData[, pixelGroup := NULL]
+      setnames(allInfoCohortData, old = "poolPixelGroup", new = "pixelGroup")
     } else {
       stop("The object cohortData need the column pixelGroup")
     }
@@ -44,7 +48,7 @@ addSpatialUnits <- function(cohortData, spatialUnits) {
   return(allInfoCohortData)
 }
 
-allInfoYieldTables <- addCanfiCode(cohortData){
+addCanfiCode <- function(cohortData){
   speciesCode <- unique(cohortData$speciesCode)
   canfi_species <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), CanfiCode]
   

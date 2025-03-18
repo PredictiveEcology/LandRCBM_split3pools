@@ -344,13 +344,13 @@ SplitYieldTables <- function(sim) {
     pixelGroupMap = sim$yieldTablesId,
     juridictions = sim$juridictions,
     ecozones = sim$ecozones
-  )
+  ) |> na.omit()
   
-  spatialDT[, gcid := .GRP, by = .(gcid, ecozone, juris_id)]
+  spatialDT[, newgcid := .GRP, by = .(gcid, ecozone, juridiction)]
   
   # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
   # We should get a number of gcid >= than the number before the spatial matching.
-  sim$yieldTablesId <- spatialDT[, .c(pixelId, gcid)] |> na.omit()
+  sim$yieldTablesId <- spatialDT[, .(pixelId, gcid = newgcid)] 
   
   spatialUnits <- unique(spatialDT[, pixelId := NULL])
   
@@ -359,35 +359,28 @@ SplitYieldTables <- function(sim) {
     spatialUnits = spatialUnits
   )
   
+  # add the species code in canfi
   allInfoYieldTables <- addCanfiCode(
     cohortData = allInfoYieldTables
   )
   
-  setnames(allInfoYieldTables, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
-  
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
   
-  # Calculating the cumPools
+  # Calculating the yieldTablesCumulative
   
-  ##TODO
-  ## add new functions to CBMutils. Only two of the three functions needed to be
-  ## modified to adapt to AGB instead of vol inputs. These are in the R/ of this
-  ## module
-  
-  ### three functions are involved:
-  # - cumPoolsCreateAGB.R (modified from cumPoolsCreate)
-  # - convertM3biom (modified from cumPoolsCreate)
-  # - biomProp (as is from CBMutils)
+  # set correct column names
+  setnames(allInfoYieldTables, c("juridiction", "biomass", "gcid"), c("juris_id", "B", "yieldPixelGroup"))
   
   # convert m^2 into tonnes/ha
-  sim$allInfoYieldTables$B <- sim$allInfoYieldTables$B/100
+  allInfoYieldTables$B <- allInfoYieldTables$B/100
   
-  cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = sim$allInfoYieldTables,
+  cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
                                 table6 = sim$table6,
                                 table7 = sim$table7,
                                 pixGroupCol = "yieldPixelGroup")
   
+  setnames(cumPools)
   cbmAboveGroundPoolColNames <- "totMerch|fol|other"
   colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
   
