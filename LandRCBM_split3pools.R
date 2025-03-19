@@ -332,7 +332,7 @@ PlotYieldTables <- function(sim){
 }
 
 SplitYieldTables <- function(sim) {
-  
+  browser()
   ##############################################################################
   # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
@@ -347,7 +347,7 @@ SplitYieldTables <- function(sim) {
     ecozones = sim$ecozones
   ) |> na.omit()
   
-  spatialDT[, newgcid := .GRP, by = .(gcid, ecozone, juridiction)]
+  spatialDT[, newgcid := .GRP, by = .(gcid, ecozone, juris_id)]
   
   # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
   # We should get a number of gcid >= than the number before the spatial matching.
@@ -371,7 +371,7 @@ SplitYieldTables <- function(sim) {
   # Calculating the yieldTablesCumulative
   
   # set correct column names
-  setnames(allInfoYieldTables, c("juridiction", "biomass"), c("juris_id", "B"))
+  setnames(allInfoYieldTables, c("biomass"), c("B"))
   
   # convert m^2 into tonnes/ha
   allInfoYieldTables$B <- allInfoYieldTables$B/100
@@ -380,9 +380,6 @@ SplitYieldTables <- function(sim) {
                                 table6 = sim$table6,
                                 table7 = sim$table7,
                                 pixGroupCol = "gcid")
-  browser()
-  cbmAboveGroundPoolColNames <- "totMerch|fol|other"
-  colNames <- grep(cbmAboveGroundPoolColNames, colnames(cumPools), value = TRUE)
   
   #TODO
   # MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
@@ -391,28 +388,27 @@ SplitYieldTables <- function(sim) {
   ### if not, we need to extrapolate to make them annual
   
   # add missing years (e.g., Boudewyn equation do not handle age 0)
-  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = "gcids"]
-  fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcids"]
-  carbonVars <- data.table(gcids = unique(fill0s$gcids),
-                           totMerch = 0,
-                           fol = 0,
+  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("gcid", "speciesCode")]
+  fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = c("gcid", "speciesCode")]
+  add0s <- data.table(gcid = fill0s$gcid,
+                           speciesCode = fill0s$speciesCode,
+                           age = fill0s$age,
+                           merch = 0,
+                           foliage = 0,
                            other = 0 )
   
-  fiveOf7cols <- fill0s[carbonVars, on = "gcids"]
-  
-  otherVars <- cumPools[,.(yieldPixelGroup = unique(yieldPixelGroup), species = unique(species)), by = "gcids"]
-  add0s <- fiveOf7cols[otherVars, on = "gcids"]
-  sim$cumPools <- rbind(cumPools,add0s)
-  set(sim$cumPools, NULL, "age", as.numeric(sim$cumPools$age))
-  setorderv(sim$cumPools, c("gcids", "age"))
+  sim$yieldTablesCumulative <- rbind(cumPools,add0s)
+  setcolorder(sim$yieldTablesCumulative, c("gcid", "speciesCode", "age"))
+  setorderv(sim$yieldTablesCumulative, c("gcid", "speciesCode", "age"))
   
   # 3 Calculating Increments
-  incCols <- c("incMerch", "incFol", "incOther")
+  incCols <- c("merchInc", "foliageInc", "otherInc")
+  poolCols <- c("merch", "foliage", "other")
   # This line calculates the first difference of each colNames, shifting it down 
   # by one row and filling the first entry with NA.
-  sim$cumPools[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = colNames,
-               by = eval("gcids")]
-  sim$yieldIncrements <- sim$cumPools[,.(gcids, yieldPixelGroup, age, species, incMerch, incFol, incOther)]
+  yieldIncrements <- sim$yieldTablesCumulative[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
+               by = c("gcid", "speciesCode")]
+  sim$yieldIncrements <- yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)]
   
   return(invisible(sim))
 }
@@ -565,20 +561,18 @@ AnnualIncrements <- function(sim){
       url = extractURL("ecozones"),
       destinationPath = inputPath(sim),
       fun = "terra::vect",
-      to = sim$studyArea,
+      to = sf::st_buffer(sim$studyArea, res(sim$rasterToMatch)[1]),
       overwrite = TRUE
     ) |> Cache()
     ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
-    sim$ecozones <- data.table(
-      ecozone = as.integer(ez[])
-    )
-    sim$ecozones[, pixelId := .I] |> na.omit()
+    sim$ecozones <- data.table(ecozone = as.integer(ez[]))
+    sim$ecozones <- sim$ecozones[, pixelId := .I] |> na.omit()
     setcolorder(sim$ecozones, c("pixelId", "ecozone"))
   }
   
   if (!suppliedElsewhere("juridictions", sim)) {
     dt <- data.table(
-      PRUID = as.factor(c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62)),
+      PRUID = c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62),
       juris_id = c("NL", "PE", "NS", "NB", "QC", "ON", "MB", "SK", "AB", "BC", "YT", "NT", "NU")
     )
     
@@ -586,13 +580,14 @@ AnnualIncrements <- function(sim){
       url = extractURL("juridictions"),
       destinationPath = inputPath(sim),
       fun = "terra::vect",
-      to = sim$studyArea,
+      to = sf::st_buffer(sim$studyArea, res(sim$rasterToMatch)[1]),
       overwrite = TRUE
     ) |> Cache()
     juris_id <- rasterize(juridictions, sim$rasterToMatch, field = "PRUID")
-    juris_id <- as.data.table(juris_id)
+    juris_id <- as.data.table(juris_id, na.rm = FALSE)
+    juris_id$PRUID <- as.integer(as.character(juris_id$PRUID))
     sim$juridictions <- dt[juris_id, on = "PRUID"]
-    sim$juridictions[, pixelId := .I] |> na.omit()
+    sim$juridictions <- sim$juridictions[, pixelId := .I] |> na.omit()
     setcolorder(sim$juridictions, c("pixelId", "PRUID", "juris_id"))
   }
   # 2. NFI params
@@ -615,9 +610,9 @@ AnnualIncrements <- function(sim){
   
   # 3. Yield curve data
   
-  # actual yiel curves
+  # actual yield curves
   if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
-    sim$yieldTables <- prepInputs(url = extractURL("yieldTablesCumulative"),
+    sim$yieldTablesCumulative <- prepInputs(url = extractURL("yieldTablesCumulative"),
                                   fun = "data.table::fread",
                                   destinationPath = inputPath(sim),
                                   filename2 = "yieldTablesCumulative.csv",
@@ -626,7 +621,7 @@ AnnualIncrements <- function(sim){
   
   # reference for species to cohort_id
   if (!suppliedElsewhere("yieldTablesId", sim)) {
-    sim$yieldSpeciesCodes <- prepInputs(url = extractURL("yieldTablesId"),
+    sim$yieldTablesId <- prepInputs(url = extractURL("yieldTablesId"),
                                         fun = "data.table::fread",
                                         destinationPath = inputPath(sim),
                                         filename2 = "yieldTablesId.csv",
