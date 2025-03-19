@@ -47,7 +47,7 @@ defineModule(sim, list(
     expectsInput(
       objectName = "cohortData", objectClass = "data.table",
       desc = "Above ground biomass (g/m^2) of cohorts in pixel groups.",
-      sourceURL = "https://drive.google.com/file/d/17VSBMgnvJtcDYgeaLXZWUA36DbsnLDyF/view?usp=drive_link" 
+      sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
     expectsInput(
       objectName = "ecozones", objectClass = "data.table",
@@ -67,7 +67,7 @@ defineModule(sim, list(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = paste("PixelGroup map from LandR. Group of pixels that shares the same.",
                    "cohort composition"),
-      sourceURL = "https://drive.google.com/file/d/1zJRi968_FPD68fY6v_8-_kgAIOAYUyJ2/view?usp=drive_link"
+      sourceURL = "https://drive.google.com/file/d/1oCL8EgZ6l8Bn0q1iJuu2yP3M7khUtTO4/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
@@ -98,11 +98,12 @@ defineModule(sim, list(
                    "Columns are `gcid`, `age`, `speciesCode`, `biomass`. `gcid` is the",
                    "growth curve identifier that depends on species combination.",
                    "`biomass` is the biomass for the given species at the pixel age."),
-      sourceURL = "https://drive.google.com/file/d/1IP2MxX3QYnH-D9eO_q0VATwvKw72xvDi/view?usp=drive_link"
+      sourceURL = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "yieldTablesId", objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelId` and `gcid`.")
+      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelId` and `gcid`."),
+      sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
     )
     # expectsInput("sppColorVect", "character",
     #              desc = paste("A named vector of colors to use for plotting."))
