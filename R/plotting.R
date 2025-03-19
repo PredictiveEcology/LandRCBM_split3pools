@@ -34,19 +34,19 @@ gg_speciessummary <- function(x) {
 }
 
 gg_yieldCurves <- function(x, title){
-  ggplot(x, aes(age, B, color = speciesCode)) + geom_line() + theme_bw() +
+  ggplot(x, aes(age, totB, color = speciesCode)) + geom_line() + theme_bw() +
     #scale_color_manual(values = colors) +
-    facet_wrap(~yieldPixelGroup) +
-    labs(title = title, x = "Age", y = 'Biomass', color = "Species") +
+    facet_wrap(~gcid) +
+    labs(title = title, x = "Age", y = 'AGB (tonnes/ha)', color = "Species") +
     theme_bw()
 }
 
 gg_yieldCurvesPools <- function(x, title) {
-  ggplot(x, aes(age, B, fill = species)) +
+  ggplot(x, aes(age, B, fill = speciesCode)) +
     geom_area(position = position_stack()) +
     #scale_fill_manual(values = colors) +
     theme_bw() +
-    facet_grid(yieldPixelGroup ~ pool) +
+    facet_grid(gcid ~ pool) +
     ggtitle(title) +
     theme(panel.background = element_rect(fill = "white", color = NA),
           panel.grid = element_blank())

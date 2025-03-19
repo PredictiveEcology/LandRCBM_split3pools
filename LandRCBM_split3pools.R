@@ -295,7 +295,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 }
 
 PlotYieldTables <- function(sim){
-  nPixGroups <- length(unique(sim$yieldSpeciesCodes$yieldPixelGroup))
+  nPixGroups <- length(unique(sim$yieldTablesId$gcid))
   nPlots <- P(sim)$numPixGroupPlots
   if (nPlots <= 0){
     stop("numPlots needs to be a positive integer")
@@ -304,22 +304,13 @@ PlotYieldTables <- function(sim){
             "plotting all pixelgroups.")
     nPlots <- nPixGroups
   } 
-  pixGroupToPlot <- sample(unique(sim$yieldSpeciesCodes$yieldPixelGroup), nPlots)
-  # numCohortPlots: we want to plot this number of cohorts per yieldPixelGroup, 
-  # keeping species that reach the highest biomass
-  max_B_per_cohort <- sim$yieldTables[, .(max_B = max(B)), by = .(yieldPixelGroup, cohort_id)]
-  top_cohort_per_pixel <- max_B_per_cohort[, {
-    # Order by max_B in descending order and keep the top 3, or all if fewer than 3
-    .SD[order(-max_B)][1:min(P(sim)$numCohortPlots, .N)]
-  }, by = yieldPixelGroup]
+  pixGroupToPlot <- sample(unique(sim$yieldTablesId$gcid), nPlots)
+
   # dt for plotting.
-  plot_dt <- sim$yieldTables[cohort_id %in% top_cohort_per_pixel$cohort_id]
-  plot_dt <- plot_dt[yieldPixelGroup %in% pixGroupToPlot]
-  plot_dt <- merge(plot_dt, sim$yieldSpeciesCodes, by = c("cohort_id", "yieldPixelGroup"))
+  plot_dt <- sim$yieldTablesCumulative[gcid %in% pixGroupToPlot]
+  plot_dt[, totB := merch + foliage + other]
   
-  # convert g/m^2 into tonnes/ha
-  plot_dt$B <- plot_dt$B/100
-  mod$cohortPlotted <- unique(plot_dt$cohort_id)
+  mod$gcIdPlotted <- pixGroupToPlot
   
   # plot
   Plots(plot_dt, 
@@ -332,7 +323,6 @@ PlotYieldTables <- function(sim){
 }
 
 SplitYieldTables <- function(sim) {
-  browser()
   ##############################################################################
   # 1. Matching species, jurisdiction and ecozone
   # Match the multimomial logit parameters (table6) and their caps (table7)
@@ -408,7 +398,7 @@ SplitYieldTables <- function(sim) {
   # by one row and filling the first entry with NA.
   yieldIncrements <- sim$yieldTablesCumulative[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
                by = c("gcid", "speciesCode")]
-  sim$yieldIncrements <- yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)]
+  sim$yieldTablesIncrements <- yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)]
   
   return(invisible(sim))
 }
@@ -416,16 +406,14 @@ SplitYieldTables <- function(sim) {
 
 # Plot the curves that are directly out of the Boudewyn-translation
 PlotYieldTablesPools <- function(sim){
-  #### HERE: What if the pixel groups cross across NFI spatial units?! The same
-  #### Yield curve would produce different pools
   
   # We want to plot the same cohorts across figures
-  cohortToPlot <- mod$cohortPlotted
-  plot_dt <- sim$cumPools[gcids %in% cohortToPlot]
+  pixGroupToPlot <- mod$gcIdPlotted
+  plot_dt <- sim$yieldTablesCumulative[gcid %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
-    id.vars = c("gcids", "species", "yieldPixelGroup", "age"),
-    measure.vars = c("totMerch", "fol", "other"),
+    id.vars = c("gcid", "speciesCode", "age"),
+    measure.vars = c("merch", "foliage", "other"),
     variable.name = "pool",
     value.name = "B"
   )
@@ -438,18 +426,19 @@ PlotYieldTablesPools <- function(sim){
   )
   
   # plot increments
-  plot_dt <- sim$yieldIncrements[gcids %in% mod$cohortPlotted]
+  plot_dt <- sim$yieldTablesIncrements[gcid %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
-    id.vars = c("gcids", "species", "yieldPixelGroup", "age"),
-    measure.vars = c("incMerch", "incFol", "incOther"),
+    id.vars = c("gcid", "speciesCode", "age"),
+    measure.vars = c("merchInc", "foliageInc", "otherInc"),
     variable.name = "pool",
     value.name = "B"
   )
+  plot_dt <- plot_dt[plot_dt$age > 0,]
   Plots(plot_dt, 
         fn = gg_yieldCurvesPools,
         types = P(sim)$.plots,
-        filename = "YieldIncrements",
+        filename = "yieldCurveIncrements",
         title = "Increments merch fol other by species and pixel groups"
         )
     message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
@@ -460,7 +449,6 @@ PlotYieldTablesPools <- function(sim){
 
 # Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
-  sim$poolsPixelGroupMap <- mergeMaps(sim$pixelGroupMap, sim$spuRaster, out = "map", indexName = "poolsPixelGroup")
   if (time(sim) != start(sim)){
     
     # 1. match pixelGroups of previous year and of this year to create pixelGroups
@@ -479,20 +467,35 @@ AnnualIncrements <- function(sim){
   }
   
   # 3. split cohort data of current year
-  sim$allInfoCohortData <- matchCurveToCohort(
-    cohortData = sim$cohortData,
+  spatialDT <- spatialMatch(
     pixelGroupMap = sim$pixelGroupMap,
-    spuRaster = sim$spuRaster,
-    cbmAdmin = sim$cbmAdmin,
-    yieldSpeciesCodes = NULL
+    juridictions = sim$juridictions,
+    ecozones = sim$ecozones
+  ) |> na.omit()
+  
+  spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
+  spatialUnits <- unique(spatialDT[, !("pixelId")])
+  
+  allInfoCohortData <- addSpatialUnits(
+    cohortData = sim$cohortData,
+    spatialUnits = spatialUnits
   )
-  setnames(sim$allInfoCohortData, c("abreviation", "EcoBoundaryID"), c("juris_id", "ecozone"))
+  
+  # add the species code in canfi
+  allInfoCohortData <- addCanfiCode(
+    cohortData = allInfoCohortData
+  )
   
   # convert m^2 into tonnes/ha
-  sim$allInfoCohortData$B <- sim$allInfoCohortData$B/100
-  sim$cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = sim$allInfoCohortData,
+  allInfoCohortData$B <- allInfoCohortData$B/100
+  cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
                                        table6 = sim$table6,
-                                       table7 = sim$table7)
+                                       table7 = sim$table7,
+                                       "pixelGroup")
+  spatialDT[, pixelGroup := NULL]
+  sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup")
+  sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelId, speciesCode, age, merch, foliage, other)]
+  setorderv(sim$aboveGroundBiomass, c("pixelId", "speciesCode", "age"))
   
   # 4. append the cohortPools of the previous year
   if (time(sim) != start(sim)){

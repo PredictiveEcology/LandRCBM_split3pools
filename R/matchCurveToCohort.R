@@ -9,7 +9,7 @@ spatialMatch <- function(pixelGroupMap, juridictions, ecozones){
     spatialMatch <- data.table(
       pixelGroup = as.integer(pixelGroupMap[])
     ) 
-    spatialMatch[, pixelId := .I] |> na.omit()
+    spatialMatch <- spatialMatch[, pixelId := .I] |> na.omit()
   } else {
     stop("The object pixelGroupMap needs to be a data.table or a SpatRaster")
   }
@@ -38,7 +38,7 @@ addSpatialUnits <- function(cohortData, spatialUnits) {
     if("pixelGroup" %in% names(cohortData)){
       allInfoCohortData <- merge(cohortData, spatialUnits, by = "pixelGroup", allow.cartesian = TRUE)
       allInfoCohortData[, pixelGroup := NULL]
-      setnames(allInfoCohortData, old = "poolPixelGroup", new = "pixelGroup")
+      setnames(allInfoCohortData, old = "newPixelGroup", new = "pixelGroup")
     } else {
       stop("The object cohortData need the column pixelGroup")
     }
