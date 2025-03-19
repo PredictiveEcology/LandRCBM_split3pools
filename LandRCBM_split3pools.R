@@ -534,7 +534,7 @@ AnnualIncrements <- function(sim){
   if (!suppliedElsewhere("studyArea", sim)) {
     sim$studyArea <- prepInputs(
       url = extractURL("studyArea"),
-      fun = "sf::st_read",
+      fun = "terra::vect",
       destinationPath = inputPath(sim),
       overwrite = TRUE
     ) |> Cache()
@@ -557,7 +557,7 @@ AnnualIncrements <- function(sim){
       url = extractURL("ecozones"),
       destinationPath = inputPath(sim),
       fun = "terra::vect",
-      to = sf::st_buffer(sim$studyArea, res(sim$rasterToMatch)[1]),
+      to = terra::buffer(sim$studyArea, res(sim$rasterToMatch)[1]),
       overwrite = TRUE
     ) |> Cache()
     ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
@@ -576,7 +576,7 @@ AnnualIncrements <- function(sim){
       url = extractURL("juridictions"),
       destinationPath = inputPath(sim),
       fun = "terra::vect",
-      to = sf::st_buffer(sim$studyArea, res(sim$rasterToMatch)[1]),
+      to = terra::buffer(sim$studyArea, res(sim$rasterToMatch)[1]),
       overwrite = TRUE
     ) |> Cache()
     juris_id <- rasterize(juridictions, sim$rasterToMatch, field = "PRUID")
