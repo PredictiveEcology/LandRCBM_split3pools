@@ -194,9 +194,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
     },
     summarizeAGBPools = {
-      sumLandscape <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), .SDcols = c("totMerch", "fol", "other")]
+      sumLandscape <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), .SDcols = c("merch", "foliage", "other")]
       sumLandscape$year <- time(sim)[1]
-      sumBySpecies <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), by = species, .SDcols = c("totMerch", "fol", "other")]
+      sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
       sumBySpecies$year <- time(sim)[1]
       
       if (time(sim) == start(sim)){
@@ -217,23 +217,27 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 10, "LandRCBM_split3pools", "summarizeAGBPools")
     },
     plotMaps = {
+      
       # get the sum of each pool per pixelGroups
-      poolSum <- sim$cohortPools[, lapply(.SD, sum, na.rm = TRUE), by = poolsPixelGroup, .SDcols = c("totMerch", "fol", "other")]
+      poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelId, .SDcols = c("merch", "foliage", "other")]
       # rasterize
-      totMerchRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "totMerch")
-      folRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "fol")
-      otherRast <- rasterizeReduced(poolSum, sim$poolsPixelGroupMap, newRasterCols = "other")
+      merchRast <- rast(sim$rasterToMatch, names = "merchantable")
+      merchRast[poolSum$pixelId] <- poolSum$merch
+      foliageRast <- rast(sim$rasterToMatch, names = "foliage")
+      foliageRast[poolSum$pixelId] <- poolSum$foliage
+      otherRast <- rast(sim$rasterToMatch, names = "other")
+      otherRast[poolSum$pixelId] <- poolSum$other
       
       # plot
-      Plots(totMerchRast,
+      Plots(merchRast,
             fn = gg_agbpools,
             types = P(sim)$.plots,
-            filename = paste0("totMerch", "_year_", round(time(sim))),
+            filename = paste0("merch", "_year_", round(time(sim))),
             title = paste("Total merchantable biomass", "year", round(time(sim))))
-      Plots(folRast,
+      Plots(foliageRast,
             fn = gg_agbpools,
             types = P(sim)$.plots,
-            filename = paste0("fol", "_year_", round(time(sim))),
+            filename = paste0("foliage", "_year_", round(time(sim))),
             title = paste("Foliage biomass", "year", round(time(sim))))
       Plots(otherRast,
             fn = gg_agbpools,
@@ -243,24 +247,27 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        incrementSum  <- sim$annualIncrements[, lapply(.SD, sum, na.rm = TRUE), by = incrementPixelGroup, .SDcols = c("totMerch", "fol", "other")]
+        incrementSum  <- sim$annualIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelId, .SDcols = c("merchInc", "foliageInc", "otherInc")]
         # rasterize
-        totMerchRast <- rasterizeReduced(incrementSum, sim$incrementPixelGroupMap, newRasterCols = "totMerch", mapcode = "incrementPixelGroup")
-        folRast <- rasterizeReduced(incrementSum, sim$incrementPixelGroupMap, newRasterCols = "fol", mapcode = "incrementPixelGroup")
-        otherRast <- rasterizeReduced(incrementSum, sim$incrementPixelGroupMap, newRasterCols = "other", mapcode = "incrementPixelGroup")
+        merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
+        merchIncRast[incrementSum$pixelId] <- incrementSum$merchInc
+        foliageIncRast <- rast(sim$rasterToMatch, names = "foliage increments")
+        foliageIncRast[incrementSum$pixelId] <- incrementSum$foliageInc
+        otherIncRast <- rast(sim$rasterToMatch, names = "other increments")
+        otherIncRast[incrementSum$pixelId] <- incrementSum$otherInc
         
         # plot
-        Plots(totMerchRast,
+        Plots(merchIncRast,
               fn = gg_agbpools,
               types = P(sim)$.plots,
               filename = paste0("totMerchInc", "_year_", round(time(sim))),
               title = paste("Total merchantable increment", "year", round(time(sim))))
-        Plots(folRast,
+        Plots(foliageIncRast,
               fn = gg_agbpools,
               types = P(sim)$.plots,
               filename = paste0("folInc", "_year_", round(time(sim))),
               title = paste("Foliage increment", "year", round(time(sim))))
-        Plots(otherRast,
+        Plots(otherIncRast,
               fn = gg_agbpools,
               types = P(sim)$.plots,
               filename = paste0("otherInc", "_year_", round(time(sim))),
@@ -450,20 +457,9 @@ PlotYieldTablesPools <- function(sim){
 # Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
   if (time(sim) != start(sim)){
-    
-    # 1. match pixelGroups of previous year and of this year to create pixelGroups
-    # for increments
-    sim$incrementPixelGroupMap <- mod$poolsPixelGroupMapTminus1
-    
-    incrementPixGr <- mergeMaps(sim$poolsPixelGroupMap, mod$poolsPixelGroupMapTminus1, out = "both", indexName = "incrementPixelGroup")
-    sim$incrementPixelGroupMap <- incrementPixGr$map
-    pixGr <- incrementPixGr$dt
-    colnames(pixGr) <- c("poolsPixelGroupT", "poolsPixelGroupTminus1", "incrementPixelGroup")
-    
-    # 2. append the cohortPools of the previous year
-    annualIncrements <- merge(pixGr, sim$cohortPools, by.x = "poolsPixelGroupTminus1", by.y = "poolsPixelGroup")
+    annualIncrements <- sim$aboveGroundBiomass
     annualIncrements$age <- annualIncrements$age + 1
-    setnames(annualIncrements, old = c("totMerch", "fol", "other"), new = c("totMerchTminus1", "folTminus1", "otherTminus1"))
+    setnames(annualIncrements, old = c("merch", "foliage", "other"), new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
   }
   
   # 3. split cohort data of current year
@@ -500,29 +496,26 @@ AnnualIncrements <- function(sim){
   # 4. append the cohortPools of the previous year
   if (time(sim) != start(sim)){
     annualIncrements <- merge(annualIncrements, 
-                              sim$cohortPools, 
-                              by.x = c("poolsPixelGroupT", "species", "age"), 
-                              by.y = c("poolsPixelGroup", "species", "age"),
+                              sim$aboveGroundBiomass, 
+                              by = c("pixelId", "speciesCode", "age"),
                               all = TRUE)
-    annualIncrements[pixGr, on = .(poolsPixelGroupT), incrementPixelGroup := i.incrementPixelGroup]    
     
     # adds biomass 0 when there is a new species in a pixelGroup
     setnafill(annualIncrements, fill = 0, 
-              cols=c("totMerch", "fol", "other", "totMerchTminus1", "folTminus1", "otherTminus1"))
+              cols=c("merch", "foliage", "other", "merchTminus1", "foliageTminus1", "otherTminus1"))
     
     # 5. take the difference
-    annualIncrements[, `:=`(totMerch = totMerch - totMerchTminus1,
-                            fol = fol - folTminus1,
-                            other = other - otherTminus1)]
+    annualIncrements[, `:=`(merchInc = merch - merchTminus1,
+                            foliageInc = foliage - foliageTminus1,
+                            otherInc = other - otherTminus1)]
     
-    sim$annualIncrements <- annualIncrements[,.(incrementPixelGroup, 
-                                                species,
+    sim$annualIncrements <- annualIncrements[,.(pixelId, 
+                                                speciesCode,
                                                 age = age, 
-                                                totMerch, 
-                                                fol, 
-                                                other)]    
+                                                merchInc, 
+                                                foliageInc, 
+                                                otherInc)]    
   }
-  mod$poolsPixelGroupMapTminus1 <- sim$poolsPixelGroupMap
   return(invisible(sim))
 }
 

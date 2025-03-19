@@ -6,7 +6,7 @@ gg_agbpools <- function(x, title) {
 }
 
 gg_landscapesummary <- function(x, 
-                                pools = c("totMerch", "fol", "other"),
+                                pools = c("merch", "foliage", "other"),
                                 colors = RColorBrewer::brewer.pal(3, 'Set1')) {
   d <- as.data.table(x) |>
     melt(id.vars = "year", variable.name = "pool", value.name = "biomass")
@@ -22,9 +22,9 @@ gg_landscapesummary <- function(x,
 
 gg_speciessummary <- function(x) {
   d <- as.data.table(x) |>
-    melt(id.vars = c('species', "year"), variable.name = "pool", value.name = "biomass")
+    melt(id.vars = c('speciesCode', "year"), variable.name = "pool", value.name = "biomass")
   gg <- ggplot(d) + 
-    geom_area(aes(x = year, fill = species, y= biomass)) + 
+    geom_area(aes(x = year, fill = speciesCode, y= biomass)) + 
     #scale_fill_manual(values = colors) +
     facet_grid(pool~., scales = "free_y") +
     ggtitle("AGB by pool and species across pixels") +
