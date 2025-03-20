@@ -247,7 +247,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        incrementSum  <- sim$annualIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelId, .SDcols = c("merchInc", "foliageInc", "otherInc")]
+        incrementSum  <- sim$aboveGroundIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelId, .SDcols = c("merchInc", "foliageInc", "otherInc")]
         # rasterize
         merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
         merchIncRast[incrementSum$pixelId] <- incrementSum$merchInc
@@ -344,6 +344,7 @@ SplitYieldTables <- function(sim) {
     ecozones = sim$ecozones
   ) |> na.omit()
   
+  setorderv(spatialDT, cols = c("gcid", "ecozone", "juris_id"))
   spatialDT[, newgcid := .GRP, by = .(gcid, ecozone, juris_id)]
   
   # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
@@ -510,7 +511,7 @@ AnnualIncrements <- function(sim){
                             foliageInc = foliage - foliageTminus1,
                             otherInc = other - otherTminus1)]
     
-    sim$annualIncrements <- annualIncrements[,.(pixelId, 
+    sim$aboveGroundIncrements <- annualIncrements[,.(pixelId, 
                                                 speciesCode,
                                                 age = age, 
                                                 merchInc, 
@@ -607,6 +608,15 @@ AnnualIncrements <- function(sim){
   
   # 3. Yield curve data
   
+  # reference for species to cohort_id
+  if (!suppliedElsewhere("yieldTablesId", sim)) {
+    sim$yieldTablesId <- prepInputs(url = extractURL("yieldTablesId"),
+                                    fun = "data.table::fread",
+                                    destinationPath = inputPath(sim),
+                                    filename2 = "yieldTablesId.csv",
+                                    overwrite = TRUE) |> Cache()
+  }
+  
   # actual yield curves
   if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
     sim$yieldTablesCumulative <- prepInputs(url = extractURL("yieldTablesCumulative"),
@@ -615,16 +625,6 @@ AnnualIncrements <- function(sim){
                                   filename2 = "yieldTablesCumulative.csv",
                                   overwrite = TRUE) |> Cache()
   }
-  
-  # reference for species to cohort_id
-  if (!suppliedElsewhere("yieldTablesId", sim)) {
-    sim$yieldTablesId <- prepInputs(url = extractURL("yieldTablesId"),
-                                        fun = "data.table::fread",
-                                        destinationPath = inputPath(sim),
-                                        filename2 = "yieldTablesId.csv",
-                                        overwrite = TRUE) |> Cache()
-  }
-
 
   #4. Cohort data. Information on biomass for each cohort and pixel group. Gets updated
   # annually.
