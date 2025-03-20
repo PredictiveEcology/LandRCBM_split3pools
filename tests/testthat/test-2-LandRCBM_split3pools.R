@@ -8,6 +8,7 @@ test_that("module runs with small example", {
                 resolution = c(250, 250),
                 crs = "+proj=lcc +lat_0=0 +lon_0=-95 +lat_1=49 +lat_2=77 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
   rtm[] <- 1L
+  studyArea <- vect(ext(c(-1614000, -1612000, 7654000, 7656000)), crs = crs(rtm))
   
   simInitInput <-  SpaDEStestMuffleOutput(
     SpaDES.project::setupProject(
@@ -19,14 +20,15 @@ test_that("module runs with small example", {
         inputPath   = spadesTestPaths$temp$inputs,
         outputPath = spadesTestPaths$temp$outputs
       ),
-      rasterToMatch = rtm
+      rasterToMatch = rtm,
+      studyArea = studyArea
     )
   )
   
   simTestInit <-  SpaDEStestMuffleOutput(
     SpaDES.core::simInit2(simInitInput)
   )
-  
+  browser()
   # is output a simList?
   expect_s4_class(simTestInit, "simList")
   

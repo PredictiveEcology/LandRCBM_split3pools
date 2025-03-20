@@ -18,8 +18,8 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   expect_equal(out1$ecozone, ecozones$ecozone)
   expect_equal(out1$juridiction, juridictions$juridiction)
   expect_true(all(is.na(out1$gcid[nonforested])))
-  
-  # test spatialMatch with spatRast
+
+    # test spatialMatch with spatRast
   pixelGroupMap <- terra::rast(
     matrix(data = c(rep(1,3), rep(2, 3), rep(3, 3)), nrow = 3, ncol = 3)
   )
@@ -45,13 +45,13 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   expect_true(all(LandR_species %in% out3$speciesCode))
   expect_equal(nrow(out3), 15)
   expect_named(out3, c("gcid", "speciesCode", "ecozone", "juridiction"), ignore.order = TRUE)
-  
+
   # test with cohortData
   cohortData <- data.table(
     expand.grid(speciesCode = LandR_species, 
                 pixelGroup = c(1:3))
   )
-  setnames(spatialUnits, old = c("gcid", "newgcid"), new = c("pixelGroup", "poolPixelGroup"))
+  setnames(spatialUnits, old = c("gcid", "newgcid"), new = c("pixelGroup", "newPixelGroup"))
   out4 <- addSpatialUnits(cohortData, spatialUnits)
   
   expect_true(all(LandR_species %in% out4$speciesCode))
