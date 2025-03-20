@@ -552,6 +552,14 @@ AnnualIncrements <- function(sim){
       overwrite = TRUE
     ) |> Cache()
   }
+  
+  if(inherits(sim$studyArea, "SpatVector")){
+    studyAreaBuffered <- terra::buffer(sim$studyArea, res(sim$rasterToMatch)[1])
+  } else if (inherits(sim$studyArea, "sf")) {
+    studyAreaBuffered <- sf::st_buffer(sim$studyArea, res(sim$rasterToMatch)[1])
+  } else {
+    stop("studyArea needs to be a SpatVector or a sf polygon")
+  }
 
   # ecozones
   if (!suppliedElsewhere("ecozones", sim)) {
@@ -559,7 +567,7 @@ AnnualIncrements <- function(sim){
       url = extractURL("ecozones"),
       destinationPath = inputPath(sim),
       fun = "terra::vect",
-      to = terra::buffer(sim$studyArea, res(sim$rasterToMatch)[1]),
+      to = studyAreaBuffered,
       overwrite = TRUE
     ) |> Cache()
     ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
@@ -578,7 +586,7 @@ AnnualIncrements <- function(sim){
       url = extractURL("juridictions"),
       destinationPath = inputPath(sim),
       fun = "terra::vect",
-      to = terra::buffer(sim$studyArea, res(sim$rasterToMatch)[1]),
+      to = studyAreaBuffered,
       overwrite = TRUE
     ) |> Cache()
     juris_id <- rasterize(juridictions, sim$rasterToMatch, field = "PRUID")
@@ -588,6 +596,7 @@ AnnualIncrements <- function(sim){
     sim$juridictions <- sim$juridictions[, pixelId := .I] |> na.omit()
     setcolorder(sim$juridictions, c("pixelId", "PRUID", "juris_id"))
   }
+  
   # 2. NFI params
   if (!suppliedElsewhere("table6", sim)) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
