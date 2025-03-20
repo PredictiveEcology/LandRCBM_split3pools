@@ -260,12 +260,12 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         Plots(merchIncRast,
               fn = gg_agbpools,
               types = P(sim)$.plots,
-              filename = paste0("totMerchInc", "_year_", round(time(sim))),
+              filename = paste0("merchInc", "_year_", round(time(sim))),
               title = paste("Total merchantable increment", "year", round(time(sim))))
         Plots(foliageIncRast,
               fn = gg_agbpools,
               types = P(sim)$.plots,
-              filename = paste0("folInc", "_year_", round(time(sim))),
+              filename = paste0("foliageInc", "_year_", round(time(sim))),
               title = paste("Foliage increment", "year", round(time(sim))))
         Plots(otherIncRast,
               fn = gg_agbpools,
@@ -403,7 +403,8 @@ SplitYieldTables <- function(sim) {
   poolCols <- c("merch", "foliage", "other")
   # This line calculates the first difference of each colNames, shifting it down 
   # by one row and filling the first entry with NA.
-  yieldIncrements <- sim$yieldTablesCumulative[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
+  yieldIncrements <- copy(sim$yieldTablesCumulative)
+  yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
                by = c("gcid", "speciesCode")]
   sim$yieldTablesIncrements <- yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)]
   
