@@ -194,21 +194,14 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
     },
     summarizeAGBPools = {
-      sumLandscape <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), .SDcols = c("merch", "foliage", "other")]
-      sumLandscape$year <- time(sim)[1]
       sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
       sumBySpecies$year <- time(sim)[1]
       
       if (time(sim) == start(sim)){
-        sim$summaryAGBPoolsLandscape <- sumLandscape
-        sim$summaryAGBPoolsSpecies <- sumBySpecies
+        sim$summaryAGB <- sumBySpecies
       } else {
-        sim$summaryAGBPoolsLandscape <- rbind(
-          sim$summaryAGBPoolsLandscape,
-          sumLandscape
-        )
-        sim$summaryAGBPoolsSpecies <- rbind(
-          sim$summaryAGBPoolsSpecies,
+        sim$summaryAGB <- rbind(
+          sim$summaryAGB,
           sumBySpecies
         )
       }
@@ -281,14 +274,16 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     plotSummaries = {
       if (time(sim) > start(sim)){
+        summaryAGBPoolsLandscape <- sim$summaryAGB[, lapply(.SD, sum, na.rm = TRUE), by = year, .SDcols = c("merch", "foliage", "other")]
         # Landscape summary
-        Plots(sim$summaryAGBPoolsLandscape,
+        Plots(summaryAGBPoolsLandscape,
               fn = gg_landscapesummary,
               types = P(sim)$.plots,
               filename = paste0("LandscapeAGBPoolSummary")
         )
+        
         # Species summary
-        Plots(sim$summaryAGBPoolsSpecies,
+        Plots(sim$summaryAGB,
               fn = gg_speciessummary,
               types = P(sim)$.plots,
               filename = paste0("SpeciesAGBPoolSummary")

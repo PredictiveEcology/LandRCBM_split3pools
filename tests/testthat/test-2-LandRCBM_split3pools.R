@@ -102,22 +102,13 @@ test_that("module runs with small example", {
   )
   expect_equal(sum(simTest$aboveGroundIncrements$merchInc), 0 ) # there is not growth/mortality in the test
 
-  #check summaryAGBPoolsLandscape
-  expect_is(simTest$summaryAGBPoolsLandscape, "data.table")
+  #check summaryAGB
+  expect_is(simTest$summaryAGB, "data.table")
   expect_named(
-    simTest$summaryAGBPoolsLandscape, 
-    c("merch", "foliage", "other", "year"),
-    ignore.order = TRUE
-  )
-  expect_equal(simTest$summaryAGBPoolsLandscape$year, c(2011:2016))
-  
-  # check summaryAGBPoolsSpecies
-  expect_is(simTest$summaryAGBPoolsSpecies, "data.table")
-  expect_named(
-    simTest$summaryAGBPoolsSpecies, 
+    simTest$summaryAGB, 
     c("speciesCode", "merch", "foliage", "other", "year"),
     ignore.order = TRUE
   )
-  expect_contains(simTest$summaryAGBPoolsSpecies$year, c(2011:2016))
+  expect_contains(simTest$summaryAGB$year, c(2011:2016))
   
 })
