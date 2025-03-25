@@ -1,53 +1,55 @@
-matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, cohortData = NULL, yieldSpeciesCodes = NULL){
-  if(!is.null(cohortData)){
-    if (!is.null(yieldSpeciesCodes)) stop("either cohortData or yieldSpeciesCodes need to be NULL") else {
-      cohort_info <- cohortData
-      pixGrColumn <- "pixelGroup"
-      obj <- "cohortData"
+spatialMatch <- function(pixelGroupMap, juridictions, ecozones){
+  if(is.data.table(pixelGroupMap)) {
+    if(all(c("pixelId", "gcid") %in% names(pixelGroupMap))) {
+      spatialMatch <- pixelGroupMap
+    } else {
+      stop("The data table pixelGroupMap need to have the column `pixelId`and `gcid`")
     }
-  }
-  if(!is.null(yieldSpeciesCodes)){
-    cohort_info <- yieldSpeciesCodes
-    pixGrColumn <- "yieldPixelGroup"
-    obj <- "yieldSpeciesCodes"
-  }
-  
-  if(any(!(c(pixGrColumn, "speciesCode") %in% colnames(cohort_info)))) {
-    stop("The object ", obj, " needs at least the variables ", pixGrColumn, " and speciesCode")
-  }
-  
-  # 1. Spatial matching
-  ### need to match the pixel groups with the ecozones and juris_id
-  if (length(pixelGroupMap[]) != length(spuRaster[])) {
-    stop("There is a problem: the spuRaster and the pixelGroupMap are not equal")
-  }
-  pixelGroupEco <- data.table(pixelGroup = as.integer(pixelGroupMap[]),
-                              SpatialUnitID = as.integer(spuRaster[]))
-  pixelGroupEco <- na.omit(pixelGroupEco, cols = "pixelGroup")
-  if(!is.null(yieldSpeciesCodes)){
-    setnames(pixelGroupEco, old = "pixelGroup", new = pixGrColumn)
-  }
-  
-  ### matching the ecozone to the admin
-  if(any(!(c("SpatialUnitID", "abreviation", "EcoBoundaryID") %in% colnames(cbmAdmin)))) {
-    stop("The object cbmAdmin needs at least the variables `SpatialUnitID`, `abreviation`, `EcoBoundaryID`")
-  }
-  pixelGroupEco <- merge(pixelGroupEco, cbmAdmin, by = "SpatialUnitID")
-  colToKeep <- c(pixGrColumn, "abreviation", "EcoBoundaryID")
-  pixelGroupEco <- pixelGroupEco[, ..colToKeep]
-  pixelGroupEco <- unique(pixelGroupEco)
-  
-  # add new pixelGroup for when the ecolocation for Boudewyn and for LandR do not fit.
-  if (pixGrColumn == "yieldPixelGroup"){
-    setorder(pixelGroupEco, yieldPixelGroup, abreviation, EcoBoundaryID)
-    pixelGroupEco[, poolsPixelGroup := .GRP, by = .(yieldPixelGroup, abreviation, EcoBoundaryID)] 
+  } else if (inherits(pixelGroupMap, "SpatRaster")) {
+    spatialMatch <- data.table(
+      pixelGroup = as.integer(pixelGroupMap[])
+    ) 
+    spatialMatch <- spatialMatch[, pixelId := .I] |> na.omit()
   } else {
-    setorder(pixelGroupEco, pixelGroup, abreviation, EcoBoundaryID)
-    pixelGroupEco[, poolsPixelGroup := .GRP, by = .(pixelGroup, abreviation, EcoBoundaryID)] 
+    stop("The object pixelGroupMap needs to be a data.table or a SpatRaster")
   }
+  if (any(!(spatialMatch$pixelId %in% ecozones$pixelId))) {
+    stop("There is a problem: some pixels cannot be matched to an ecozone...")
+  }
+  spatialMatch <- spatialMatch[ecozones, on = "pixelId"]
   
-  # 2. Species matching
-  speciesCode <- unique(cohort_info$speciesCode)
+  if (any(!(spatialMatch$pixelId %in% juridictions$pixelId))) {
+    stop("There is a problem: some pixels cannot be matched to a juridiction...")
+  }
+  spatialMatch <- spatialMatch[juridictions, on = "pixelId"]
+  return(spatialMatch)
+}
+
+addSpatialUnits <- function(cohortData, spatialUnits) {
+  if ("gcid" %in% names(spatialUnits)) {
+    if("gcid" %in% names(cohortData)){
+      allInfoCohortData <- merge(cohortData, spatialUnits, by = "gcid", allow.cartesian = TRUE)
+      allInfoCohortData[, gcid := NULL]
+      setnames(allInfoCohortData, old = "newgcid", new = "gcid")
+    } else {
+      stop("The object cohortData need the column gcid")
+    }
+  } else if ("pixelGroup" %in% colnames(spatialUnits)) {
+    if("pixelGroup" %in% names(cohortData)){
+      allInfoCohortData <- merge(cohortData, spatialUnits, by = "pixelGroup", allow.cartesian = TRUE)
+      allInfoCohortData[, pixelGroup := NULL]
+      setnames(allInfoCohortData, old = "newPixelGroup", new = "pixelGroup")
+    } else {
+      stop("The object cohortData need the column pixelGroup")
+    }
+  } else {
+    stop("The object spatialUnits need the column pixelGroup OR gcid")
+  }
+  return(allInfoCohortData)
+}
+
+addCanfiCode <- function(cohortData){
+  speciesCode <- unique(cohortData$speciesCode)
   canfi_species <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), CanfiCode]
   
   if(any(is.na(canfi_species))) {
@@ -57,13 +59,6 @@ matchCurveToCohort <- function(pixelGroupMap, spuRaster, cbmAdmin, cohortData = 
   
   sp_canfi <- data.table(speciesCode = speciesCode,
                          canfi_species = canfi_species)
-  
-  # 3. putting it together
-  allCohortInfo <- merge(cohort_info, sp_canfi, by = "speciesCode")
-  # adding other columns
-  allCohortInfo <- merge(allCohortInfo, pixelGroupEco, by = pixGrColumn)
-  
+  allCohortInfo <- merge(cohortData, sp_canfi, by = "speciesCode")
   return(allCohortInfo)
 }
-
-
