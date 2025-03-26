@@ -54,7 +54,7 @@ defineModule(sim, list(
       desc = paste("Table defining the disturbance event types.", 
                    "This associates CBM-CFS3 disturbances with the",
                    "event IDs in the 'disturbanceEvents' table."),
-      sourceURL("https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link")
+      sourceURL = "https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "ecozones", objectClass = "data.table",
@@ -212,6 +212,14 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
+    },
+    annualDisturbances = {
+      
+      # process annual disturbances
+      sim <- AnnualDisturbances(sim)
+      
+      # do this for each timestep
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualDisturbances")
     },
     summarizeAGBPools = {
       sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
@@ -488,7 +496,6 @@ AnnualIncrements <- function(sim){
   
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
   spatialUnits <- unique(spatialDT[, !("pixelId")])
-  
   allInfoCohortData <- addSpatialUnits(
     cohortData = sim$cohortData,
     spatialUnits = spatialUnits
@@ -540,13 +547,15 @@ AnnualIncrements <- function(sim){
 AnnualDisturbances <- function(sim){
   # fires
   fires <- data.table(
-    fire = as.integer(rstCurrentBurn[])
+    fire = as.integer(sim$rstCurrentBurn[])
   ) 
   fires <- fires[, pixelIndex := .I]
   fires <- fires[fire == 1]
   fires$year <- time(sim)
   fires$eventID <- 1
   sim$disturbanceEvents <- fires[, fire := NULL]
+  
+  return(invisible(sim))
 }
 
 .inputObjects <- function(sim) {
@@ -691,7 +700,7 @@ AnnualDisturbances <- function(sim){
   
   # 5. Disturbance meta
   if (!suppliedElsewhere("disturbanceMeta", sim)) {
-    sim$cohortData <- prepInputs(url = extractURL("disturbanceMeta"),
+    sim$disturbanceMeta <- prepInputs(url = extractURL("disturbanceMeta"),
                                  destinationPath = inputPath(sim),
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
