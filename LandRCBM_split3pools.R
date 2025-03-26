@@ -54,7 +54,7 @@ defineModule(sim, list(
       desc = paste("Table defining the disturbance event types.", 
                    "This associates CBM-CFS3 disturbances with the",
                    "event IDs in the 'disturbanceEvents' table."),
-      sourceURL("TODO")
+      sourceURL("https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link")
     ),
     expectsInput(
       objectName = "ecozones", objectClass = "data.table",
@@ -649,12 +649,14 @@ AnnualIncrements <- function(sim){
 
   #4. Cohort data. Information on biomass for each cohort and pixel group. Gets updated
   # annually.
-  if (!suppliedElsewhere("cohortData", sim))
+  if (!suppliedElsewhere("cohortData", sim)){
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
                                  destinationPath = inputPath(sim),
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
                                  filename2 = "cohortData.csv") |> Cache()
+  }
+
   
   # TODO will be used for plotting to keep the same colors of species as in LandR modules
   # if (!suppliedElsewhere("sppColorVect", sim)){
@@ -662,6 +664,20 @@ AnnualIncrements <- function(sim){
   #   sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
   #   names(sim$sppColorVect) <- sp
   # }
+  
+  # 5. Disturbance meta
+  if (!suppliedElsewhere("disturbanceMeta", sim)) {
+    sim$cohortData <- prepInputs(url = extractURL("disturbanceMeta"),
+                                 destinationPath = inputPath(sim),
+                                 fun = "data.table::fread",
+                                 overwrite = TRUE,
+                                 filename2 = "disturbanceMeta.csv") |> Cache()
+  }
+
+  if (!suppliedElsewhere("rstCurrentBurn", sim)) {
+    sim$rstCurrentBurn <- sim$rasterToMatch
+    sim$rstCurrentBurn[] <- NA
+  }
   
   return(invisible(sim))
 }
