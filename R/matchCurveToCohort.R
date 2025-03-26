@@ -1,27 +1,27 @@
 spatialMatch <- function(pixelGroupMap, juridictions, ecozones){
   if(is.data.table(pixelGroupMap)) {
-    if(all(c("pixelId", "gcid") %in% names(pixelGroupMap))) {
+    if(all(c("pixelIndex", "gcid") %in% names(pixelGroupMap))) {
       spatialMatch <- pixelGroupMap
     } else {
-      stop("The data table pixelGroupMap need to have the column `pixelId`and `gcid`")
+      stop("The data table pixelGroupMap need to have the column `pixelIndex`and `gcid`")
     }
   } else if (inherits(pixelGroupMap, "SpatRaster")) {
     spatialMatch <- data.table(
       pixelGroup = as.integer(pixelGroupMap[])
     ) 
-    spatialMatch <- spatialMatch[, pixelId := .I] |> na.omit()
+    spatialMatch <- spatialMatch[, pixelIndex := .I] |> na.omit()
   } else {
     stop("The object pixelGroupMap needs to be a data.table or a SpatRaster")
   }
-  if (any(!(spatialMatch$pixelId %in% ecozones$pixelId))) {
+  if (any(!(spatialMatch$pixelIndex %in% ecozones$pixelIndex))) {
     stop("There is a problem: some pixels cannot be matched to an ecozone...")
   }
-  spatialMatch <- spatialMatch[ecozones, on = "pixelId"]
+  spatialMatch <- spatialMatch[ecozones, on = "pixelIndex"]
   
-  if (any(!(spatialMatch$pixelId %in% juridictions$pixelId))) {
+  if (any(!(spatialMatch$pixelIndex %in% juridictions$pixelIndex))) {
     stop("There is a problem: some pixels cannot be matched to a juridiction...")
   }
-  spatialMatch <- spatialMatch[juridictions, on = "pixelId"]
+  spatialMatch <- spatialMatch[juridictions, on = "pixelIndex"]
   return(spatialMatch)
 }
 

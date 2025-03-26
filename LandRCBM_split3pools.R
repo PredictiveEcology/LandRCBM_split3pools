@@ -58,14 +58,14 @@ defineModule(sim, list(
     ),
     expectsInput(
       objectName = "ecozones", objectClass = "data.table",
-      desc = paste("A data.table with the ecozone for each pixelId. Used to determine",
+      desc = paste("A data.table with the ecozone for each pixelIndex. Used to determine",
                    "the equation parameters to split the above ground biomass into",
                    "carbon pools."),
       sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
     ),
     expectsInput(
       objectName = "juridictions", objectClass = "data.table",
-      desc = paste("A data.table with the province/territory for each pixelId.", 
+      desc = paste("A data.table with the province/territory for each pixelIndex.", 
                    "Used to determine the equation parameters to split the above", 
                    "ground biomass into carbon pools."),
       sourceURL = "https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lpr_000a21a_e.zip"
@@ -113,7 +113,7 @@ defineModule(sim, list(
     ),
     expectsInput(
       objectName = "yieldTablesId", objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelId` and `gcid`."),
+      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelIndex` and `gcid`."),
       sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
     )
     # expectsInput("sppColorVect", "character",
@@ -125,14 +125,14 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Above ground biomass (metric tonnes of tree biomass/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
-                   "Columns are `pixelId`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
+                   "Columns are `pixelIndex`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
     ),
     createsOutput(
       objectName = "aboveGroundIncrements",
       objectClass = "data.table",
       desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
-                   "Columns are `pixelId`, `speciesCode`, `age`, `merchInc`, `foliageInc`, and `otherInc`.")
+                   "Columns are `pixelIndex`, `speciesCode`, `age`, `merchInc`, `foliageInc`, and `otherInc`.")
     ),
     createsOutput(
       objectName = "disturbanceEvents",
@@ -157,7 +157,7 @@ defineModule(sim, list(
     createsOutput(
       objectName = "yieldTablesId",
       objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelId` and `gcid`.")
+      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelIndex` and `gcid`.")
     ),
     createsOutput(
       objectName = "yieldTablesIncrements",
@@ -240,14 +240,14 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     plotMaps = {
       
       # get the sum of each pool per pixelGroups
-      poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelId, .SDcols = c("merch", "foliage", "other")]
+      poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch", "foliage", "other")]
       # rasterize
       merchRast <- rast(sim$rasterToMatch, names = "merchantable")
-      merchRast[poolSum$pixelId] <- poolSum$merch
+      merchRast[poolSum$pixelIndex] <- poolSum$merch
       foliageRast <- rast(sim$rasterToMatch, names = "foliage")
-      foliageRast[poolSum$pixelId] <- poolSum$foliage
+      foliageRast[poolSum$pixelIndex] <- poolSum$foliage
       otherRast <- rast(sim$rasterToMatch, names = "other")
-      otherRast[poolSum$pixelId] <- poolSum$other
+      otherRast[poolSum$pixelIndex] <- poolSum$other
       
       # plot
       Plots(merchRast,
@@ -268,14 +268,14 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        incrementSum  <- sim$aboveGroundIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelId, .SDcols = c("merchInc", "foliageInc", "otherInc")]
+        incrementSum  <- sim$aboveGroundIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merchInc", "foliageInc", "otherInc")]
         # rasterize
         merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
-        merchIncRast[incrementSum$pixelId] <- incrementSum$merchInc
+        merchIncRast[incrementSum$pixelIndex] <- incrementSum$merchInc
         foliageIncRast <- rast(sim$rasterToMatch, names = "foliage increments")
-        foliageIncRast[incrementSum$pixelId] <- incrementSum$foliageInc
+        foliageIncRast[incrementSum$pixelIndex] <- incrementSum$foliageInc
         otherIncRast <- rast(sim$rasterToMatch, names = "other increments")
-        otherIncRast[incrementSum$pixelId] <- incrementSum$otherInc
+        otherIncRast[incrementSum$pixelIndex] <- incrementSum$otherInc
         
         # plot
         Plots(merchIncRast,
@@ -372,9 +372,9 @@ SplitYieldTables <- function(sim) {
   
   # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
   # We should get a number of gcid >= than the number before the spatial matching.
-  sim$yieldTablesId <- spatialDT[, .(pixelId, gcid = newgcid)] 
+  sim$yieldTablesId <- spatialDT[, .(pixelIndex, gcid = newgcid)] 
   
-  spatialUnits <- unique(spatialDT[, pixelId := NULL])
+  spatialUnits <- unique(spatialDT[, pixelIndex := NULL])
   
   allInfoYieldTables <- addSpatialUnits(
     cohortData = sim$yieldTablesCumulative,
@@ -495,7 +495,7 @@ AnnualIncrements <- function(sim){
   ) |> na.omit()
   
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
-  spatialUnits <- unique(spatialDT[, !("pixelId")])
+  spatialUnits <- unique(spatialDT[, !("pixelIndex")])
   allInfoCohortData <- addSpatialUnits(
     cohortData = sim$cohortData,
     spatialUnits = spatialUnits
@@ -514,14 +514,14 @@ AnnualIncrements <- function(sim){
                                        "pixelGroup")
   spatialDT[, pixelGroup := NULL]
   sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup")
-  sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelId, speciesCode, age, merch, foliage, other)]
-  setorderv(sim$aboveGroundBiomass, c("pixelId", "speciesCode", "age"))
+  sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
+  setorderv(sim$aboveGroundBiomass, c("pixelIndex", "speciesCode", "age"))
   
   # 4. append the cohortPools of the previous year
   if (time(sim) != start(sim)){
     annualIncrements <- merge(annualIncrements, 
                               sim$aboveGroundBiomass, 
-                              by = c("pixelId", "speciesCode", "age"),
+                              by = c("pixelIndex", "speciesCode", "age"),
                               all = TRUE)
     
     # adds biomass 0 when there is a new species in a pixelGroup
@@ -533,7 +533,7 @@ AnnualIncrements <- function(sim){
                             foliageInc = foliage - foliageTminus1,
                             otherInc = other - otherTminus1)]
     
-    sim$aboveGroundIncrements <- annualIncrements[,.(pixelId, 
+    sim$aboveGroundIncrements <- annualIncrements[,.(pixelIndex, 
                                                 speciesCode,
                                                 age = age, 
                                                 merchInc, 
@@ -617,8 +617,8 @@ AnnualDisturbances <- function(sim){
     ) |> Cache()
     ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
     sim$ecozones <- data.table(ecozone = as.integer(ez[]))
-    sim$ecozones <- sim$ecozones[, pixelId := .I] |> na.omit()
-    setcolorder(sim$ecozones, c("pixelId", "ecozone"))
+    sim$ecozones <- sim$ecozones[, pixelIndex := .I] |> na.omit()
+    setcolorder(sim$ecozones, c("pixelIndex", "ecozone"))
   }
   
   if (!suppliedElsewhere("juridictions", sim)) {
@@ -638,8 +638,8 @@ AnnualDisturbances <- function(sim){
     juris_id <- as.data.table(juris_id, na.rm = FALSE)
     juris_id$PRUID <- as.integer(as.character(juris_id$PRUID))
     sim$juridictions <- dt[juris_id, on = "PRUID"]
-    sim$juridictions <- sim$juridictions[, pixelId := .I] |> na.omit()
-    setcolorder(sim$juridictions, c("pixelId", "PRUID", "juris_id"))
+    sim$juridictions <- sim$juridictions[, pixelIndex := .I] |> na.omit()
+    setcolorder(sim$juridictions, c("pixelIndex", "PRUID", "juris_id"))
   }
   
   # 2. NFI params
