@@ -50,6 +50,13 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
     expectsInput(
+      objectName = "disturbanceMeta", objectClass = "data.table",
+      desc = paste("Table defining the disturbance event types.", 
+                   "This associates CBM-CFS3 disturbances with the",
+                   "event IDs in the 'disturbanceEvents' table."),
+      sourceURL("TODO")
+    ),
+    expectsInput(
       objectName = "ecozones", objectClass = "data.table",
       desc = paste("A data.table with the ecozone for each pixelId. Used to determine",
                    "the equation parameters to split the above ground biomass into",
@@ -73,6 +80,10 @@ defineModule(sim, list(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
       desc = "Template raster to use for simulations; defaults is the RIA study area.", 
       sourceURL = "https://drive.google.com/file/d/1LUEiVMUWd_rlG9AAFan7zKyoUs22YIX2/view?usp=drive_link"
+    ),
+    expectsInput(
+      objectName = "rstCurrentBurn", objectClass = "SpatRaster",
+      desc = "Raster of fires with 1 indicating burned pixels."
     ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
@@ -122,7 +133,13 @@ defineModule(sim, list(
       desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
                    "Columns are `pixelId`, `speciesCode`, `age`, `merchInc`, `foliageInc`, and `otherInc`.")
-    ),    
+    ),
+    createsOutput(
+      objectName = "disturbanceEvents",
+      objectClass = "data.table",
+      desc = paste("Table with disturbance events for each simulation year.",
+                   "Events types are defined in the 'disturbanceMeta' table.")
+    ),
     createsOutput(
       objectName = "summaryAGB",
       objectClass = "data.table",
