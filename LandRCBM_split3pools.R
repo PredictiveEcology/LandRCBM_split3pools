@@ -180,6 +180,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # split AGB of cohorts into pools 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualIncrements")
       
+      # format disturbance events 
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualDisturbances")
+      
       # summarize simulation 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
       # plots
@@ -533,6 +536,19 @@ AnnualIncrements <- function(sim){
   return(invisible(sim))
 }
 
+# process annual disturbances
+AnnualDisturbances <- function(sim){
+  # fires
+  fires <- data.table(
+    fire = as.integer(rstCurrentBurn[])
+  ) 
+  fires <- fires[, pixelIndex := .I]
+  fires <- fires[fire == 1]
+  fires$year <- time(sim)
+  fires$eventID <- 1
+  sim$disturbanceEvents <- fires[, fire := NULL]
+}
+
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   # 1. Spatial information
@@ -543,6 +559,14 @@ AnnualIncrements <- function(sim){
       destinationPath = inputPath(sim),
       overwrite = TRUE
     ) |> Cache()
+  }
+  
+  if (!suppliedElsewhere("masterRaster", sim)) {
+    sim$masterRaster <- sim$rasterToMatch
+  }
+  
+  if (!compareGeom(sim$masterRaster, sim$rasterToMatch)){
+    stop("The masterRaster and rasterToMatch do not match...")
   }
   
   if (!suppliedElsewhere("studyArea", sim)) {
