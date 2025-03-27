@@ -546,13 +546,19 @@ AnnualIncrements <- function(sim){
 # process annual disturbances
 AnnualDisturbances <- function(sim){
   # fires
+  fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
+  if (length(unique(fireID)) == 0) {
+    stop("disturbanceMeta does not have fires amongst its disturbances...")
+  } else if (length(unique(fireID)) > 1) {
+    stop("there are multiple eventID for fires in disturbanceMeta...")
+  }
   fires <- data.table(
     fire = as.integer(sim$rstCurrentBurn[])
   ) 
   fires <- fires[, pixelIndex := .I]
   fires <- fires[fire == 1]
   fires$year <- time(sim)
-  fires$eventID <- 1
+  fires$eventID <- fireID[1]
   sim$disturbanceEvents <- fires[, fire := NULL]
   
   return(invisible(sim))
@@ -670,6 +676,9 @@ AnnualDisturbances <- function(sim){
                                     filename2 = "yieldTablesId.csv",
                                     overwrite = TRUE) |> Cache()
   }
+  if(!all(c("gcid", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
+    stop("yieldTablesId needs the columns gcid and pixelIndex")
+  }
   
   # actual yield curves
   if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
@@ -679,7 +688,10 @@ AnnualDisturbances <- function(sim){
                                   filename2 = "yieldTablesCumulative.csv",
                                   overwrite = TRUE) |> Cache()
   }
-
+  if(!all(c("gcid", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))) {
+    stop("yieldTablesCumulative needs the columns gcid, age, biomass, and speciesCode")
+  }
+  
   #4. Cohort data. Information on biomass for each cohort and pixel group. Gets updated
   # annually.
   if (!suppliedElsewhere("cohortData", sim)){
@@ -689,7 +701,9 @@ AnnualDisturbances <- function(sim){
                                  overwrite = TRUE,
                                  filename2 = "cohortData.csv") |> Cache()
   }
-
+  if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))) {
+    stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
+  }
   
   # TODO will be used for plotting to keep the same colors of species as in LandR modules
   # if (!suppliedElsewhere("sppColorVect", sim)){
@@ -705,6 +719,9 @@ AnnualDisturbances <- function(sim){
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
                                  filename2 = "disturbanceMeta.csv") |> Cache()
+  }
+  if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
+    stop("disturbanceMeta needs the columns eventID and distName")
   }
 
   if (!suppliedElsewhere("rstCurrentBurn", sim)) {
