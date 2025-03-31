@@ -85,8 +85,12 @@ defineModule(sim, list(
       objectName = "rstCurrentBurn", objectClass = "SpatRaster",
       desc = "Raster of fires with 1 indicating burned pixels."
     ),
-    expectsInput("standAgeMap", "SpatRaster",
-                 desc =  paste("Stand age map in study area. Provided by Biomass_borealDataPrep.")),
+    expectsInput(
+      objectName = "standAgeMap", objectClass = "SpatRaster",
+      desc =  paste("Stand age map in study area. The default is for RIA, but",
+                    "should be provided by `Biomass_borealDataPrep`."),
+      sourceURL = NA
+    ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
       desc = "Polygon to use as the study area; default is the RIA study area.", 
