@@ -64,7 +64,7 @@ defineModule(sim, list(
       sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
     ),
     expectsInput(
-      objectName = "juridictions", objectClass = "data.table",
+      objectName = "jurisdictions", objectClass = "data.table",
       desc = paste("A data.table with the province/territory for each pixelIndex.", 
                    "Used to determine the equation parameters to split the above", 
                    "ground biomass into carbon pools."),
@@ -363,7 +363,7 @@ SplitYieldTables <- function(sim) {
   # Spatial Matching
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$yieldTablesId,
-    juridictions = sim$juridictions,
+    jurisdictions = sim$jurisdictions,
     ecozones = sim$ecozones
   ) |> na.omit()
   
@@ -490,7 +490,7 @@ AnnualIncrements <- function(sim){
   # 3. split cohort data of current year
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$pixelGroupMap,
-    juridictions = sim$juridictions,
+    jurisdictions = sim$jurisdictions,
     ecozones = sim$ecozones
   ) |> na.omit()
   
@@ -627,25 +627,25 @@ AnnualDisturbances <- function(sim){
     setcolorder(sim$ecozones, c("pixelIndex", "ecozone"))
   }
   
-  if (!suppliedElsewhere("juridictions", sim)) {
+  if (!suppliedElsewhere("jurisdictions", sim)) {
     dt <- data.table(
       PRUID = c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62),
       juris_id = c("NL", "PE", "NS", "NB", "QC", "ON", "MB", "SK", "AB", "BC", "YT", "NT", "NU")
     )
     
-    juridictions <- prepInputs(
-      url = extractURL("juridictions"),
+    jurisdictions <- prepInputs(
+      url = extractURL("jurisdictions"),
       destinationPath = inputPath(sim),
       fun = "terra::vect",
       to = studyAreaBuffered,
       overwrite = TRUE
     ) |> Cache()
-    juris_id <- rasterize(juridictions, sim$rasterToMatch, field = "PRUID")
+    juris_id <- rasterize(jurisdictions, sim$rasterToMatch, field = "PRUID")
     juris_id <- as.data.table(juris_id, na.rm = FALSE)
     juris_id$PRUID <- as.integer(as.character(juris_id$PRUID))
-    sim$juridictions <- dt[juris_id, on = "PRUID"]
-    sim$juridictions <- sim$juridictions[, pixelIndex := .I] |> na.omit()
-    setcolorder(sim$juridictions, c("pixelIndex", "PRUID", "juris_id"))
+    sim$jurisdictions <- dt[juris_id, on = "PRUID"]
+    sim$jurisdictions <- sim$jurisdictions[, pixelIndex := .I] |> na.omit()
+    setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
   }
   
   # 2. NFI params

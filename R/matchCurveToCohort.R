@@ -1,4 +1,4 @@
-spatialMatch <- function(pixelGroupMap, juridictions, ecozones){
+spatialMatch <- function(pixelGroupMap, jurisdictions, ecozones){
   if(is.data.table(pixelGroupMap)) {
     if(all(c("pixelIndex", "gcid") %in% names(pixelGroupMap))) {
       spatialMatch <- pixelGroupMap
@@ -18,10 +18,10 @@ spatialMatch <- function(pixelGroupMap, juridictions, ecozones){
   }
   spatialMatch <- spatialMatch[ecozones, on = "pixelIndex"]
   
-  if (any(!(spatialMatch$pixelIndex %in% juridictions$pixelIndex))) {
-    stop("There is a problem: some pixels cannot be matched to a juridiction...")
+  if (any(!(spatialMatch$pixelIndex %in% jurisdictions$pixelIndex))) {
+    stop("There is a problem: some pixels cannot be matched to a jurisdiction...")
   }
-  spatialMatch <- spatialMatch[juridictions, on = "pixelIndex"]
+  spatialMatch <- spatialMatch[jurisdictions, on = "pixelIndex"]
   return(spatialMatch)
 }
 
