@@ -85,6 +85,8 @@ defineModule(sim, list(
       objectName = "rstCurrentBurn", objectClass = "SpatRaster",
       desc = "Raster of fires with 1 indicating burned pixels."
     ),
+    expectsInput("standAgeMap", "SpatRaster",
+                 desc =  paste("Stand age map in study area. Provided by Biomass_borealDataPrep.")),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
       desc = "Polygon to use as the study area; default is the RIA study area.", 
@@ -139,6 +141,12 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Table with disturbance events for each simulation year.",
                    "Events types are defined in the 'disturbanceMeta' table.")
+    ),
+    createsOutput(
+      objectName = "spatialDT",
+      objectClass = "data.table",
+      desc = paste("A data table with spatial information for the CBM spinup.",
+                   "Columns are `pixelIndex`, `gcid`, `ecozone`, `jurisdiction`, `standAge`.")
     ),
     createsOutput(
       objectName = "summaryAGB",
@@ -359,7 +367,7 @@ SplitYieldTables <- function(sim) {
   # with the yieldTablesId and speciesCode. yieldTablesId gives us the location. 
   # Location let's us figure out which ecozone, and admin. The canfi_species have 
   # numbers which we need to match with the parameters.
-  
+  browser()
   # Spatial Matching
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$yieldTablesId,
@@ -373,6 +381,15 @@ SplitYieldTables <- function(sim) {
   # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
   # We should get a number of gcid >= than the number before the spatial matching.
   sim$yieldTablesId <- spatialDT[, .(pixelIndex, gcid = newgcid)] 
+  
+  # create spatialDT output
+  standAge <- data.table(standAge = as.integer(sim$standAgeMap[]))
+  standAge <- standAge[, pixelIndex := .I] |> na.omit()
+  
+  sim$spatialDT <- merge(
+    spatialDT[, .(pixelIndex, gcid = newgcid, ecozone, jurisdiction = PRUID)],
+    standAge
+  )
   
   spatialUnits <- unique(spatialDT[, pixelIndex := NULL])
   
@@ -647,6 +664,18 @@ AnnualDisturbances <- function(sim){
     sim$jurisdictions <- sim$jurisdictions[, pixelIndex := .I] |> na.omit()
     setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
   }
+  
+  # Stand Age
+  if (!suppliedElsewhere("standAgeMap", sim)) {
+    sim$pixelGroupMap <- prepInputs(
+      url = extractURL("standAgeMap"),
+      destinationPath = inputPath(sim),
+      fun = "terra::rast",
+      to = sim$rasterToMatch,
+      overwrite = TRUE
+    ) |> Cache(userTags = "prepInputsSAM")
+  }
+  
   
   # 2. NFI params
   if (!suppliedElsewhere("table6", sim)) {
