@@ -573,7 +573,7 @@ AnnualDisturbances <- function(sim){
       fun = "terra::rast",
       destinationPath = inputPath(sim),
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsRTM")
   }
   
   if (!suppliedElsewhere("masterRaster", sim)) {
@@ -590,7 +590,7 @@ AnnualDisturbances <- function(sim){
       fun = "terra::vect",
       destinationPath = inputPath(sim),
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsSA")
   }
   
   # pixel groups from vegetation data that gets updated annually
@@ -601,7 +601,7 @@ AnnualDisturbances <- function(sim){
       fun = "terra::rast",
       to = sim$rasterToMatch,
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsPGM")
   }
   
   if(inherits(sim$studyArea, "SpatVector")){
@@ -620,7 +620,7 @@ AnnualDisturbances <- function(sim){
       fun = "terra::vect",
       to = studyAreaBuffered,
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsEcozones")
     ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
     sim$ecozones <- data.table(ecozone = as.integer(ez[]))
     sim$ecozones <- sim$ecozones[, pixelIndex := .I] |> na.omit()
@@ -639,7 +639,7 @@ AnnualDisturbances <- function(sim){
       fun = "terra::vect",
       to = studyAreaBuffered,
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsJurisdictions")
     juris_id <- rasterize(jurisdictions, sim$rasterToMatch, field = "PRUID")
     juris_id <- as.data.table(juris_id, na.rm = FALSE)
     juris_id$PRUID <- as.integer(as.character(juris_id$PRUID))
@@ -654,7 +654,7 @@ AnnualDisturbances <- function(sim){
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table6_tb.csv",
-                             overwrite = TRUE) |> Cache()
+                             overwrite = TRUE) |> Cache(userTags = "prepInputsTable6")
   }
   
   if (!suppliedElsewhere("table7", sim)) {
@@ -662,7 +662,7 @@ AnnualDisturbances <- function(sim){
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv",
-                             overwrite = TRUE) |> Cache()
+                             overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
   }
   
   
@@ -674,7 +674,7 @@ AnnualDisturbances <- function(sim){
                                     fun = "data.table::fread",
                                     destinationPath = inputPath(sim),
                                     filename2 = "yieldTablesId.csv",
-                                    overwrite = TRUE) |> Cache()
+                                    overwrite = TRUE) |> Cache(userTags = "prepInputsYTId")
   }
   if(!all(c("gcid", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
     stop("yieldTablesId needs the columns gcid and pixelIndex")
@@ -686,7 +686,7 @@ AnnualDisturbances <- function(sim){
                                   fun = "data.table::fread",
                                   destinationPath = inputPath(sim),
                                   filename2 = "yieldTablesCumulative.csv",
-                                  overwrite = TRUE) |> Cache()
+                                  overwrite = TRUE) |> Cache(userTags = "prepInputsYTC")
   }
   if(!all(c("gcid", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))) {
     stop("yieldTablesCumulative needs the columns gcid, age, biomass, and speciesCode")
@@ -699,7 +699,7 @@ AnnualDisturbances <- function(sim){
                                  destinationPath = inputPath(sim),
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
-                                 filename2 = "cohortData.csv") |> Cache()
+                                 filename2 = "cohortData.csv") |> Cache(userTags = "prepInputsCD")
   }
   if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))) {
     stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
@@ -718,7 +718,7 @@ AnnualDisturbances <- function(sim){
                                  destinationPath = inputPath(sim),
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
-                                 filename2 = "disturbanceMeta.csv") |> Cache()
+                                 filename2 = "disturbanceMeta.csv") |> Cache(userTags = "prepInputsDistMeta")
   }
   if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
     stop("disturbanceMeta needs the columns eventID and distName")
