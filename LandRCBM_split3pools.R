@@ -89,7 +89,7 @@ defineModule(sim, list(
       objectName = "standAgeMap", objectClass = "SpatRaster",
       desc =  paste("Stand age map in study area. The default is for RIA, but",
                     "should be provided by `Biomass_borealDataPrep`."),
-      sourceURL = NA
+      sourceURL = "https://drive.google.com/file/d/1CPh3zHMcQiuUe8usXYHXvt_3I9-SIG7F/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
@@ -371,7 +371,6 @@ SplitYieldTables <- function(sim) {
   # with the yieldTablesId and speciesCode. yieldTablesId gives us the location. 
   # Location let's us figure out which ecozone, and admin. The canfi_species have 
   # numbers which we need to match with the parameters.
-  browser()
   # Spatial Matching
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$yieldTablesId,
@@ -417,7 +416,6 @@ SplitYieldTables <- function(sim) {
   
   # convert m^2 into tonnes/ha
   allInfoYieldTables$B <- allInfoYieldTables$B/100
-  
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
                                 table6 = sim$table6,
                                 table7 = sim$table7,
@@ -667,6 +665,17 @@ AnnualDisturbances <- function(sim){
     sim$jurisdictions <- dt[juris_id, on = "PRUID"]
     sim$jurisdictions <- sim$jurisdictions[, pixelIndex := .I] |> na.omit()
     setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
+  }
+  
+  # pixel groups from vegetation data that gets updated annually
+  if (!suppliedElsewhere("standAgeMap", sim)) {
+    sim$standAgeMap <- prepInputs(
+      url = extractURL("standAgeMap"),
+      destinationPath = inputPath(sim),
+      fun = "terra::rast",
+      to = sim$rasterToMatch,
+      overwrite = TRUE
+    ) |> Cache(userTags = "prepInputsSAM")
   }
   
   # 2. NFI params
