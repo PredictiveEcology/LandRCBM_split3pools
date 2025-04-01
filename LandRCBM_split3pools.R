@@ -86,6 +86,12 @@ defineModule(sim, list(
       desc = "Raster of fires with 1 indicating burned pixels."
     ),
     expectsInput(
+      objectName = "standAgeMap", objectClass = "SpatRaster",
+      desc =  paste("Stand age map in study area. The default is for RIA, but",
+                    "should be provided by `Biomass_borealDataPrep`."),
+      sourceURL = NA
+    ),
+    expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
       desc = "Polygon to use as the study area; default is the RIA study area.", 
       sourceURL = "https://drive.google.com/file/d/1M8jGAuq1wuavSb40c-s9HKyigCuTt9Rf/view?usp=drive_link"
@@ -141,6 +147,12 @@ defineModule(sim, list(
                    "Events types are defined in the 'disturbanceMeta' table.")
     ),
     createsOutput(
+      objectName = "spatialDT",
+      objectClass = "data.table",
+      desc = paste("A data table with spatial information for the CBM spinup.",
+                   "Columns are `pixelIndex`, `gcid`, `ecozone`, `jurisdiction`, `standAge`.")
+    ),
+    createsOutput(
       objectName = "summaryAGB",
       objectClass = "data.table",
       desc = paste("Sum of biomass and increments for each species and above ground", 
@@ -173,7 +185,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-      
+
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
@@ -198,7 +210,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       }
     },
     plotYC = {
-      
+
       # plot the yield tables
       sim <- PlotYieldTables(sim)
       
@@ -335,7 +347,7 @@ PlotYieldTables <- function(sim){
     nPlots <- nPixGroups
   } 
   pixGroupToPlot <- sample(unique(sim$yieldTablesId$gcid), nPlots)
-  
+
   # dt for plotting.
   plot_dt <- sim$yieldTablesCumulative[gcid %in% pixGroupToPlot]
   plot_dt[, totB := merch + foliage + other]
@@ -348,7 +360,7 @@ PlotYieldTables <- function(sim){
         types = P(sim)$.plots,
         filename = paste("yieldCurves"),
         title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
-  )
+        )
   return(invisible(sim))
 }
 
@@ -359,7 +371,7 @@ SplitYieldTables <- function(sim) {
   # with the yieldTablesId and speciesCode. yieldTablesId gives us the location. 
   # Location let's us figure out which ecozone, and admin. The canfi_species have 
   # numbers which we need to match with the parameters.
-  
+  browser()
   # Spatial Matching
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$yieldTablesId,
@@ -373,6 +385,15 @@ SplitYieldTables <- function(sim) {
   # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
   # We should get a number of gcid >= than the number before the spatial matching.
   sim$yieldTablesId <- spatialDT[, .(pixelIndex, gcid = newgcid)] 
+  
+  # create spatialDT output
+  standAge <- data.table(standAge = as.integer(sim$standAgeMap[]))
+  standAge <- standAge[, pixelIndex := .I] |> na.omit()
+  
+  sim$spatialDT <- merge(
+    spatialDT[, .(pixelIndex, gcid = newgcid, ecozone, jurisdiction = PRUID)],
+    standAge
+  )
   
   spatialUnits <- unique(spatialDT[, pixelIndex := NULL])
   
@@ -398,9 +419,9 @@ SplitYieldTables <- function(sim) {
   allInfoYieldTables$B <- allInfoYieldTables$B/100
   
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
-                                          table6 = sim$table6,
-                                          table7 = sim$table7,
-                                          pixGroupCol = "gcid")
+                                table6 = sim$table6,
+                                table7 = sim$table7,
+                                pixGroupCol = "gcid")
   
   #TODO
   # MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
@@ -412,11 +433,11 @@ SplitYieldTables <- function(sim) {
   minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("gcid", "speciesCode")]
   fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = c("gcid", "speciesCode")]
   add0s <- data.table(gcid = fill0s$gcid,
-                      speciesCode = fill0s$speciesCode,
-                      age = fill0s$age,
-                      merch = 0,
-                      foliage = 0,
-                      other = 0 )
+                           speciesCode = fill0s$speciesCode,
+                           age = fill0s$age,
+                           merch = 0,
+                           foliage = 0,
+                           other = 0 )
   
   sim$yieldTablesCumulative <- rbind(cumPools,add0s)
   setcolorder(sim$yieldTablesCumulative, c("gcid", "speciesCode", "age"))
@@ -429,7 +450,7 @@ SplitYieldTables <- function(sim) {
   # by one row and filling the first entry with NA.
   yieldIncrements <- copy(sim$yieldTablesCumulative)
   yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
-                  by = c("gcid", "speciesCode")]
+               by = c("gcid", "speciesCode")]
   sim$yieldTablesIncrements <- yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)]
   
   return(invisible(sim))
@@ -472,9 +493,9 @@ PlotYieldTablesPools <- function(sim){
         types = P(sim)$.plots,
         filename = "yieldCurveIncrements",
         title = "Increments merch fol other by species and pixel groups"
-  )
-  message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
-                      figurePath(sim)))
+        )
+    message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
+                        figurePath(sim)))
   
   return(invisible(sim))
 }
@@ -509,9 +530,9 @@ AnnualIncrements <- function(sim){
   # convert m^2 into tonnes/ha
   allInfoCohortData$B <- allInfoCohortData$B/100
   cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
-                                             table6 = sim$table6,
-                                             table7 = sim$table7,
-                                             "pixelGroup")
+                                       table6 = sim$table6,
+                                       table7 = sim$table7,
+                                       "pixelGroup")
   spatialDT[, pixelGroup := NULL]
   sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup")
   sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
@@ -534,11 +555,11 @@ AnnualIncrements <- function(sim){
                             otherInc = other - otherTminus1)]
     
     sim$aboveGroundIncrements <- annualIncrements[,.(pixelIndex, 
-                                                     speciesCode,
-                                                     age = age, 
-                                                     merchInc, 
-                                                     foliageInc, 
-                                                     otherInc)]    
+                                                speciesCode,
+                                                age = age, 
+                                                merchInc, 
+                                                foliageInc, 
+                                                otherInc)]    
   }
   return(invisible(sim))
 }
@@ -611,7 +632,7 @@ AnnualDisturbances <- function(sim){
   } else {
     stop("studyArea needs to be a SpatVector or a sf polygon")
   }
-  
+
   # ecozones
   if (!suppliedElsewhere("ecozones", sim)) {
     ecozones <- prepInputs(
@@ -648,6 +669,18 @@ AnnualDisturbances <- function(sim){
     setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
   }
   
+  # Stand Age
+  if (!suppliedElsewhere("standAgeMap", sim)) {
+    sim$pixelGroupMap <- prepInputs(
+      url = extractURL("standAgeMap"),
+      destinationPath = inputPath(sim),
+      fun = "terra::rast",
+      to = sim$rasterToMatch,
+      overwrite = TRUE
+    ) |> Cache(userTags = "prepInputsSAM")
+  }
+  
+  
   # 2. NFI params
   if (!suppliedElsewhere("table6", sim)) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
@@ -675,24 +708,21 @@ AnnualDisturbances <- function(sim){
                                     destinationPath = inputPath(sim),
                                     filename2 = "yieldTablesId.csv",
                                     overwrite = TRUE) |> Cache(userTags = "prepInputsYTId")
-  } else if (!is.null(sim$yieldTablesId)) {
-    if(!all(c("gcid", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
-      stop("yieldTablesId needs the columns gcid and pixelIndex")
-    }
   }
-  
+  if(!all(c("gcid", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
+    stop("yieldTablesId needs the columns gcid and pixelIndex")
+  }
   
   # actual yield curves
   if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
     sim$yieldTablesCumulative <- prepInputs(url = extractURL("yieldTablesCumulative"),
-                                            fun = "data.table::fread",
-                                            destinationPath = inputPath(sim),
-                                            filename2 = "yieldTablesCumulative.csv",
-                                            overwrite = TRUE) |> Cache(userTags = "prepInputsYTC")
-  } else if (!is.null(sim$yieldTablesCumulative)) {
-    if(!all(c("gcid", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))){
-      stop("yieldTablesCumulative needs the columns gcid, age, biomass, and speciesCode")
-    }
+                                  fun = "data.table::fread",
+                                  destinationPath = inputPath(sim),
+                                  filename2 = "yieldTablesCumulative.csv",
+                                  overwrite = TRUE) |> Cache(userTags = "prepInputsYTC")
+  }
+  if(!all(c("gcid", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))) {
+    stop("yieldTablesCumulative needs the columns gcid, age, biomass, and speciesCode")
   }
   
   #4. Cohort data. Information on biomass for each cohort and pixel group. Gets updated
@@ -703,10 +733,9 @@ AnnualDisturbances <- function(sim){
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
                                  filename2 = "cohortData.csv") |> Cache(userTags = "prepInputsCD")
-  } else if (!is.null(sim$cohortData)) {
-    if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))){
-      stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
-    }
+  }
+  if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))) {
+    stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
   }
   
   # TODO will be used for plotting to keep the same colors of species as in LandR modules
@@ -719,16 +748,15 @@ AnnualDisturbances <- function(sim){
   # 5. Disturbance meta
   if (!suppliedElsewhere("disturbanceMeta", sim)) {
     sim$disturbanceMeta <- prepInputs(url = extractURL("disturbanceMeta"),
-                                      destinationPath = inputPath(sim),
-                                      fun = "data.table::fread",
-                                      overwrite = TRUE,
-                                      filename2 = "disturbanceMeta.csv") |> Cache(userTags = "prepInputsDistMeta")
-  } else if (!is.null(sim$disturbanceMeta)) {
-    if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
-      stop("disturbanceMeta needs the columns eventID and distName")
-    }
+                                 destinationPath = inputPath(sim),
+                                 fun = "data.table::fread",
+                                 overwrite = TRUE,
+                                 filename2 = "disturbanceMeta.csv") |> Cache(userTags = "prepInputsDistMeta")
   }
-  
+  if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
+    stop("disturbanceMeta needs the columns eventID and distName")
+  }
+
   if (!suppliedElsewhere("rstCurrentBurn", sim)) {
     sim$rstCurrentBurn <- sim$rasterToMatch
     sim$rstCurrentBurn[] <- NA
