@@ -632,7 +632,7 @@ AnnualDisturbances <- function(sim){
   } else {
     stop("studyArea needs to be a SpatVector or a sf polygon")
   }
-
+  
   # ecozones
   if (!suppliedElsewhere("ecozones", sim)) {
     ecozones <- prepInputs(
@@ -669,18 +669,6 @@ AnnualDisturbances <- function(sim){
     setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
   }
   
-  # Stand Age
-  if (!suppliedElsewhere("standAgeMap", sim)) {
-    sim$pixelGroupMap <- prepInputs(
-      url = extractURL("standAgeMap"),
-      destinationPath = inputPath(sim),
-      fun = "terra::rast",
-      to = sim$rasterToMatch,
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsSAM")
-  }
-  
-  
   # 2. NFI params
   if (!suppliedElsewhere("table6", sim)) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
@@ -708,21 +696,24 @@ AnnualDisturbances <- function(sim){
                                     destinationPath = inputPath(sim),
                                     filename2 = "yieldTablesId.csv",
                                     overwrite = TRUE) |> Cache(userTags = "prepInputsYTId")
+  } else if (!is.null(sim$yieldTablesId)) {
+    if(!all(c("gcid", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
+      stop("yieldTablesId needs the columns gcid and pixelIndex")
+    }
   }
-  if(!all(c("gcid", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
-    stop("yieldTablesId needs the columns gcid and pixelIndex")
-  }
+  
   
   # actual yield curves
   if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
     sim$yieldTablesCumulative <- prepInputs(url = extractURL("yieldTablesCumulative"),
-                                  fun = "data.table::fread",
-                                  destinationPath = inputPath(sim),
-                                  filename2 = "yieldTablesCumulative.csv",
-                                  overwrite = TRUE) |> Cache(userTags = "prepInputsYTC")
-  }
-  if(!all(c("gcid", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))) {
-    stop("yieldTablesCumulative needs the columns gcid, age, biomass, and speciesCode")
+                                            fun = "data.table::fread",
+                                            destinationPath = inputPath(sim),
+                                            filename2 = "yieldTablesCumulative.csv",
+                                            overwrite = TRUE) |> Cache(userTags = "prepInputsYTC")
+  } else if (!is.null(sim$yieldTablesCumulative)) {
+    if(!all(c("gcid", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))){
+      stop("yieldTablesCumulative needs the columns gcid, age, biomass, and speciesCode")
+    }
   }
   
   #4. Cohort data. Information on biomass for each cohort and pixel group. Gets updated
@@ -733,9 +724,10 @@ AnnualDisturbances <- function(sim){
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
                                  filename2 = "cohortData.csv") |> Cache(userTags = "prepInputsCD")
-  }
-  if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))) {
-    stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
+  } else if (!is.null(sim$cohortData)) {
+    if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))){
+      stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
+    }
   }
   
   # TODO will be used for plotting to keep the same colors of species as in LandR modules
@@ -748,15 +740,16 @@ AnnualDisturbances <- function(sim){
   # 5. Disturbance meta
   if (!suppliedElsewhere("disturbanceMeta", sim)) {
     sim$disturbanceMeta <- prepInputs(url = extractURL("disturbanceMeta"),
-                                 destinationPath = inputPath(sim),
-                                 fun = "data.table::fread",
-                                 overwrite = TRUE,
-                                 filename2 = "disturbanceMeta.csv") |> Cache(userTags = "prepInputsDistMeta")
+                                      destinationPath = inputPath(sim),
+                                      fun = "data.table::fread",
+                                      overwrite = TRUE,
+                                      filename2 = "disturbanceMeta.csv") |> Cache(userTags = "prepInputsDistMeta")
+  } else if (!is.null(sim$disturbanceMeta)) {
+    if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
+      stop("disturbanceMeta needs the columns eventID and distName")
+    }
   }
-  if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
-    stop("disturbanceMeta needs the columns eventID and distName")
-  }
-
+  
   if (!suppliedElsewhere("rstCurrentBurn", sim)) {
     sim$rstCurrentBurn <- sim$rasterToMatch
     sim$rstCurrentBurn[] <- NA
