@@ -451,7 +451,10 @@ SplitYieldTables <- function(sim) {
   yieldIncrements <- copy(sim$yieldTablesCumulative)
   yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
                by = c("gcid", "speciesCode")]
-  sim$yieldTablesIncrements <- yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)]
+  browser()
+  sim$growthIncrements <- merge(yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)],
+                                unique(sim$cohortDT[, .(gcid, speciesCode, gcIndex)]))
+  setcolorder(sim$growthIncrements, c("gcIndex", "gcid", "speciesCode", "age"))
   
   return(invisible(sim))
 }

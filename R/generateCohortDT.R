@@ -1,5 +1,4 @@
 generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
-  browser()
   cohortDT <- data.table(
     pixelGroup = as.integer(pixelGroupMap[])
   ) 
