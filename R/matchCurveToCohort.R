@@ -1,9 +1,9 @@
 spatialMatch <- function(pixelGroupMap, jurisdictions, ecozones){
   if(is.data.table(pixelGroupMap)) {
-    if(all(c("pixelIndex", "gcid") %in% names(pixelGroupMap))) {
+    if(all(c("pixelIndex", "yieldTableIndex") %in% names(pixelGroupMap))) {
       spatialMatch <- pixelGroupMap
     } else {
-      stop("The data table pixelGroupMap need to have the column `pixelIndex`and `gcid`")
+      stop("The data table pixelGroupMap need to have the column `pixelIndex`and `yieldTableIndex`")
     }
   } else if (inherits(pixelGroupMap, "SpatRaster")) {
     spatialMatch <- data.table(
@@ -26,13 +26,13 @@ spatialMatch <- function(pixelGroupMap, jurisdictions, ecozones){
 }
 
 addSpatialUnits <- function(cohortData, spatialUnits) {
-  if ("gcid" %in% names(spatialUnits)) {
-    if("gcid" %in% names(cohortData)){
-      allInfoCohortData <- merge(cohortData, spatialUnits, by = "gcid", allow.cartesian = TRUE)
-      allInfoCohortData[, gcid := NULL]
-      setnames(allInfoCohortData, old = "newgcid", new = "gcid")
+  if ("yieldTableIndex" %in% names(spatialUnits)) {
+    if("yieldTableIndex" %in% names(cohortData)){
+      allInfoCohortData <- merge(cohortData, spatialUnits, by = "yieldTableIndex", allow.cartesian = TRUE)
+      allInfoCohortData[, yieldTableIndex := NULL]
+      setnames(allInfoCohortData, old = "newytid", new = "yieldTableIndex")
     } else {
-      stop("The object cohortData need the column gcid")
+      stop("The object cohortData need the column yieldTableIndex")
     }
   } else if ("pixelGroup" %in% colnames(spatialUnits)) {
     if("pixelGroup" %in% names(cohortData)){
@@ -43,7 +43,7 @@ addSpatialUnits <- function(cohortData, spatialUnits) {
       stop("The object cohortData need the column pixelGroup")
     }
   } else {
-    stop("The object spatialUnits need the column pixelGroup OR gcid")
+    stop("The object spatialUnits need the column pixelGroup OR yieldTableIndex")
   }
   return(allInfoCohortData)
 }

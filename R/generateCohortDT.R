@@ -10,6 +10,6 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
   cohortDT[, cohortIndex := .I]
   cohortDT <- merge(cohortDT, yieldTablesId, by = "pixelIndex")
   setkey(cohortDT, cohortIndex)
-  cohortDT[, gcIndex := .GRP, by = .(gcid, speciesCode)]
-  cohortDT <- cohortDT[,.(cohortIndex, pixelIndex, speciesCode, canfiCode = canfi_species, age, gcIndex, gcid)]
+  cohortDT[, gcIndex := .GRP, by = .(yieldTableIndex, speciesCode)]
+  cohortDT <- cohortDT[,.(cohortIndex, pixelIndex, speciesCode, canfiCode = canfi_species, age, gcIndex, yieldTableIndex)]
 }

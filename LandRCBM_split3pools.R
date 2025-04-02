@@ -112,14 +112,14 @@ defineModule(sim, list(
     expectsInput(
       objectName = "yieldTablesCumulative", objectClass = "data.table",
       desc = paste("Yield Tables intended to supply the requirements for a CBM spinup.",
-                   "Columns are `gcid`, `age`, `speciesCode`, `biomass`. `gcid` is the",
+                   "Columns are `yieldTableIndex`, `age`, `speciesCode`, `biomass`. `yieldTableIndex` is the",
                    "growth curve identifier that depends on species combination.",
                    "`biomass` is the biomass for the given species at the pixel age."),
       sourceURL = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "yieldTablesId", objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelIndex` and `gcid`."),
+      desc = paste("A data.table linking spatially the `yieldTableIndex`. Columns are `pixelIndex` and `yieldTableIndex`."),
       sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
     )
     # expectsInput("sppColorVect", "character",
@@ -337,7 +337,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 }
 
 PlotYieldTables <- function(sim){
-  nPixGroups <- length(unique(sim$yieldTablesId$gcid))
+  nPixGroups <- length(unique(sim$yieldTablesId$yieldTableIndex))
   nPlots <- P(sim)$numPixGroupPlots
   if (nPlots <= 0){
     stop("numPlots needs to be a positive integer")
@@ -346,13 +346,13 @@ PlotYieldTables <- function(sim){
             "plotting all pixelgroups.")
     nPlots <- nPixGroups
   } 
-  pixGroupToPlot <- sample(unique(sim$yieldTablesId$gcid), nPlots)
+  pixGroupToPlot <- sample(unique(sim$yieldTablesId$yieldTableIndex), nPlots)
 
   # dt for plotting.
-  plot_dt <- sim$yieldTablesCumulative[gcid %in% pixGroupToPlot]
+  plot_dt <- sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot]
   plot_dt[, totB := merch + foliage + other]
   
-  mod$gcIdPlotted <- pixGroupToPlot
+  mod$yieldTableIndexPlotted <- pixGroupToPlot
   
   # plot
   Plots(plot_dt, 
@@ -378,12 +378,12 @@ SplitYieldTables <- function(sim) {
     ecozones = sim$ecozones
   ) |> na.omit()
   
-  setorderv(spatialDT, cols = c("gcid", "ecozone", "juris_id"))
-  spatialDT[, newgcid := .GRP, by = .(gcid, ecozone, juris_id)]
+  setorderv(spatialDT, cols = c("yieldTableIndex", "ecozone", "juris_id"))
+  spatialDT[, newytid := .GRP, by = .(yieldTableIndex, ecozone, juris_id)]
   
-  # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
-  # We should get a number of gcid >= than the number before the spatial matching.
-  sim$yieldTablesId <- spatialDT[, .(pixelIndex, gcid = newgcid)] 
+  # Update yieldTablesId. When a yieldTableIndex cross a CBM spatial units, there is a bifurcation.
+  # We should get a number of yieldTableIndex >= than the number before the spatial matching.
+  sim$yieldTablesId <- spatialDT[, .(pixelIndex, yieldTableIndex = newytid)] 
   
   sim$cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$yieldTablesId)
   
@@ -421,7 +421,7 @@ SplitYieldTables <- function(sim) {
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
                                 table6 = sim$table6,
                                 table7 = sim$table7,
-                                pixGroupCol = "gcid")
+                                pixGroupCol = "yieldTableIndex")
   
   #TODO
   # MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
@@ -430,9 +430,9 @@ SplitYieldTables <- function(sim) {
   ### if not, we need to extrapolate to make them annual
   
   # add missing years (e.g., Boudewyn equation do not handle age 0)
-  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("gcid", "speciesCode")]
-  fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = c("gcid", "speciesCode")]
-  add0s <- data.table(gcid = fill0s$gcid,
+  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("yieldTableIndex", "speciesCode")]
+  fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = c("yieldTableIndex", "speciesCode")]
+  add0s <- data.table(yieldTableIndex = fill0s$yieldTableIndex,
                            speciesCode = fill0s$speciesCode,
                            age = fill0s$age,
                            merch = 0,
@@ -440,8 +440,8 @@ SplitYieldTables <- function(sim) {
                            other = 0 )
   
   sim$yieldTablesCumulative <- rbind(cumPools,add0s)
-  setcolorder(sim$yieldTablesCumulative, c("gcid", "speciesCode", "age"))
-  setorderv(sim$yieldTablesCumulative, c("gcid", "speciesCode", "age"))
+  setcolorder(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age"))
+  setorderv(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age"))
   
   # 3 Calculating Increments
   incCols <- c("merchInc", "foliageInc", "otherInc")
@@ -450,11 +450,10 @@ SplitYieldTables <- function(sim) {
   # by one row and filling the first entry with NA.
   yieldIncrements <- copy(sim$yieldTablesCumulative)
   yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
-               by = c("gcid", "speciesCode")]
-  browser()
-  sim$growthIncrements <- merge(yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)],
-                                unique(sim$cohortDT[, .(gcid, speciesCode, gcIndex)]))
-  setcolorder(sim$growthIncrements, c("gcIndex", "gcid", "speciesCode", "age"))
+               by = c("yieldTableIndex", "speciesCode")]
+  sim$growthIncrements <- merge(yieldIncrements[,.(yieldTableIndex, speciesCode, age, merchInc, foliageInc, otherInc)],
+                                unique(sim$cohortDT[, .(yieldTableIndex, speciesCode, gcIndex)]))
+  setcolorder(sim$growthIncrements, c("gcIndex", "yieldTableIndex", "speciesCode", "age"))
   
   return(invisible(sim))
 }
@@ -464,11 +463,11 @@ SplitYieldTables <- function(sim) {
 PlotYieldTablesPools <- function(sim){
   
   # We want to plot the same cohorts across figures
-  pixGroupToPlot <- mod$gcIdPlotted
-  plot_dt <- sim$yieldTablesCumulative[gcid %in% pixGroupToPlot]
+  pixGroupToPlot <- mod$yieldTableIndexPlotted
+  plot_dt <- sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
-    id.vars = c("gcid", "speciesCode", "age"),
+    id.vars = c("yieldTableIndex", "speciesCode", "age"),
     measure.vars = c("merch", "foliage", "other"),
     variable.name = "pool",
     value.name = "B"
@@ -482,10 +481,10 @@ PlotYieldTablesPools <- function(sim){
   )
   
   # plot increments
-  plot_dt <- sim$yieldTablesIncrements[gcid %in% pixGroupToPlot]
+  plot_dt <- sim$yieldTablesIncrements[yieldTableIndex %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
-    id.vars = c("gcid", "speciesCode", "age"),
+    id.vars = c("yieldTableIndex", "speciesCode", "age"),
     measure.vars = c("merchInc", "foliageInc", "otherInc"),
     variable.name = "pool",
     value.name = "B"
@@ -711,8 +710,8 @@ AnnualDisturbances <- function(sim){
                                     filename2 = "yieldTablesId.csv",
                                     overwrite = TRUE) |> Cache(userTags = "prepInputsYTId")
   } else if (!is.null(sim$yieldTablesId)) {
-    if(!all(c("gcid", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
-      stop("yieldTablesId needs the columns gcid and pixelIndex")
+    if(!all(c("yieldTableIndex", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
+      stop("yieldTablesId needs the columns yieldTableIndex and pixelIndex")
     }
   }
   
@@ -725,8 +724,8 @@ AnnualDisturbances <- function(sim){
                                             filename2 = "yieldTablesCumulative.csv",
                                             overwrite = TRUE) |> Cache(userTags = "prepInputsYTC")
   } else if (!is.null(sim$yieldTablesCumulative)) {
-    if(!all(c("gcid", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))){
-      stop("yieldTablesCumulative needs the columns gcid, age, biomass, and speciesCode")
+    if(!all(c("yieldTableIndex", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))){
+      stop("yieldTablesCumulative needs the columns yieldTableIndex, age, biomass, and speciesCode")
     }
   }
   
