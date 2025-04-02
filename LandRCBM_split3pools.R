@@ -385,12 +385,14 @@ SplitYieldTables <- function(sim) {
   # We should get a number of gcid >= than the number before the spatial matching.
   sim$yieldTablesId <- spatialDT[, .(pixelIndex, gcid = newgcid)] 
   
+  sim$cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$yieldTablesId)
+  
   # create spatialDT output
   standAge <- data.table(standAge = as.integer(sim$standAgeMap[]))
   standAge <- standAge[, pixelIndex := .I] |> na.omit()
   
   sim$spatialDT <- merge(
-    spatialDT[, .(pixelIndex, gcid = newgcid, ecozone, jurisdiction = PRUID)],
+    spatialDT[, .(pixelIndex, ecozone, jurisdiction = PRUID)],
     standAge
   )
   
