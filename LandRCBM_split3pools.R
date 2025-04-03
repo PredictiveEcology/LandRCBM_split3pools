@@ -134,23 +134,30 @@ defineModule(sim, list(
                    "Columns are `pixelIndex`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
     ),
     createsOutput(
-      objectName = "aboveGroundIncrements",
+      objectName = "growth_increments",
       objectClass = "data.table",
       desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
-                   "Columns are `pixelIndex`, `speciesCode`, `age`, `merchInc`, `foliageInc`, and `otherInc`.")
+                   "Columns are `gcids`, `age`, `species_id` ,`sw_hW`,`merch_inc`, `foliage_inc`, and `other_inc`.")
+    ),
+    createsOutput(
+      objectName = "cohortDT",
+      objectClass = "data.table",
+      desc = paste("Cohort-level information.",
+                   "Columns are `cohortID`, `pixelIndex`, `age`, and `gcids`.")
     ),
     createsOutput(
       objectName = "disturbanceEvents",
       objectClass = "data.table",
       desc = paste("Table with disturbance events for each simulation year.",
-                   "Events types are defined in the 'disturbanceMeta' table.")
+                   "Events types are defined in the 'disturbanceMeta' table.",
+                   "Columns are `pixelIndex`, `year`, `eventID`.")
     ),
     createsOutput(
       objectName = "spatialDT",
       objectClass = "data.table",
       desc = paste("A data table with spatial information for the CBM spinup.",
-                   "Columns are `pixelIndex`, `gcid`, `ecozone`, `jurisdiction`, `standAge`.")
+                   "Columns are `pixelIndex`, `spatial_unit_id`.")
     ),
     createsOutput(
       objectName = "summaryAGB",
@@ -572,7 +579,7 @@ AnnualIncrements <- function(sim){
     )
     
     sim$growthIncrements <- setkey(annualIncrements, gcIndex)
-    sim$growthIncrements <- sim$growthIncrements[, .(gcIndex, speciesCode, age, cohortIndex, pixelIndex,merchInc, foliageInc, otherInc)]
+    sim$growthIncrements <- sim$growthIncrements[, .(gcIndex, speciesCode, age, cohortIndex, pixelIndex, merchInc, foliageInc, otherInc)]
   }
   return(invisible(sim))
 }
