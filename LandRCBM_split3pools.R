@@ -509,7 +509,7 @@ AnnualIncrements <- function(sim){
     annualIncrements$age <- annualIncrements$age + 1
     setnames(annualIncrements, old = c("merch", "foliage", "other"), new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
   }
-  
+  browser()
   # 3. split cohort data of current year
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$pixelGroupMap,
@@ -518,6 +518,9 @@ AnnualIncrements <- function(sim){
   ) |> na.omit()
   
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
+  
+  sim$cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, yieldTablesId = NULL)
+  
   spatialUnits <- unique(spatialDT[, !("pixelIndex")])
   allInfoCohortData <- addSpatialUnits(
     cohortData = sim$cohortData,
@@ -555,13 +558,22 @@ AnnualIncrements <- function(sim){
     annualIncrements[, `:=`(merchInc = merch - merchTminus1,
                             foliageInc = foliage - foliageTminus1,
                             otherInc = other - otherTminus1)]
+    annualIncrements <- merge(annualIncrements[,.(pixelIndex, 
+                                                  speciesCode,
+                                                  age = age, 
+                                                  merchInc, 
+                                                  foliageInc, 
+                                                  otherInc)],
+                              cohortDT[,.(pixelIndex, 
+                                          speciesCode,
+                                          age, 
+                                          cohortIndex, 
+                                          gcIndex)],
+                              by = c("pixelIndex", "speciesCode", "age")
+                              )
     
-    sim$aboveGroundIncrements <- annualIncrements[,.(pixelIndex, 
-                                                speciesCode,
-                                                age = age, 
-                                                merchInc, 
-                                                foliageInc, 
-                                                otherInc)]    
+    sim$growthIncrements <- setkey(growthIncrements, gcIndex)
+    sim$growthIncrements <- sim$growthIncrements[, .c(gcIndex, speciesCode, age, cohortIndex, merchInc, foliageInc, otherInc)]
   }
   return(invisible(sim))
 }
