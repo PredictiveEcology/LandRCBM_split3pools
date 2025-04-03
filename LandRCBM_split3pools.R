@@ -481,7 +481,7 @@ PlotYieldTablesPools <- function(sim){
   )
   
   # plot increments
-  plot_dt <- sim$yieldTablesIncrements[yieldTableIndex %in% pixGroupToPlot]
+  plot_dt <- sim$growthIncrements[yieldTableIndex %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
     id.vars = c("yieldTableIndex", "speciesCode", "age"),
