@@ -185,7 +185,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-
+      
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
@@ -210,7 +210,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       }
     },
     plotYC = {
-
+      
       # plot the yield tables
       sim <- PlotYieldTables(sim)
       
@@ -280,7 +280,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        incrementSum  <- sim$aboveGroundIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merchInc", "foliageInc", "otherInc")]
+        incrementSum  <- sim$growthIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merchInc", "foliageInc", "otherInc")]
         # rasterize
         merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
         merchIncRast[incrementSum$pixelIndex] <- incrementSum$merchInc
@@ -347,7 +347,7 @@ PlotYieldTables <- function(sim){
     nPlots <- nPixGroups
   } 
   pixGroupToPlot <- sample(unique(sim$yieldTablesId$yieldTableIndex), nPlots)
-
+  
   # dt for plotting.
   plot_dt <- sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot]
   plot_dt[, totB := merch + foliage + other]
@@ -360,7 +360,7 @@ PlotYieldTables <- function(sim){
         types = P(sim)$.plots,
         filename = paste("yieldCurves"),
         title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
-        )
+  )
   return(invisible(sim))
 }
 
@@ -419,9 +419,9 @@ SplitYieldTables <- function(sim) {
   # convert m^2 into tonnes/ha
   allInfoYieldTables$B <- allInfoYieldTables$B/100
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
-                                table6 = sim$table6,
-                                table7 = sim$table7,
-                                pixGroupCol = "yieldTableIndex")
+                                          table6 = sim$table6,
+                                          table7 = sim$table7,
+                                          pixGroupCol = "yieldTableIndex")
   
   #TODO
   # MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
@@ -433,11 +433,11 @@ SplitYieldTables <- function(sim) {
   minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("yieldTableIndex", "speciesCode")]
   fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = c("yieldTableIndex", "speciesCode")]
   add0s <- data.table(yieldTableIndex = fill0s$yieldTableIndex,
-                           speciesCode = fill0s$speciesCode,
-                           age = fill0s$age,
-                           merch = 0,
-                           foliage = 0,
-                           other = 0 )
+                      speciesCode = fill0s$speciesCode,
+                      age = fill0s$age,
+                      merch = 0,
+                      foliage = 0,
+                      other = 0 )
   
   sim$yieldTablesCumulative <- rbind(cumPools,add0s)
   setcolorder(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age"))
@@ -450,7 +450,7 @@ SplitYieldTables <- function(sim) {
   # by one row and filling the first entry with NA.
   yieldIncrements <- copy(sim$yieldTablesCumulative)
   yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
-               by = c("yieldTableIndex", "speciesCode")]
+                  by = c("yieldTableIndex", "speciesCode")]
   sim$growthIncrements <- merge(yieldIncrements[,.(yieldTableIndex, speciesCode, age, merchInc, foliageInc, otherInc)],
                                 unique(sim$cohortDT[, .(yieldTableIndex, speciesCode, gcIndex)]))
   setcolorder(sim$growthIncrements, c("gcIndex", "yieldTableIndex", "speciesCode", "age"))
@@ -495,9 +495,9 @@ PlotYieldTablesPools <- function(sim){
         types = P(sim)$.plots,
         filename = "yieldCurveIncrements",
         title = "Increments merch fol other by species and pixel groups"
-        )
-    message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
-                        figurePath(sim)))
+  )
+  message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
+                      figurePath(sim)))
   
   return(invisible(sim))
 }
@@ -509,7 +509,6 @@ AnnualIncrements <- function(sim){
     annualIncrements$age <- annualIncrements$age + 1
     setnames(annualIncrements, old = c("merch", "foliage", "other"), new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
   }
-  browser()
   # 3. split cohort data of current year
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$pixelGroupMap,
@@ -535,9 +534,9 @@ AnnualIncrements <- function(sim){
   # convert m^2 into tonnes/ha
   allInfoCohortData$B <- allInfoCohortData$B/100
   cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
-                                       table6 = sim$table6,
-                                       table7 = sim$table7,
-                                       "pixelGroup")
+                                             table6 = sim$table6,
+                                             table7 = sim$table7,
+                                             "pixelGroup")
   spatialDT[, pixelGroup := NULL]
   sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup")
   sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
@@ -564,16 +563,16 @@ AnnualIncrements <- function(sim){
                                                   merchInc, 
                                                   foliageInc, 
                                                   otherInc)],
-                              cohortDT[,.(pixelIndex, 
-                                          speciesCode,
-                                          age, 
-                                          cohortIndex, 
-                                          gcIndex)],
+                              sim$cohortDT[,.(pixelIndex, 
+                                              speciesCode,
+                                              age, 
+                                              cohortIndex, 
+                                              gcIndex)],
                               by = c("pixelIndex", "speciesCode", "age")
-                              )
+    )
     
-    sim$growthIncrements <- setkey(growthIncrements, gcIndex)
-    sim$growthIncrements <- sim$growthIncrements[, .c(gcIndex, speciesCode, age, cohortIndex, merchInc, foliageInc, otherInc)]
+    sim$growthIncrements <- setkey(annualIncrements, gcIndex)
+    sim$growthIncrements <- sim$growthIncrements[, .(gcIndex, speciesCode, age, cohortIndex, pixelIndex,merchInc, foliageInc, otherInc)]
   }
   return(invisible(sim))
 }
