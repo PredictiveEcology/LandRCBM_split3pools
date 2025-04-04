@@ -769,5 +769,18 @@ AnnualDisturbances <- function(sim){
     sim$rstCurrentBurn[] <- NA
   }
   
+  # cbmAdmin: this is needed to match species and parameters. Boudewyn et al 2007
+  # abbreviation and cbm spatial units and ecoBoudnary id is provided with the
+  # adminName to avoid confusion.
+  if (!suppliedElsewhere("cbmAdmin", sim)) {
+    if (!suppliedElsewhere("cbmAdminURL", sim)) {
+      sim$cbmAdminURL <- extractURL("cbmAdmin")
+    }
+    sim$cbmAdmin <- prepInputs(url = sim$cbmAdminURL,
+                               targetFile = "cbmAdmin.csv",
+                               destinationPath = inputPath(sim),
+                               fun = fread)
+  }
+  
   return(invisible(sim))
 }
