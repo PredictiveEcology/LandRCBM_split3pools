@@ -169,8 +169,7 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Sum of biomass and increments for each species and above ground", 
                    "pool at each timestep across the landscape. Columns are `year`,",
-                   "`speciesCode`, `merch`, `foliage`, `other`, merchInc`,",
-                   "`foliageInc`, and `otherInc`.")
+                   "`speciesCode`, `merch`, `foliage`, `other`.")
     ),
     createsOutput(
       objectName = "yieldTablesCumulative",
@@ -285,14 +284,14 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        incrementSum  <- sim$growthIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merchInc", "foliageInc", "otherInc")]
+        incrementSum  <- sim$growth_increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
         # rasterize
         merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
-        merchIncRast[incrementSum$pixelIndex] <- incrementSum$merchInc
+        merchIncRast[incrementSum$pixelIndex] <- incrementSum$merch_inc
         foliageIncRast <- rast(sim$rasterToMatch, names = "foliage increments")
-        foliageIncRast[incrementSum$pixelIndex] <- incrementSum$foliageInc
+        foliageIncRast[incrementSum$pixelIndex] <- incrementSum$foliage_inc
         otherIncRast <- rast(sim$rasterToMatch, names = "other increments")
-        otherIncRast[incrementSum$pixelIndex] <- incrementSum$otherInc
+        otherIncRast[incrementSum$pixelIndex] <- incrementSum$other_inc
         
         # plot
         Plots(merchIncRast,
@@ -448,17 +447,17 @@ SplitYieldTables <- function(sim) {
   setorderv(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age"))
   
   # 3 Calculating Increments
-  incCols <- c("merchInc", "foliageInc", "otherInc")
+  incCols <- c("merch_inc", "foliage_inc", "other_inc")
   poolCols <- c("merch", "foliage", "other")
   # This line calculates the first difference of each colNames, shifting it down 
   # by one row and filling the first entry with NA.
   yieldIncrements <- copy(sim$yieldTablesCumulative)
   yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
                   by = c("yieldTableIndex", "speciesCode")]
-  sim$growthIncrements <- merge(yieldIncrements[,.(yieldTableIndex, speciesCode, age, merchInc, foliageInc, otherInc)],
+  sim$growth_increments <- merge(yieldIncrements[,.(yieldTableIndex, speciesCode, age, merch_inc, foliage_inc, other_inc)],
                                 unique(cohortDT[, .(yieldTableIndex, speciesCode, gcids)]))
-  setcolorder(sim$growthIncrements, c("gcids", "yieldTableIndex", "speciesCode", "age"))
-  
+  sim$growth_increments <- sim$growth_increments[,.("gcids", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc")]
+
   return(invisible(sim))
 }
 
@@ -485,11 +484,11 @@ PlotYieldTablesPools <- function(sim){
   )
   
   # plot increments
-  plot_dt <- sim$growthIncrements[yieldTableIndex %in% pixGroupToPlot]
+  plot_dt <- sim$growth_increments[yieldTableIndex %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
     id.vars = c("yieldTableIndex", "speciesCode", "age"),
-    measure.vars = c("merchInc", "foliageInc", "otherInc"),
+    measure.vars = c("merch_inc", "foliage_inc", "other_inc"),
     variable.name = "pool",
     value.name = "B"
   )
@@ -560,15 +559,15 @@ AnnualIncrements <- function(sim){
               cols=c("merch", "foliage", "other", "merchTminus1", "foliageTminus1", "otherTminus1"))
     
     # 5. take the difference
-    annualIncrements[, `:=`(merchInc = merch - merchTminus1,
-                            foliageInc = foliage - foliageTminus1,
-                            otherInc = other - otherTminus1)]
+    annualIncrements[, `:=`(merch_inc = merch - merchTminus1,
+                            foliage_inc = foliage - foliageTminus1,
+                            other_inc = other - otherTminus1)]
     annualIncrements <- merge(annualIncrements[,.(pixelIndex, 
                                                   speciesCode,
                                                   age = age, 
-                                                  merchInc, 
-                                                  foliageInc, 
-                                                  otherInc)],
+                                                  merch_inc, 
+                                                  foliage_inc, 
+                                                  other_inc)],
                               cohortDT[,.(pixelIndex, 
                                               speciesCode,
                                               age, 
@@ -577,8 +576,8 @@ AnnualIncrements <- function(sim){
                               by = c("pixelIndex", "speciesCode", "age")
     )
     
-    sim$growthIncrements <- setkey(annualIncrements, gcids)
-    sim$growthIncrements <- sim$growthIncrements[, .(gcids, speciesCode, age, cohortID, pixelIndex, merchInc, foliageInc, otherInc)]
+    sim$growth_increments <- setkey(annualIncrements, gcids)
+    sim$growth_increments <- sim$growth_increments[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
   }
   return(invisible(sim))
 }

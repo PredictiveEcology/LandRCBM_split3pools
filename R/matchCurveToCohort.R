@@ -66,6 +66,7 @@ addCanfiCode <- function(cohortData){
 addForestType <- function(cohortData){
   speciesCode <- unique(cohortData$speciesCode)
   sw_hw <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), Broadleaf]
+  sw_hw <- ifelse(sw_hw, "hw", "sw")
   
   if(any(is.na(sw_hw))) {
     missing_species <- speciesCode[which(is.na(sw_hw))]
