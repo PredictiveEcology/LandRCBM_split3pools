@@ -50,6 +50,11 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
     expectsInput(
+      objectName = "cbmAdmin", objectClass = "data.frame",
+      desc = paste("Provides equivalent between provincial boundaries,",
+                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
+      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"),
+    expectsInput(
       objectName = "disturbanceMeta", objectClass = "data.table",
       desc = paste("Table defining the disturbance event types.", 
                    "This associates CBM-CFS3 disturbances with the",
@@ -138,7 +143,7 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
-                   "Columns are `gcids`, `age`, `species_id` ,`sw_hW`,`merch_inc`, `foliage_inc`, and `other_inc`.")
+                   "Columns are `gcids`, `age`,`merch_inc`, `foliage_inc`, and `other_inc`.")
     ),
     createsOutput(
       objectName = "cohortDT",
@@ -146,6 +151,12 @@ defineModule(sim, list(
       desc = paste("Cohort-level information.",
                    "Columns are `cohortID`, `pixelIndex`, `age`, and `gcids`.")
     ),
+    createsOutput(
+      objectName = "gcMeta",
+      objectClass = "data.table",
+      desc = paste("Growth curve-level information.",
+                   "Columns are `gcids`, `species_id`, `speciesCode`, and `sw_hw`")
+    ),    
     createsOutput(
       objectName = "disturbanceEvents",
       objectClass = "data.table",
@@ -177,13 +188,6 @@ defineModule(sim, list(
       objectName = "yieldTablesId",
       objectClass = "data.table",
       desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelIndex` and `gcid`.")
-    ),
-    createsOutput(
-      objectName = "yieldTablesIncrements",
-      objectClass = "data.table",
-      desc = paste("Yield tables divided into above ground pools and represented",
-                   "yearly increments. Columns are `gcid`, `age`, `speciesCode`,",
-                   "`merch`, `foliage`, `other`.")
     )
   )
 ))
@@ -545,7 +549,7 @@ AnnualIncrements <- function(sim){
                                              table7 = sim$table7,
                                              "pixelGroup")
   spatialDT[, pixelGroup := NULL]
-  sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup")
+  sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup", allow.cartesian = TRUE)
   sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
   setorderv(sim$aboveGroundBiomass, c("pixelIndex", "speciesCode", "age"))
   

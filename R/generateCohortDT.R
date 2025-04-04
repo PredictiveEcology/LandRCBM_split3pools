@@ -4,7 +4,8 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
   ) 
   cohortDT <- cohortDT[, pixelIndex := .I] |> na.omit()
   cohortDT <- merge(cohortDT,
-                    cohortData[,.(speciesCode, age, pixelGroup)])
+                    cohortData[,.(speciesCode, age, pixelGroup)],
+                    allow.cartesian = TRUE)
   cohortDT <- addCanfiCode(cohortDT)
   setorder(cohortDT, pixelIndex, speciesCode, age)
   cohortDT[, cohortIndex := .I]
