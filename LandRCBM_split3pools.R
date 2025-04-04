@@ -215,12 +215,12 @@ defineModule(sim, list(
       objectName = "yieldTablesCumulative",
       objectClass = "data.table",
       desc = paste("Yield tables divided into above ground pools. Columns are",
-                   "`gcid`, `age`, `speciesCode`, `merch`, `foliage`, `other`.)")
+                   "`yieldTableIndex`, `age`, `speciesCode`, `merch`, `foliage`, `other`.)")
     ),
     createsOutput(
       objectName = "yieldTablesId",
       objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelIndex` and `gcid`.")
+      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelIndex` and `yieldTableIndex`.")
     )
   )
 ))
