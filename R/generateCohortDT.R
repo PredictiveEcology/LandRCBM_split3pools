@@ -7,15 +7,16 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
                     cohortData[,.(speciesCode, age, pixelGroup)],
                     allow.cartesian = TRUE)
   cohortDT <- addCanfiCode(cohortDT)
+  cohortDT <- addForestType(cohortDT)
   setorder(cohortDT, pixelIndex, speciesCode, age)
-  cohortDT[, cohortIndex := .I]
+  cohortDT[, cohortID := .I]
   if (!is.null(yieldTablesId)){
     cohortDT <- merge(cohortDT, yieldTablesId, by = "pixelIndex")
-    cohortDT[, gcIndex := .GRP, by = .(yieldTableIndex, speciesCode)]
-    cohortDT <- cohortDT[,.(cohortIndex, pixelIndex, speciesCode, canfiCode = canfi_species, age, gcIndex, yieldTableIndex)]
+    cohortDT[, gcids := .GRP, by = .(yieldTableIndex, speciesCode)]
+    cohortDT <- cohortDT[,.(cohortID, pixelIndex, speciesCode, species_id = canfi_species, age, gcids, yieldTableIndex, sw_hw)]
   } else {
-    cohortDT[, gcIndex := .GRP, by = .(pixelIndex, speciesCode, age)]
-    cohortDT <- cohortDT[,.(cohortIndex, pixelIndex, speciesCode, canfiCode = canfi_species, age, gcIndex)]
+    cohortDT[, gcids := .GRP, by = .(pixelIndex, speciesCode, age)]
+    cohortDT <- cohortDT[,.(cohortID, pixelIndex, speciesCode, species_id = canfi_species, age, gcids, sw_hw)]
   }
-  setkey(cohortDT, cohortIndex)
+  setkey(cohortDT, cohortID)
 }

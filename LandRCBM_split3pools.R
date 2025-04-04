@@ -390,7 +390,10 @@ SplitYieldTables <- function(sim) {
   # We should get a number of yieldTableIndex >= than the number before the spatial matching.
   sim$yieldTablesId <- spatialDT[, .(pixelIndex, yieldTableIndex = newytid)] 
   
-  sim$cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$yieldTablesId)
+  # create cohortDT and gcMeta
+  cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$yieldTablesId)
+  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcids)]
+  sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
 
   # create standDT output
   sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundaryID = ecozone, abreviation = juris_id)]
@@ -453,8 +456,8 @@ SplitYieldTables <- function(sim) {
   yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
                   by = c("yieldTableIndex", "speciesCode")]
   sim$growthIncrements <- merge(yieldIncrements[,.(yieldTableIndex, speciesCode, age, merchInc, foliageInc, otherInc)],
-                                unique(sim$cohortDT[, .(yieldTableIndex, speciesCode, gcIndex)]))
-  setcolorder(sim$growthIncrements, c("gcIndex", "yieldTableIndex", "speciesCode", "age"))
+                                unique(cohortDT[, .(yieldTableIndex, speciesCode, gcids)]))
+  setcolorder(sim$growthIncrements, c("gcids", "yieldTableIndex", "speciesCode", "age"))
   
   return(invisible(sim))
 }
@@ -519,7 +522,9 @@ AnnualIncrements <- function(sim){
   
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
   
-  sim$cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, yieldTablesId = NULL)
+  cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, yieldTablesId = NULL)
+  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcids)]
+  sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
   
   spatialUnits <- unique(spatialDT[, !("pixelIndex")])
   allInfoCohortData <- addSpatialUnits(
@@ -564,16 +569,16 @@ AnnualIncrements <- function(sim){
                                                   merchInc, 
                                                   foliageInc, 
                                                   otherInc)],
-                              sim$cohortDT[,.(pixelIndex, 
+                              cohortDT[,.(pixelIndex, 
                                               speciesCode,
                                               age, 
-                                              cohortIndex, 
-                                              gcIndex)],
+                                              cohortID, 
+                                              gcids)],
                               by = c("pixelIndex", "speciesCode", "age")
     )
     
-    sim$growthIncrements <- setkey(annualIncrements, gcIndex)
-    sim$growthIncrements <- sim$growthIncrements[, .(gcIndex, speciesCode, age, cohortIndex, pixelIndex, merchInc, foliageInc, otherInc)]
+    sim$growthIncrements <- setkey(annualIncrements, gcids)
+    sim$growthIncrements <- sim$growthIncrements[, .(gcids, speciesCode, age, cohortID, pixelIndex, merchInc, foliageInc, otherInc)]
   }
   return(invisible(sim))
 }
