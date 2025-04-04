@@ -46,19 +46,40 @@ defineModule(sim, list(
   inputObjects = bindrows(
     expectsInput(
       objectName = "cohortData", objectClass = "data.table",
-      desc = "Above ground biomass (g/m^2) of cohorts in pixel groups.",
+      desc = "Total above ground biomass (g/m^2) of each cohorts by pixel groups.",
+      columns = c(
+        speciesCode = "",
+        ecoregionGroup = "",
+        age = "",
+        B = "",
+        pixelGroup = "",
+        totalBiomass = ""
+      ),
       sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
     expectsInput(
-      objectName = "cbmAdmin", objectClass = "data.frame",
+      objectName = "cbmAdmin", objectClass = "data.table",
       desc = paste("Provides equivalent between provincial boundaries,",
                    "CBM-id for provincial boundaries and CBM-spatial unit ids"),
+      columns = c(
+        AdminBoundaryID = "",
+        stump_parameter_id = "",
+        adminName = "",
+        abreviation = "",
+        SpatialUnitID = "",
+        EcoBoundaryID = ""
+      ),
       sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"),
     expectsInput(
       objectName = "disturbanceMeta", objectClass = "data.table",
       desc = paste("Table defining the disturbance event types.", 
                    "This associates CBM-CFS3 disturbances with the",
                    "event IDs in the 'disturbanceEvents' table."),
+      columns = c(
+        name = "",
+        eventID = "",
+        priority = ""
+      ),
       sourceURL = "https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link"
     ),
     expectsInput(
@@ -66,6 +87,10 @@ defineModule(sim, list(
       desc = paste("A data.table with the ecozone for each pixelIndex. Used to determine",
                    "the equation parameters to split the above ground biomass into",
                    "carbon pools."),
+      columns = c(
+        pixelIndex = "",
+        ecozone = ""
+      ),
       sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
     ),
     expectsInput(
@@ -73,6 +98,11 @@ defineModule(sim, list(
       desc = paste("A data.table with the province/territory for each pixelIndex.", 
                    "Used to determine the equation parameters to split the above", 
                    "ground biomass into carbon pools."),
+      columns = c(
+        pixelIndex = "",
+        PRUID = "",
+        juris_id = ""
+      ),
       sourceURL = "https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lpr_000a21a_e.zip"
     ),
     expectsInput(
@@ -114,11 +144,21 @@ defineModule(sim, list(
                    "Columns are `yieldTableIndex`, `age`, `speciesCode`, `biomass`. `yieldTableIndex` is the",
                    "growth curve identifier that depends on species combination.",
                    "`biomass` is the biomass for the given species at the pixel age."),
+      columns = c(
+        yieldTableIndex = "",
+        age = "",
+        speciesCode = "",
+        biomass = ""
+      ),
       sourceURL = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "yieldTablesId", objectClass = "data.table",
       desc = paste("A data.table linking spatially the `yieldTableIndex`. Columns are `pixelIndex` and `yieldTableIndex`."),
+      columns = c(
+        pixelIndex = "",
+        yieldTableIndex = ""
+      ),
       sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
     )
     # expectsInput("sppColorVect", "character",
@@ -133,24 +173,11 @@ defineModule(sim, list(
                    "Columns are `pixelIndex`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
     ),
     createsOutput(
-      objectName = "growth_increments",
-      objectClass = "data.table",
-      desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
-                   "for each pixel and cohort. Gets updated at each timestep.",
-                   "Columns are `gcids`, `age`,`merch_inc`, `foliage_inc`, and `other_inc`.")
-    ),
-    createsOutput(
       objectName = "cohortDT",
       objectClass = "data.table",
       desc = paste("Cohort-level information.",
                    "Columns are `cohortID`, `pixelIndex`, `age`, and `gcids`.")
     ),
-    createsOutput(
-      objectName = "gcMeta",
-      objectClass = "data.table",
-      desc = paste("Growth curve-level information.",
-                   "Columns are `gcids`, `species_id`, `speciesCode`, and `sw_hw`")
-    ),    
     createsOutput(
       objectName = "disturbanceEvents",
       objectClass = "data.table",
@@ -158,6 +185,19 @@ defineModule(sim, list(
                    "Events types are defined in the 'disturbanceMeta' table.",
                    "Columns are `pixelIndex`, `year`, `eventID`.")
     ),
+    createsOutput(
+      objectName = "growth_increments",
+      objectClass = "data.table",
+      desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
+                   "for each pixel and cohort. Gets updated at each timestep.",
+                   "Columns are `gcids`, `age`,`merch_inc`, `foliage_inc`, and `other_inc`.")
+    ),
+    createsOutput(
+      objectName = "gcMeta",
+      objectClass = "data.table",
+      desc = paste("Growth curve-level information.",
+                   "Columns are `gcids`, `species_id`, `speciesCode`, and `sw_hw`")
+    ),    
     createsOutput(
       objectName = "standDT",
       objectClass = "data.table",
