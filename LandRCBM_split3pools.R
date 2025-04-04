@@ -391,10 +391,10 @@ SplitYieldTables <- function(sim) {
   sim$yieldTablesId <- spatialDT[, .(pixelIndex, yieldTableIndex = newytid)] 
   
   sim$cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$yieldTablesId)
-  browser()
+
   # create standDT output
-  sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundary = ecozone, AdminBoundaryID = PRUID)]
-  sim$standDT <- sim$standDT[cbmAdmin, on = "pixelIdex"]
+  sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundaryID = ecozone, abreviation = juris_id)]
+  sim$standDT <- sim$cbmAdmin[sim$standDT, on = c("EcoBoundaryID", "abreviation")]
   sim$standDT <- sim$standDT[, .(pixelIndex, spatial_unit_id = SpatialUnitID)]
   
   spatialUnits <- unique(spatialDT[, pixelIndex := NULL])
