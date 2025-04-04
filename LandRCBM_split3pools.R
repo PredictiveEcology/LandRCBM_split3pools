@@ -91,12 +91,6 @@ defineModule(sim, list(
       desc = "Raster of fires with 1 indicating burned pixels."
     ),
     expectsInput(
-      objectName = "standAgeMap", objectClass = "SpatRaster",
-      desc =  paste("Stand age map in study area. The default is for RIA, but",
-                    "should be provided by `Biomass_borealDataPrep`."),
-      sourceURL = "https://drive.google.com/file/d/1CPh3zHMcQiuUe8usXYHXvt_3I9-SIG7F/view?usp=drive_link"
-    ),
-    expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
       desc = "Polygon to use as the study area; default is the RIA study area.", 
       sourceURL = "https://drive.google.com/file/d/1M8jGAuq1wuavSb40c-s9HKyigCuTt9Rf/view?usp=drive_link"
@@ -165,7 +159,7 @@ defineModule(sim, list(
                    "Columns are `pixelIndex`, `year`, `eventID`.")
     ),
     createsOutput(
-      objectName = "spatialDT",
+      objectName = "standDT",
       objectClass = "data.table",
       desc = paste("A data table with spatial information for the CBM spinup.",
                    "Columns are `pixelIndex`, `spatial_unit_id`.")
@@ -397,15 +391,11 @@ SplitYieldTables <- function(sim) {
   sim$yieldTablesId <- spatialDT[, .(pixelIndex, yieldTableIndex = newytid)] 
   
   sim$cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$yieldTablesId)
-  
-  # create spatialDT output
-  standAge <- data.table(standAge = as.integer(sim$standAgeMap[]))
-  standAge <- standAge[, pixelIndex := .I] |> na.omit()
-  
-  sim$spatialDT <- merge(
-    spatialDT[, .(pixelIndex, ecozone, jurisdiction = PRUID)],
-    standAge
-  )
+  browser()
+  # create standDT output
+  sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundary = ecozone, AdminBoundaryID = PRUID)]
+  sim$standDT <- sim$standDT[cbmAdmin, on = "pixelIdex"]
+  sim$standDT <- sim$standDT[, .(pixelIndex, spatial_unit_id = SpatialUnitID)]
   
   spatialUnits <- unique(spatialDT[, pixelIndex := NULL])
   
@@ -691,17 +681,6 @@ AnnualDisturbances <- function(sim){
     sim$jurisdictions <- dt[juris_id, on = "PRUID"]
     sim$jurisdictions <- sim$jurisdictions[, pixelIndex := .I] |> na.omit()
     setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
-  }
-  
-  # pixel groups from vegetation data that gets updated annually
-  if (!suppliedElsewhere("standAgeMap", sim)) {
-    sim$standAgeMap <- prepInputs(
-      url = extractURL("standAgeMap"),
-      destinationPath = inputPath(sim),
-      fun = "terra::rast",
-      to = sim$rasterToMatch,
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsSAM")
   }
   
   # 2. NFI params
