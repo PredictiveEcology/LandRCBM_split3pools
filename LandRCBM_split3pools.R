@@ -284,7 +284,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        incrementSum  <- sim$growth_increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
+        increments <- sim$growth_increments[sim$cohortDT, on = c("gcids", "age")]
+        incrementSum  <- increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
         # rasterize
         merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
         merchIncRast[incrementSum$pixelIndex] <- incrementSum$merch_inc
@@ -456,7 +457,7 @@ SplitYieldTables <- function(sim) {
                   by = c("yieldTableIndex", "speciesCode")]
   sim$growth_increments <- merge(yieldIncrements[,.(yieldTableIndex, speciesCode, age, merch_inc, foliage_inc, other_inc)],
                                 unique(cohortDT[, .(yieldTableIndex, speciesCode, gcids)]))
-  sim$growth_increments <- sim$growth_increments[,.("gcids", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc")]
+  sim$growth_increments <- sim$growth_increments[,.(gcids, yieldTableIndex, age, merch_inc, foliage_inc, other_inc)]
 
   return(invisible(sim))
 }
@@ -487,12 +488,13 @@ PlotYieldTablesPools <- function(sim){
   plot_dt <- sim$growth_increments[yieldTableIndex %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
-    id.vars = c("yieldTableIndex", "speciesCode", "age"),
+    id.vars = c("yieldTableIndex", "age", "gcids"),
     measure.vars = c("merch_inc", "foliage_inc", "other_inc"),
     variable.name = "pool",
     value.name = "B"
   )
   plot_dt <- plot_dt[plot_dt$age > 0,]
+  plot_dt <- sim$gcMeta[plot_dt, on = "gcids"]
   Plots(plot_dt, 
         fn = gg_yieldCurvesPools,
         types = P(sim)$.plots,
