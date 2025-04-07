@@ -1,10 +1,10 @@
 test_that("functions to match AGB with CBM spatial units and canfi species work", {
-  
+
   # test spatialMatch with pixelGroupDT
   set.seed(1)
   nonforested <- sample(c(1:9), 3)
   pixelGroup <- data.table(pixelIndex = c(1:9),
-                           gcid = c(rep(1,3), rep(2,3), rep(3,3)))
+                           yieldTableIndex = c(rep(1,3), rep(2,3), rep(3,3)))
   pixelGroup <- pixelGroup[-nonforested,]
   
   jurisdictions <- data.table(pixelIndex = c(1:9),
@@ -14,12 +14,12 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   out1 <- spatialMatch(pixelGroup, jurisdictions, ecozones)
   
   expect_is(out1, "data.table")
-  expect_named(out1, c("pixelIndex", "gcid", "ecozone", "jurisdiction"))
+  expect_named(out1, c("pixelIndex", "yieldTableIndex", "ecozone", "jurisdiction"))
   expect_equal(out1$ecozone, ecozones$ecozone)
   expect_equal(out1$jurisdiction, jurisdictions$jurisdiction)
   expect_true(all(is.na(out1$gcid[nonforested])))
 
-    # test spatialMatch with spatRast
+  # test spatialMatch with spatRast
   pixelGroupMap <- terra::rast(
     matrix(data = c(rep(1,3), rep(2, 3), rep(3, 3)), nrow = 3, ncol = 3)
   )
@@ -33,25 +33,25 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   
   # test addSpatialUnits with yield tables
   spatialUnits <- na.omit(out1)
-  spatialUnits[, newgcid := .GRP, by = .(gcid, ecozone, jurisdiction)]
+  spatialUnits[, newytid := .GRP, by = .(yieldTableIndex, ecozone, jurisdiction)]
   spatialUnits <- unique(spatialUnits[, pixelIndex := NULL])
   LandR_species = c("Abie_las", "Betu_pap", "Pice_gla")
   yieldTables <- data.table(
     expand.grid(speciesCode = LandR_species, 
-                gcid = c(1:3))
+                yieldTableIndex = c(1:3))
   )
   out3 <- addSpatialUnits(yieldTables, spatialUnits)
   
   expect_true(all(LandR_species %in% out3$speciesCode))
   expect_equal(nrow(out3), 15)
-  expect_named(out3, c("gcid", "speciesCode", "ecozone", "jurisdiction"), ignore.order = TRUE)
+  expect_named(out3, c("yieldTableIndex", "speciesCode", "ecozone", "jurisdiction"), ignore.order = TRUE)
 
   # test with cohortData
   cohortData <- data.table(
     expand.grid(speciesCode = LandR_species, 
                 pixelGroup = c(1:3))
   )
-  setnames(spatialUnits, old = c("gcid", "newgcid"), new = c("pixelGroup", "newPixelGroup"))
+  setnames(spatialUnits, old = c("yieldTableIndex", "newytid"), new = c("pixelGroup", "newPixelGroup"))
   out4 <- addSpatialUnits(cohortData, spatialUnits)
   
   expect_true(all(LandR_species %in% out4$speciesCode))
@@ -61,7 +61,8 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   # test add CanfiCode
   out5 <- addCanfiCode(out3)
   expect_equal(nrow(out5), nrow(out3))
-  expect_named(out5, c("speciesCode", "ecozone", "jurisdiction", "gcid", "canfi_species"), ignore.order = TRUE)
+  expect_named(out5, c("speciesCode", "ecozone", "jurisdiction", "yieldTableIndex", "canfi_species"), ignore.order = TRUE)
+  expect_is(out5$canfi_species, "integer")
   expect_true(all(out5$canfi_species[out5$speciesCode == "Abie_las"] == 304))
   expect_true(all(out5$canfi_species[out5$speciesCode == "Betu_pap"] == 1303))
   expect_true(all(out5$canfi_species[out5$speciesCode == "Pice_gla"] == 105))
@@ -70,5 +71,14 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   x$speciesCode <- as.character(x$speciesCode)
   x$speciesCode[1] <- "notaspecies"
   expect_error(addCanfiCode(x))
+  
+  # test add forest Type
+  out6 <- addForestType(out3)
+  expect_equal(nrow(out6), nrow(out3))
+  expect_true("sw_hw" %in% colnames(out6))
+  expect_is(out6$sw_hw, "character")
+  expect_true(all(out6$sw_hw[out6$speciesCode == "Pice_gla"] == "sw"))
+  expect_true(all(out6$sw_hw[out6$speciesCode == "Betu_pap"] == "hw"))
+  expect_true(all(out6$canfi_species[out5$speciesCode == "Abie_las"] == "sw"))
   
   })
