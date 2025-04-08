@@ -8,8 +8,9 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
   cohortDT <- merge(cohortDT,
                     cohortData[,.(speciesCode, age, pixelGroup)],
                     allow.cartesian = TRUE)
+
   # add the canfi code of species
-  cohortDT <- addCanfiCode(cohortDT)
+  cohortDT <- addSpeciesCode(cohortDT, code = "CBM_speciesID")
   # add sw_hw information of species
   cohortDT <- addForestType(cohortDT)
   setorder(cohortDT, pixelIndex, speciesCode, age)
@@ -21,11 +22,11 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
     cohortDT <- merge(cohortDT, yieldTablesId, by = "pixelIndex")
     # add the growth curve index: 1 per species x yield table
     cohortDT[, gcids := .GRP, by = .(yieldTableIndex, speciesCode)]
-    cohortDT <- cohortDT[,.(cohortID, pixelIndex, speciesCode, species_id = canfi_species, age, gcids, yieldTableIndex, sw_hw)]
+    cohortDT <- cohortDT[,.(cohortID, pixelIndex, speciesCode, species_id = newCode, age, gcids, yieldTableIndex, sw_hw)]
   } else {
     # add the growth curve index: 1 per species x age x pixel index
     cohortDT[, gcids := .GRP, by = .(pixelIndex, speciesCode, age)]
-    cohortDT <- cohortDT[,.(cohortID, pixelIndex, speciesCode, species_id = canfi_species, age, gcids, sw_hw)]
+    cohortDT <- cohortDT[,.(cohortID, pixelIndex, speciesCode, species_id = newCode, age, gcids, sw_hw)]
   }
   
   setkey(cohortDT, cohortID)

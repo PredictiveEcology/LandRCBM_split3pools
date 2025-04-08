@@ -48,18 +48,22 @@ addSpatialUnits <- function(cohortData, spatialUnits) {
   return(allInfoCohortData)
 }
 
-addCanfiCode <- function(cohortData){
+addSpeciesCode <- function(cohortData, code = "CanfiCode"){
+  if(!(code %in% colnames(LandR::sppEquivalencies_CA))){
+    stop("The code argument needs to be a column in the data.table LandR::sppEquivalencies_CA")
+  }
   speciesCode <- unique(cohortData$speciesCode)
-  canfi_species <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), CanfiCode]
+  newCode <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), get(code)]
   
-  if(any(is.na(canfi_species))) {
-    missing_species <- speciesCode[which(is.na(canfi_species))]
+  if(any(is.na(newCode))) {
+    missing_species <- speciesCode[which(is.na(newCode))]
     stop("no species match found for in Boudewyn tables: ", paste(missing_species, collapse = ", "))
   }
   
-  sp_canfi <- data.table(speciesCode = speciesCode,
-                         canfi_species = canfi_species)
-  allCohortInfo <- cohortData[sp_canfi, on = "speciesCode"]
+  sp_code <- data.table(speciesCode = speciesCode,
+                        newCode = newCode)
+  allCohortInfo <- cohortData[sp_code, on = "speciesCode"]
+  
   return(allCohortInfo)
 }
 
