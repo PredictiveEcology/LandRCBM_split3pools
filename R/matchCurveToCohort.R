@@ -53,7 +53,7 @@ addSpeciesCode <- function(cohortData, code = "CanfiCode"){
     stop("The code argument needs to be a column in the data.table LandR::sppEquivalencies_CA")
   }
   speciesCode <- unique(cohortData$speciesCode)
-  newCode <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), code]
+  newCode <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), get(code)]
   
   if(any(is.na(newCode))) {
     missing_species <- speciesCode[which(is.na(newCode))]

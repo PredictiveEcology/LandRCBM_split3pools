@@ -6,7 +6,7 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
   cohortDT <- merge(cohortDT,
                     cohortData[,.(speciesCode, age, pixelGroup)],
                     allow.cartesian = TRUE)
-  cohortDT <- addSpeciesCode(cohortDT, CBM_speciesID)
+  cohortDT <- addSpeciesCode(cohortDT, code = "CBM_speciesID")
   cohortDT <- addForestType(cohortDT)
   setorder(cohortDT, pixelIndex, speciesCode, age)
   cohortDT[, cohortID := .I]
