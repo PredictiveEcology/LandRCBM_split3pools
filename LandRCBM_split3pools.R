@@ -23,6 +23,10 @@ defineModule(sim, list(
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
+    defineParameter("simulateDisturbances", "character", "none", NA, NA,
+                    paste("Controls which disturbances are simulated by other modules.",
+                          "As of now, this can be 'none' when there are no disturbances module or fire`.")
+                    ),
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
@@ -630,22 +634,31 @@ AnnualIncrements <- function(sim){
 
 # process annual disturbances
 AnnualDisturbances <- function(sim){
-  # fires
-  fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
-  if (length(unique(fireID)) == 0) {
-    stop("disturbanceMeta does not have fires amongst its disturbances...")
-  } else if (length(unique(fireID)) > 1) {
-    stop("there are multiple eventID for fires in disturbanceMeta...")
+  if ("fire" %in% P(sim)$simulateDisturbances){
+    # fires
+    fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
+    if (length(unique(fireID)) == 0) {
+      stop("disturbanceMeta does not have fires amongst its disturbances...")
+    } else if (length(unique(fireID)) > 1) {
+      stop("there are multiple eventID for fires in disturbanceMeta...")
+    }
+    fires <- data.table(
+      fire = as.integer(sim$rstCurrentBurn[])
+    ) 
+    fires <- fires[, pixelIndex := .I]
+    fires <- fires[fire == 1]
+    fires$year <- time(sim)
+    fires$eventID <- fireID[1]
+    sim$disturbanceEvents <- fires[, fire := NULL]
+  } else {
+    if(!exists("sim$disturbanceEvents")){
+      sim$disturbanceEvents <- data.table(
+        pixelIndex = integer(),
+        year = integer(),
+        eventID = integer()
+      )
+    }
   }
-  fires <- data.table(
-    fire = as.integer(sim$rstCurrentBurn[])
-  ) 
-  fires <- fires[, pixelIndex := .I]
-  fires <- fires[fire == 1]
-  fires$year <- time(sim)
-  fires$eventID <- fireID[1]
-  sim$disturbanceEvents <- fires[, fire := NULL]
-  
   return(invisible(sim))
 }
 
