@@ -16,7 +16,7 @@ test_that("module runs with small example", {
                               destinationPath = spadesTestPaths$temp$inputs,
                               filename2 = "yieldTablesId.csv",
                               overwrite = TRUE)
-  yieldTablesId$pixelId[c(1:ncell(rtm))] <- c(1:ncell(rtm))
+  yieldTablesId$pixelIndex[c(1:ncell(rtm))] <- c(1:ncell(rtm))
   yieldTablesId <- yieldTablesId[c(1:ncell(rtm)), ]
   
   yieldTablesCumulative <- prepInputs(url = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link",
@@ -74,8 +74,8 @@ test_that("module runs with small example", {
   
   # check yieldTablesId
   expect_is(simTest$yieldTablesId, "data.table")
-  expect_named(simTest$yieldTablesId, c("pixelId", "gcid"), ignore.order = TRUE)
-  expect_setequal(simTest$yieldTablesId$pixelId, yieldTablesId$pixelId)
+  expect_named(simTest$yieldTablesId, c("pixelIndex", "gcid"), ignore.order = TRUE)
+  expect_setequal(simTest$yieldTablesId$pixelIndex, yieldTablesId$pixelIndex)
   expect_equal(length(unique(simTest$yieldTablesId$gcid)), length(unique(yieldTablesId$gcid)))
   expect_setequal(simTest$yieldTablesId$gcid, simTest$yieldTablesCumulative$gcid)
 
@@ -90,19 +90,19 @@ test_that("module runs with small example", {
   # check aboveGroundBiomass
   expect_is(simTest$aboveGroundBiomass, "data.table")
   expect_named(simTest$aboveGroundBiomass,
-               c("pixelId", "speciesCode", "age", "merch", "foliage", "other"),
+               c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"),
                ignore.order = TRUE)
   
   # check aboveGroundIncrements
   expect_is(simTest$aboveGroundIncrements, "data.table")
   expect_named(
     simTest$aboveGroundIncrements, 
-    c("pixelId", "speciesCode", "age", "merchInc", "foliageInc", "otherInc"),
+    c("pixelIndex", "speciesCode", "age", "merchInc", "foliageInc", "otherInc"),
     ignore.order = TRUE
   )
   expect_equal(sum(simTest$aboveGroundIncrements$merchInc), 0 ) # there is not growth/mortality in the test
 
-  #check summaryAGB
+  # check summaryAGB
   expect_is(simTest$summaryAGB, "data.table")
   expect_named(
     simTest$summaryAGB, 
@@ -110,5 +110,14 @@ test_that("module runs with small example", {
     ignore.order = TRUE
   )
   expect_contains(simTest$summaryAGB$year, c(2011:2016))
+  
+  # check disturbanceEvents
+  expect_is(simTest$disturbanceEvents, "data.table")
+  expect_named(
+    simTest$disturbanceEvents, 
+    c("pixelIndex", "year", "eventID"),
+    ignore.order = TRUE
+  )
+  expect_equal(nrow(simTest$disturbanceEvents), 0)
   
 })

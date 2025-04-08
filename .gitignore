@@ -7,3 +7,4 @@ inputs/
 R/4.2/
 figures/
 .secrets
+.Rprofile

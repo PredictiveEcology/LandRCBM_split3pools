@@ -46,21 +46,63 @@ defineModule(sim, list(
   inputObjects = bindrows(
     expectsInput(
       objectName = "cohortData", objectClass = "data.table",
-      desc = "Above ground biomass (g/m^2) of cohorts in pixel groups.",
+      desc = "Total above ground biomass (g/m^2) of each cohorts by pixel groups.",
+      columns = c(
+        speciesCode = "",
+        ecoregionGroup = "",
+        age = "",
+        B = "",
+        pixelGroup = "",
+        totalBiomass = ""
+      ),
       sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
     expectsInput(
+      objectName = "cbmAdmin", objectClass = "data.table",
+      desc = paste("Provides equivalent between provincial boundaries,",
+                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
+      columns = c(
+        AdminBoundaryID = "",
+        stump_parameter_id = "",
+        adminName = "",
+        abreviation = "",
+        SpatialUnitID = "",
+        EcoBoundaryID = ""
+      ),
+      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"),
+    expectsInput(
+      objectName = "disturbanceMeta", objectClass = "data.table",
+      desc = paste("Table defining the disturbance event types.", 
+                   "This associates CBM-CFS3 disturbances with the",
+                   "event IDs in the 'disturbanceEvents' table."),
+      columns = c(
+        name = "",
+        eventID = "",
+        priority = ""
+      ),
+      sourceURL = "https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link"
+    ),
+    expectsInput(
       objectName = "ecozones", objectClass = "data.table",
-      desc = paste("A data.table with the ecozone for each pixelId. Used to determine",
+      desc = paste("A data.table with the ecozone for each pixelIndex. Used to determine",
                    "the equation parameters to split the above ground biomass into",
                    "carbon pools."),
+      columns = c(
+        pixelIndex = "",
+        ecozone = ""
+      ),
       sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
     ),
     expectsInput(
-      objectName = "juridictions", objectClass = "data.table",
-      desc = paste("A data.table with the province/territory for each pixelId.", 
+      objectName = "jurisdictions", objectClass = "data.table",
+      desc = paste("A data.table with the province/territory for each pixelIndex.", 
                    "Used to determine the equation parameters to split the above", 
                    "ground biomass into carbon pools."),
+      columns = c(
+        pixelIndex = "",
+        PRUID = "",
+        juris_id = ""
+      ),
       sourceURL = "https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lpr_000a21a_e.zip"
     ),
     expectsInput(
@@ -73,6 +115,10 @@ defineModule(sim, list(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
       desc = "Template raster to use for simulations; defaults is the RIA study area.", 
       sourceURL = "https://drive.google.com/file/d/1LUEiVMUWd_rlG9AAFan7zKyoUs22YIX2/view?usp=drive_link"
+    ),
+    expectsInput(
+      objectName = "rstCurrentBurn", objectClass = "SpatRaster",
+      desc = "Raster of fires with 1 indicating burned pixels."
     ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
@@ -95,14 +141,24 @@ defineModule(sim, list(
     expectsInput(
       objectName = "yieldTablesCumulative", objectClass = "data.table",
       desc = paste("Yield Tables intended to supply the requirements for a CBM spinup.",
-                   "Columns are `gcid`, `age`, `speciesCode`, `biomass`. `gcid` is the",
+                   "Columns are `yieldTableIndex`, `age`, `speciesCode`, `biomass`. `yieldTableIndex` is the",
                    "growth curve identifier that depends on species combination.",
                    "`biomass` is the biomass for the given species at the pixel age."),
+      columns = c(
+        yieldTableIndex = "",
+        age = "",
+        speciesCode = "",
+        biomass = ""
+      ),
       sourceURL = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "yieldTablesId", objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelId` and `gcid`."),
+      desc = paste("A data.table linking spatially the `yieldTableIndex`. Columns are `pixelIndex` and `yieldTableIndex`."),
+      columns = c(
+        pixelIndex = "",
+        yieldTableIndex = ""
+      ),
       sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
     )
     # expectsInput("sppColorVect", "character",
@@ -114,40 +170,57 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Above ground biomass (metric tonnes of tree biomass/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
-                   "Columns are `pixelId`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
+                   "Columns are `pixelIndex`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
     ),
     createsOutput(
-      objectName = "aboveGroundIncrements",
+      objectName = "cohortDT",
+      objectClass = "data.table",
+      desc = paste("Cohort-level information.",
+                   "Columns are `cohortID`, `pixelIndex`, `age`, and `gcids`.")
+    ),
+    createsOutput(
+      objectName = "disturbanceEvents",
+      objectClass = "data.table",
+      desc = paste("Table with disturbance events for each simulation year.",
+                   "Events types are defined in the 'disturbanceMeta' table.",
+                   "Columns are `pixelIndex`, `year`, `eventID`.")
+    ),
+    createsOutput(
+      objectName = "growth_increments",
       objectClass = "data.table",
       desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
-                   "Columns are `pixelId`, `speciesCode`, `age`, `merchInc`, `foliageInc`, and `otherInc`.")
+                   "Columns are `gcids`, `age`,`merch_inc`, `foliage_inc`, and `other_inc`.")
+    ),
+    createsOutput(
+      objectName = "gcMeta",
+      objectClass = "data.table",
+      desc = paste("Growth curve-level information.",
+                   "Columns are `gcids`, `species_id`, `speciesCode`, and `sw_hw`")
     ),    
+    createsOutput(
+      objectName = "standDT",
+      objectClass = "data.table",
+      desc = paste("A data table with spatial information for the CBM spinup.",
+                   "Columns are `pixelIndex`, `spatial_unit_id`.")
+    ),
     createsOutput(
       objectName = "summaryAGB",
       objectClass = "data.table",
       desc = paste("Sum of biomass and increments for each species and above ground", 
                    "pool at each timestep across the landscape. Columns are `year`,",
-                   "`speciesCode`, `merch`, `foliage`, `other`, merchInc`,",
-                   "`foliageInc`, and `otherInc`.")
+                   "`speciesCode`, `merch`, `foliage`, `other`.")
     ),
     createsOutput(
       objectName = "yieldTablesCumulative",
       objectClass = "data.table",
       desc = paste("Yield tables divided into above ground pools. Columns are",
-                   "`gcid`, `age`, `speciesCode`, `merch`, `foliage`, `other`.)")
+                   "`yieldTableIndex`, `age`, `speciesCode`, `merch`, `foliage`, `other`.)")
     ),
     createsOutput(
       objectName = "yieldTablesId",
       objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelId` and `gcid`.")
-    ),
-    createsOutput(
-      objectName = "yieldTablesIncrements",
-      objectClass = "data.table",
-      desc = paste("Yield tables divided into above ground pools and represented",
-                   "yearly increments. Columns are `gcid`, `age`, `speciesCode`,",
-                   "`merch`, `foliage`, `other`.")
+      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelIndex` and `yieldTableIndex`.")
     )
   )
 ))
@@ -156,12 +229,15 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-
+      
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
       # split AGB of cohorts into pools 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualIncrements")
+      
+      # format disturbance events 
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualDisturbances")
       
       # summarize simulation 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
@@ -178,7 +254,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       }
     },
     plotYC = {
-
+      
       # plot the yield tables
       sim <- PlotYieldTables(sim)
       
@@ -192,6 +268,14 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
+    },
+    annualDisturbances = {
+      
+      # process annual disturbances
+      sim <- AnnualDisturbances(sim)
+      
+      # do this for each timestep
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualDisturbances")
     },
     summarizeAGBPools = {
       sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
@@ -212,14 +296,14 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     plotMaps = {
       
       # get the sum of each pool per pixelGroups
-      poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelId, .SDcols = c("merch", "foliage", "other")]
+      poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch", "foliage", "other")]
       # rasterize
       merchRast <- rast(sim$rasterToMatch, names = "merchantable")
-      merchRast[poolSum$pixelId] <- poolSum$merch
+      merchRast[poolSum$pixelIndex] <- poolSum$merch
       foliageRast <- rast(sim$rasterToMatch, names = "foliage")
-      foliageRast[poolSum$pixelId] <- poolSum$foliage
+      foliageRast[poolSum$pixelIndex] <- poolSum$foliage
       otherRast <- rast(sim$rasterToMatch, names = "other")
-      otherRast[poolSum$pixelId] <- poolSum$other
+      otherRast[poolSum$pixelIndex] <- poolSum$other
       
       # plot
       Plots(merchRast,
@@ -240,14 +324,15 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        incrementSum  <- sim$aboveGroundIncrements[, lapply(.SD, sum, na.rm = TRUE), by = pixelId, .SDcols = c("merchInc", "foliageInc", "otherInc")]
+        increments <- sim$growth_increments[sim$cohortDT, on = c("gcids", "age")]
+        incrementSum  <- increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
         # rasterize
         merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
-        merchIncRast[incrementSum$pixelId] <- incrementSum$merchInc
+        merchIncRast[incrementSum$pixelIndex] <- incrementSum$merch_inc
         foliageIncRast <- rast(sim$rasterToMatch, names = "foliage increments")
-        foliageIncRast[incrementSum$pixelId] <- incrementSum$foliageInc
+        foliageIncRast[incrementSum$pixelIndex] <- incrementSum$foliage_inc
         otherIncRast <- rast(sim$rasterToMatch, names = "other increments")
-        otherIncRast[incrementSum$pixelId] <- incrementSum$otherInc
+        otherIncRast[incrementSum$pixelIndex] <- incrementSum$other_inc
         
         # plot
         Plots(merchIncRast,
@@ -297,7 +382,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 }
 
 PlotYieldTables <- function(sim){
-  nPixGroups <- length(unique(sim$yieldTablesId$gcid))
+  nPixGroups <- length(unique(sim$yieldTablesId$yieldTableIndex))
   nPlots <- P(sim)$numPixGroupPlots
   if (nPlots <= 0){
     stop("numPlots needs to be a positive integer")
@@ -306,13 +391,13 @@ PlotYieldTables <- function(sim){
             "plotting all pixelgroups.")
     nPlots <- nPixGroups
   } 
-  pixGroupToPlot <- sample(unique(sim$yieldTablesId$gcid), nPlots)
-
+  pixGroupToPlot <- sample(unique(sim$yieldTablesId$yieldTableIndex), nPlots)
+  
   # dt for plotting.
-  plot_dt <- sim$yieldTablesCumulative[gcid %in% pixGroupToPlot]
+  plot_dt <- sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot]
   plot_dt[, totB := merch + foliage + other]
   
-  mod$gcIdPlotted <- pixGroupToPlot
+  mod$yieldTableIndexPlotted <- pixGroupToPlot
   
   # plot
   Plots(plot_dt, 
@@ -320,7 +405,7 @@ PlotYieldTables <- function(sim){
         types = P(sim)$.plots,
         filename = paste("yieldCurves"),
         title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
-        )
+  )
   return(invisible(sim))
 }
 
@@ -331,22 +416,31 @@ SplitYieldTables <- function(sim) {
   # with the yieldTablesId and speciesCode. yieldTablesId gives us the location. 
   # Location let's us figure out which ecozone, and admin. The canfi_species have 
   # numbers which we need to match with the parameters.
-  
   # Spatial Matching
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$yieldTablesId,
-    juridictions = sim$juridictions,
+    jurisdictions = sim$jurisdictions,
     ecozones = sim$ecozones
   ) |> na.omit()
   
-  setorderv(spatialDT, cols = c("gcid", "ecozone", "juris_id"))
-  spatialDT[, newgcid := .GRP, by = .(gcid, ecozone, juris_id)]
+  setorderv(spatialDT, cols = c("yieldTableIndex", "ecozone", "juris_id"))
+  spatialDT[, newytid := .GRP, by = .(yieldTableIndex, ecozone, juris_id)]
   
-  # Update yieldTablesId. When a gcid cross a CBM spatial units, there is a bifurcation.
-  # We should get a number of gcid >= than the number before the spatial matching.
-  sim$yieldTablesId <- spatialDT[, .(pixelId, gcid = newgcid)] 
+  # Update yieldTablesId. When a yieldTableIndex cross a CBM spatial units, there is a bifurcation.
+  # We should get a number of yieldTableIndex >= than the number before the spatial matching.
+  sim$yieldTablesId <- spatialDT[, .(pixelIndex, yieldTableIndex = newytid)] 
   
-  spatialUnits <- unique(spatialDT[, pixelId := NULL])
+  # create cohortDT and gcMeta
+  cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$yieldTablesId)
+  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcids)]
+  sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
+
+  # create standDT output
+  sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundaryID = ecozone, abreviation = juris_id)]
+  sim$standDT <- sim$cbmAdmin[sim$standDT, on = c("EcoBoundaryID", "abreviation")]
+  sim$standDT <- sim$standDT[, .(pixelIndex, spatial_unit_id = SpatialUnitID)]
+  
+  spatialUnits <- unique(spatialDT[, pixelIndex := NULL])
   
   allInfoYieldTables <- addSpatialUnits(
     cohortData = sim$yieldTablesCumulative,
@@ -354,9 +448,11 @@ SplitYieldTables <- function(sim) {
   )
   
   # add the species code in canfi
-  allInfoYieldTables <- addCanfiCode(
-    cohortData = allInfoYieldTables
+  allInfoYieldTables <- addSpeciesCode(
+    cohortData = allInfoYieldTables,
+    code = "CanfiCode"
   )
+  setnames(allInfoYieldTables, old = "newCode", new = "canfi_species")
   
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
@@ -368,11 +464,10 @@ SplitYieldTables <- function(sim) {
   
   # convert m^2 into tonnes/ha
   allInfoYieldTables$B <- allInfoYieldTables$B/100
-  
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
-                                table6 = sim$table6,
-                                table7 = sim$table7,
-                                pixGroupCol = "gcid")
+                                          table6 = sim$table6,
+                                          table7 = sim$table7,
+                                          pixGroupCol = "yieldTableIndex")
   
   #TODO
   # MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
@@ -381,29 +476,31 @@ SplitYieldTables <- function(sim) {
   ### if not, we need to extrapolate to make them annual
   
   # add missing years (e.g., Boudewyn equation do not handle age 0)
-  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("gcid", "speciesCode")]
-  fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = c("gcid", "speciesCode")]
-  add0s <- data.table(gcid = fill0s$gcid,
-                           speciesCode = fill0s$speciesCode,
-                           age = fill0s$age,
-                           merch = 0,
-                           foliage = 0,
-                           other = 0 )
+  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("yieldTableIndex", "speciesCode")]
+  fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = c("yieldTableIndex", "speciesCode")]
+  add0s <- data.table(yieldTableIndex = fill0s$yieldTableIndex,
+                      speciesCode = fill0s$speciesCode,
+                      age = fill0s$age,
+                      merch = 0,
+                      foliage = 0,
+                      other = 0 )
   
   sim$yieldTablesCumulative <- rbind(cumPools,add0s)
-  setcolorder(sim$yieldTablesCumulative, c("gcid", "speciesCode", "age"))
-  setorderv(sim$yieldTablesCumulative, c("gcid", "speciesCode", "age"))
+  setcolorder(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age"))
+  setorderv(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age"))
   
   # 3 Calculating Increments
-  incCols <- c("merchInc", "foliageInc", "otherInc")
+  incCols <- c("merch_inc", "foliage_inc", "other_inc")
   poolCols <- c("merch", "foliage", "other")
   # This line calculates the first difference of each colNames, shifting it down 
   # by one row and filling the first entry with NA.
   yieldIncrements <- copy(sim$yieldTablesCumulative)
   yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
-               by = c("gcid", "speciesCode")]
-  sim$yieldTablesIncrements <- yieldIncrements[,.(gcid, speciesCode, age, merchInc, foliageInc, otherInc)]
-  
+                  by = c("yieldTableIndex", "speciesCode")]
+  sim$growth_increments <- merge(yieldIncrements[,.(yieldTableIndex, speciesCode, age, merch_inc, foliage_inc, other_inc)],
+                                unique(cohortDT[, .(yieldTableIndex, speciesCode, gcids)]))
+  sim$growth_increments <- sim$growth_increments[,.(gcids, yieldTableIndex, age, merch_inc, foliage_inc, other_inc)]
+
   return(invisible(sim))
 }
 
@@ -412,11 +509,11 @@ SplitYieldTables <- function(sim) {
 PlotYieldTablesPools <- function(sim){
   
   # We want to plot the same cohorts across figures
-  pixGroupToPlot <- mod$gcIdPlotted
-  plot_dt <- sim$yieldTablesCumulative[gcid %in% pixGroupToPlot]
+  pixGroupToPlot <- mod$yieldTableIndexPlotted
+  plot_dt <- sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
-    id.vars = c("gcid", "speciesCode", "age"),
+    id.vars = c("yieldTableIndex", "speciesCode", "age"),
     measure.vars = c("merch", "foliage", "other"),
     variable.name = "pool",
     value.name = "B"
@@ -430,23 +527,24 @@ PlotYieldTablesPools <- function(sim){
   )
   
   # plot increments
-  plot_dt <- sim$yieldTablesIncrements[gcid %in% pixGroupToPlot]
+  plot_dt <- sim$growth_increments[yieldTableIndex %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
-    id.vars = c("gcid", "speciesCode", "age"),
-    measure.vars = c("merchInc", "foliageInc", "otherInc"),
+    id.vars = c("yieldTableIndex", "age", "gcids"),
+    measure.vars = c("merch_inc", "foliage_inc", "other_inc"),
     variable.name = "pool",
     value.name = "B"
   )
   plot_dt <- plot_dt[plot_dt$age > 0,]
+  plot_dt <- sim$gcMeta[plot_dt, on = "gcids"]
   Plots(plot_dt, 
         fn = gg_yieldCurvesPools,
         types = P(sim)$.plots,
         filename = "yieldCurveIncrements",
         title = "Increments merch fol other by species and pixel groups"
-        )
-    message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
-                        figurePath(sim)))
+  )
+  message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
+                      figurePath(sim)))
   
   return(invisible(sim))
 }
@@ -458,43 +556,48 @@ AnnualIncrements <- function(sim){
     annualIncrements$age <- annualIncrements$age + 1
     setnames(annualIncrements, old = c("merch", "foliage", "other"), new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
   }
-  
   # 3. split cohort data of current year
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$pixelGroupMap,
-    juridictions = sim$juridictions,
+    jurisdictions = sim$jurisdictions,
     ecozones = sim$ecozones
   ) |> na.omit()
   
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
-  spatialUnits <- unique(spatialDT[, !("pixelId")])
   
+  cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, yieldTablesId = NULL)
+  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcids)]
+  sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
+  
+  spatialUnits <- unique(spatialDT[, !("pixelIndex")])
   allInfoCohortData <- addSpatialUnits(
     cohortData = sim$cohortData,
     spatialUnits = spatialUnits
   )
   
   # add the species code in canfi
-  allInfoCohortData <- addCanfiCode(
-    cohortData = allInfoCohortData
+  allInfoCohortData <- addSpeciesCode(
+    cohortData = allInfoCohortData,
+    code = "CanfiCode"
   )
+  setnames(allInfoCohortData, old = "newCode", new = "canfi_species")
   
   # convert m^2 into tonnes/ha
   allInfoCohortData$B <- allInfoCohortData$B/100
   cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
-                                       table6 = sim$table6,
-                                       table7 = sim$table7,
-                                       "pixelGroup")
+                                             table6 = sim$table6,
+                                             table7 = sim$table7,
+                                             "pixelGroup")
   spatialDT[, pixelGroup := NULL]
-  sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup")
-  sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelId, speciesCode, age, merch, foliage, other)]
-  setorderv(sim$aboveGroundBiomass, c("pixelId", "speciesCode", "age"))
+  sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup", allow.cartesian = TRUE)
+  sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
+  setorderv(sim$aboveGroundBiomass, c("pixelIndex", "speciesCode", "age"))
   
   # 4. append the cohortPools of the previous year
   if (time(sim) != start(sim)){
     annualIncrements <- merge(annualIncrements, 
                               sim$aboveGroundBiomass, 
-                              by = c("pixelId", "speciesCode", "age"),
+                              by = c("pixelIndex", "speciesCode", "age"),
                               all = TRUE)
     
     # adds biomass 0 when there is a new species in a pixelGroup
@@ -502,17 +605,47 @@ AnnualIncrements <- function(sim){
               cols=c("merch", "foliage", "other", "merchTminus1", "foliageTminus1", "otherTminus1"))
     
     # 5. take the difference
-    annualIncrements[, `:=`(merchInc = merch - merchTminus1,
-                            foliageInc = foliage - foliageTminus1,
-                            otherInc = other - otherTminus1)]
+    annualIncrements[, `:=`(merch_inc = merch - merchTminus1,
+                            foliage_inc = foliage - foliageTminus1,
+                            other_inc = other - otherTminus1)]
+    annualIncrements <- merge(annualIncrements[,.(pixelIndex, 
+                                                  speciesCode,
+                                                  age = age, 
+                                                  merch_inc, 
+                                                  foliage_inc, 
+                                                  other_inc)],
+                              cohortDT[,.(pixelIndex, 
+                                              speciesCode,
+                                              age, 
+                                              cohortID, 
+                                              gcids)],
+                              by = c("pixelIndex", "speciesCode", "age")
+    )
     
-    sim$aboveGroundIncrements <- annualIncrements[,.(pixelId, 
-                                                speciesCode,
-                                                age = age, 
-                                                merchInc, 
-                                                foliageInc, 
-                                                otherInc)]    
+    sim$growth_increments <- setkey(annualIncrements, gcids)
+    sim$growth_increments <- sim$growth_increments[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
   }
+  return(invisible(sim))
+}
+
+# process annual disturbances
+AnnualDisturbances <- function(sim){
+  # fires
+  fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
+  if (length(unique(fireID)) == 0) {
+    stop("disturbanceMeta does not have fires amongst its disturbances...")
+  } else if (length(unique(fireID)) > 1) {
+    stop("there are multiple eventID for fires in disturbanceMeta...")
+  }
+  fires <- data.table(
+    fire = as.integer(sim$rstCurrentBurn[])
+  ) 
+  fires <- fires[, pixelIndex := .I]
+  fires <- fires[fire == 1]
+  fires$year <- time(sim)
+  fires$eventID <- fireID[1]
+  sim$disturbanceEvents <- fires[, fire := NULL]
+  
   return(invisible(sim))
 }
 
@@ -525,7 +658,15 @@ AnnualIncrements <- function(sim){
       fun = "terra::rast",
       destinationPath = inputPath(sim),
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsRTM")
+  }
+  
+  if (!suppliedElsewhere("masterRaster", sim)) {
+    sim$masterRaster <- sim$rasterToMatch
+  }
+  
+  if (!compareGeom(sim$masterRaster, sim$rasterToMatch)){
+    stop("The masterRaster and rasterToMatch do not match...")
   }
   
   if (!suppliedElsewhere("studyArea", sim)) {
@@ -534,7 +675,7 @@ AnnualIncrements <- function(sim){
       fun = "terra::vect",
       destinationPath = inputPath(sim),
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsSA")
   }
   
   # pixel groups from vegetation data that gets updated annually
@@ -545,7 +686,7 @@ AnnualIncrements <- function(sim){
       fun = "terra::rast",
       to = sim$rasterToMatch,
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsPGM")
   }
   
   if(inherits(sim$studyArea, "SpatVector")){
@@ -555,7 +696,7 @@ AnnualIncrements <- function(sim){
   } else {
     stop("studyArea needs to be a SpatVector or a sf polygon")
   }
-
+  
   # ecozones
   if (!suppliedElsewhere("ecozones", sim)) {
     ecozones <- prepInputs(
@@ -564,32 +705,32 @@ AnnualIncrements <- function(sim){
       fun = "terra::vect",
       to = studyAreaBuffered,
       overwrite = TRUE
-    ) |> Cache()
+    ) |> Cache(userTags = "prepInputsEcozones")
     ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
     sim$ecozones <- data.table(ecozone = as.integer(ez[]))
-    sim$ecozones <- sim$ecozones[, pixelId := .I] |> na.omit()
-    setcolorder(sim$ecozones, c("pixelId", "ecozone"))
+    sim$ecozones <- sim$ecozones[, pixelIndex := .I] |> na.omit()
+    setcolorder(sim$ecozones, c("pixelIndex", "ecozone"))
   }
   
-  if (!suppliedElsewhere("juridictions", sim)) {
+  if (!suppliedElsewhere("jurisdictions", sim)) {
     dt <- data.table(
       PRUID = c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62),
       juris_id = c("NL", "PE", "NS", "NB", "QC", "ON", "MB", "SK", "AB", "BC", "YT", "NT", "NU")
     )
     
-    juridictions <- prepInputs(
-      url = extractURL("juridictions"),
+    jurisdictions <- prepInputs(
+      url = extractURL("jurisdictions"),
       destinationPath = inputPath(sim),
       fun = "terra::vect",
       to = studyAreaBuffered,
       overwrite = TRUE
-    ) |> Cache()
-    juris_id <- rasterize(juridictions, sim$rasterToMatch, field = "PRUID")
+    ) |> Cache(userTags = "prepInputsJurisdictions")
+    juris_id <- rasterize(jurisdictions, sim$rasterToMatch, field = "PRUID")
     juris_id <- as.data.table(juris_id, na.rm = FALSE)
     juris_id$PRUID <- as.integer(as.character(juris_id$PRUID))
-    sim$juridictions <- dt[juris_id, on = "PRUID"]
-    sim$juridictions <- sim$juridictions[, pixelId := .I] |> na.omit()
-    setcolorder(sim$juridictions, c("pixelId", "PRUID", "juris_id"))
+    sim$jurisdictions <- dt[juris_id, on = "PRUID"]
+    sim$jurisdictions <- sim$jurisdictions[, pixelIndex := .I] |> na.omit()
+    setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
   }
   
   # 2. NFI params
@@ -598,7 +739,7 @@ AnnualIncrements <- function(sim){
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table6_tb.csv",
-                             overwrite = TRUE) |> Cache()
+                             overwrite = TRUE) |> Cache(userTags = "prepInputsTable6")
   }
   
   if (!suppliedElsewhere("table7", sim)) {
@@ -606,7 +747,7 @@ AnnualIncrements <- function(sim){
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv",
-                             overwrite = TRUE) |> Cache()
+                             overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
   }
   
   
@@ -618,26 +759,40 @@ AnnualIncrements <- function(sim){
                                     fun = "data.table::fread",
                                     destinationPath = inputPath(sim),
                                     filename2 = "yieldTablesId.csv",
-                                    overwrite = TRUE) |> Cache()
+                                    overwrite = TRUE) |> Cache(userTags = "prepInputsYTId")
+  } else if (!is.null(sim$yieldTablesId)) {
+    if(!all(c("yieldTableIndex", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
+      stop("yieldTablesId needs the columns yieldTableIndex and pixelIndex")
+    }
   }
+  
   
   # actual yield curves
   if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
     sim$yieldTablesCumulative <- prepInputs(url = extractURL("yieldTablesCumulative"),
-                                  fun = "data.table::fread",
-                                  destinationPath = inputPath(sim),
-                                  filename2 = "yieldTablesCumulative.csv",
-                                  overwrite = TRUE) |> Cache()
+                                            fun = "data.table::fread",
+                                            destinationPath = inputPath(sim),
+                                            filename2 = "yieldTablesCumulative.csv",
+                                            overwrite = TRUE) |> Cache(userTags = "prepInputsYTC")
+  } else if (!is.null(sim$yieldTablesCumulative)) {
+    if(!all(c("yieldTableIndex", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))){
+      stop("yieldTablesCumulative needs the columns yieldTableIndex, age, biomass, and speciesCode")
+    }
   }
-
+  
   #4. Cohort data. Information on biomass for each cohort and pixel group. Gets updated
   # annually.
-  if (!suppliedElsewhere("cohortData", sim))
+  if (!suppliedElsewhere("cohortData", sim)){
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
                                  destinationPath = inputPath(sim),
                                  fun = "data.table::fread",
                                  overwrite = TRUE,
-                                 filename2 = "cohortData.csv") |> Cache()
+                                 filename2 = "cohortData.csv") |> Cache(userTags = "prepInputsCD")
+  } else if (!is.null(sim$cohortData)) {
+    if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))){
+      stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
+    }
+  }
   
   # TODO will be used for plotting to keep the same colors of species as in LandR modules
   # if (!suppliedElsewhere("sppColorVect", sim)){
@@ -645,6 +800,37 @@ AnnualIncrements <- function(sim){
   #   sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
   #   names(sim$sppColorVect) <- sp
   # }
+  
+  # 5. Disturbance meta
+  if (!suppliedElsewhere("disturbanceMeta", sim)) {
+    sim$disturbanceMeta <- prepInputs(url = extractURL("disturbanceMeta"),
+                                      destinationPath = inputPath(sim),
+                                      fun = "data.table::fread",
+                                      overwrite = TRUE,
+                                      filename2 = "disturbanceMeta.csv") |> Cache(userTags = "prepInputsDistMeta")
+  } else if (!is.null(sim$disturbanceMeta)) {
+    if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
+      stop("disturbanceMeta needs the columns eventID and distName")
+    }
+  }
+  
+  if (!suppliedElsewhere("rstCurrentBurn", sim)) {
+    sim$rstCurrentBurn <- sim$rasterToMatch
+    sim$rstCurrentBurn[] <- NA
+  }
+  
+  # cbmAdmin: this is needed to match species and parameters. Boudewyn et al 2007
+  # abbreviation and cbm spatial units and ecoBoudnary id is provided with the
+  # adminName to avoid confusion.
+  if (!suppliedElsewhere("cbmAdmin", sim)) {
+    if (!suppliedElsewhere("cbmAdminURL", sim)) {
+      sim$cbmAdminURL <- extractURL("cbmAdmin")
+    }
+    sim$cbmAdmin <- prepInputs(url = sim$cbmAdminURL,
+                               targetFile = "cbmAdmin.csv",
+                               destinationPath = inputPath(sim),
+                               fun = fread)
+  }
   
   return(invisible(sim))
 }
