@@ -448,9 +448,11 @@ SplitYieldTables <- function(sim) {
   )
   
   # add the species code in canfi
-  allInfoYieldTables <- addCanfiCode(
-    cohortData = allInfoYieldTables
+  allInfoYieldTables <- addSpeciesCode(
+    cohortData = allInfoYieldTables,
+    code = "CanfiCode"
   )
+  setnames(allInfoYieldTables, old = "newCode", new = "canfi_species")
   
   ##############################################################################
   #2. START processing curves from AGB to 3 pools
@@ -574,9 +576,11 @@ AnnualIncrements <- function(sim){
   )
   
   # add the species code in canfi
-  allInfoCohortData <- addCanfiCode(
-    cohortData = allInfoCohortData
+  allInfoCohortData <- addSpeciesCode(
+    cohortData = allInfoCohortData,
+    code = "CanfiCode"
   )
+  setnames(allInfoCohortData, old = "newCode", new = "canfi_species")
   
   # convert m^2 into tonnes/ha
   allInfoCohortData$B <- allInfoCohortData$B/100
