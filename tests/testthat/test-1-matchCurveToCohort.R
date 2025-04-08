@@ -57,28 +57,37 @@ test_that("functions to match AGB with CBM spatial units and canfi species work"
   expect_true(all(LandR_species %in% out4$speciesCode))
   expect_equal(nrow(out4), 15)
   expect_named(out4, c("pixelGroup", "speciesCode", "ecozone", "jurisdiction"), ignore.order = TRUE)
-  
-  # test add CanfiCode
-  out5 <- addCanfiCode(out3)
+
+    # test addSpeciesCode
+  out5 <- addSpeciesCode(out3, "CanfiCode")
   expect_equal(nrow(out5), nrow(out3))
-  expect_named(out5, c("speciesCode", "ecozone", "jurisdiction", "yieldTableIndex", "canfi_species"), ignore.order = TRUE)
-  expect_is(out5$canfi_species, "integer")
-  expect_true(all(out5$canfi_species[out5$speciesCode == "Abie_las"] == 304))
-  expect_true(all(out5$canfi_species[out5$speciesCode == "Betu_pap"] == 1303))
-  expect_true(all(out5$canfi_species[out5$speciesCode == "Pice_gla"] == 105))
+  expect_named(out5, c("speciesCode", "ecozone", "jurisdiction", "yieldTableIndex", "newCode"), ignore.order = TRUE)
+  expect_is(out5$newCode, "integer")
+  expect_true(all(out5$newCode[out5$speciesCode == "Abie_las"] == 304))
+  expect_true(all(out5$newCode[out5$speciesCode == "Betu_pap"] == 1303))
+  expect_true(all(out5$newCode[out5$speciesCode == "Pice_gla"] == 105))
+  
+  out6 <- addSpeciesCode(out3, "CBM_speciesID")
+  expect_equal(nrow(out6), nrow(out3))
+  expect_named(out6, c("speciesCode", "ecozone", "jurisdiction", "yieldTableIndex", "newCode"), ignore.order = TRUE)
+  expect_is(out6$newCode, "integer")
+  expect_true(all(out6$newCode[out6$speciesCode == "Abie_las"] == 31))
+  expect_true(all(out6$newCode[out6$speciesCode == "Betu_pap"] == 76))
+  expect_true(all(out6$newCode[out6$speciesCode == "Pice_gla"] == 6))
+  expect_error(addSpeciesCode(out3, "notacolumn"))
   
   x <- out3
   x$speciesCode <- as.character(x$speciesCode)
   x$speciesCode[1] <- "notaspecies"
-  expect_error(addCanfiCode(x))
+  expect_error(addSpeciesCode(x))
   
   # test add forest Type
-  out6 <- addForestType(out3)
-  expect_equal(nrow(out6), nrow(out3))
-  expect_true("sw_hw" %in% colnames(out6))
-  expect_is(out6$sw_hw, "character")
-  expect_true(all(out6$sw_hw[out6$speciesCode == "Pice_gla"] == "sw"))
-  expect_true(all(out6$sw_hw[out6$speciesCode == "Betu_pap"] == "hw"))
-  expect_true(all(out6$canfi_species[out5$speciesCode == "Abie_las"] == "sw"))
+  out7 <- addForestType(out3)
+  expect_equal(nrow(out7), nrow(out3))
+  expect_true("sw_hw" %in% colnames(out7))
+  expect_is(out7$sw_hw, "character")
+  expect_true(all(out7$sw_hw[out7$speciesCode == "Pice_gla"] == "sw"))
+  expect_true(all(out7$sw_hw[out7$speciesCode == "Betu_pap"] == "hw"))
+  expect_true(all(out7$canfi_species[out7$speciesCode == "Abie_las"] == "sw"))
   
   })
