@@ -604,12 +604,14 @@ PlotYieldTablesPools <- function(sim){
 
 # Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
+  # Step 1: Store the above ground biomass of the previous time step.-----------
   if (time(sim) != start(sim)){
     annualIncrements <- sim$aboveGroundBiomass
     annualIncrements$age <- annualIncrements$age + 1
     setnames(annualIncrements, old = c("merch", "foliage", "other"), new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
   }
-  # 3. split cohort data of current year
+  
+  # Step 2: Prepare cohort data for biomass splitting.--------------------------
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$pixelGroupMap,
     jurisdictions = sim$jurisdictions,
@@ -637,6 +639,8 @@ AnnualIncrements <- function(sim){
   
   # convert m^2 into tonnes/ha
   allInfoCohortData$B <- allInfoCohortData$B/100
+  
+  # Step 3: Split above ground biomass of current year.-------------------------
   cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
                                              table6 = sim$table6,
                                              table7 = sim$table7,
@@ -646,7 +650,7 @@ AnnualIncrements <- function(sim){
   sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
   setorderv(sim$aboveGroundBiomass, c("pixelIndex", "speciesCode", "age"))
   
-  # 4. append the cohortPools of the previous year
+  # Step 4: Calculate this year's increments.-----------------------------------
   if (time(sim) != start(sim)){
     annualIncrements <- merge(annualIncrements, 
                               sim$aboveGroundBiomass, 
@@ -657,7 +661,8 @@ AnnualIncrements <- function(sim){
     setnafill(annualIncrements, fill = 0, 
               cols=c("merch", "foliage", "other", "merchTminus1", "foliageTminus1", "otherTminus1"))
     
-    # 5. take the difference
+    # Calculate the difference between the above ground biomass between this
+    # this year and the previous year.
     annualIncrements[, `:=`(merch_inc = merch - merchTminus1,
                             foliage_inc = foliage - foliageTminus1,
                             other_inc = other - otherTminus1)]
