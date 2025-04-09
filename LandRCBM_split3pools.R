@@ -631,14 +631,29 @@ AnnualIncrements <- function(sim){
 
 # process annual disturbances
 AnnualDisturbances <- function(sim){
+  
+  # Create an empty data.table if disturbanceEvents is not defined
+  if(!exists("sim$disturbanceEvents")){
+    sim$disturbanceEvents <- data.table(
+      pixelIndex = integer(),
+      year = integer(),
+      eventID = integer()
+    )
+  }
+  
+  # Add them to the disturbanceEvents if fires are simulated
   if ("fire" %in% P(sim)$simulateDisturbances){
-    # fires
+    # Gets the correct eventID
     fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
+    
+    # Ensure there is a eventID for fire
     if (length(unique(fireID)) == 0) {
       stop("disturbanceMeta does not have fires amongst its disturbances...")
     } else if (length(unique(fireID)) > 1) {
       stop("there are multiple eventID for fires in disturbanceMeta...")
     }
+    
+    # Convert rstCurrentBurn into a data.table
     fires <- data.table(
       fire = as.integer(sim$rstCurrentBurn[])
     ) 
@@ -646,16 +661,12 @@ AnnualDisturbances <- function(sim){
     fires <- fires[fire == 1]
     fires$year <- time(sim)
     fires$eventID <- fireID[1]
-    sim$disturbanceEvents <- fires[, fire := NULL]
-  } else {
-    if(!exists("sim$disturbanceEvents")){
-      sim$disturbanceEvents <- data.table(
-        pixelIndex = integer(),
-        year = integer(),
-        eventID = integer()
-      )
-    }
-  }
+    
+    # Add fires to disturbanceEvents
+    sim$disturbanceEvents <- rbindlist(sim$disturbanceEvents,
+                                       fires)
+  } 
+  
   return(invisible(sim))
 }
 
