@@ -411,95 +411,148 @@ PlotYieldTables <- function(sim){
 }
 
 SplitYieldTables <- function(sim) {
-  ##############################################################################
-  # 1. Matching species, jurisdiction and ecozone
-  # Match the multimomial logit parameters (table6) and their caps (table7)
-  # with the yieldTablesId and speciesCode. yieldTablesId gives us the location. 
-  # Location let's us figure out which ecozone, and admin. The canfi_species have 
-  # numbers which we need to match with the parameters.
-  # Spatial Matching
+  # Step 1: Spatial Matching and Cohort/Stand Data Preparation -----------------
+  # Link yield curve IDs (yieldTableIndex) to CBM spatial units 
+  # (ecozone, jurisdiction) and generate initial cohort/stand data structures.
+
+  # 1.1. Match pixel-level yield table indices with CBM spatial units.
+  #      `spatialMatch` creates a data.table linking yieldTableIndex, ecozone, 
+  #      and jurisdiction.
+  #      `na.omit` removes pixels not forested.
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$yieldTablesId,
     jurisdictions = sim$jurisdictions,
     ecozones = sim$ecozones
   ) |> na.omit()
+  # Ensure spatial matching produced results
+  if (nrow(spatialDT) == 0) {
+    stop("Spatial matching between yieldTablesId, jurisdictions, and ecozones failed.")
+  }
   
+  # 1.2. Create a new, unique ID for each unique combination of original yield 
+  #      table index and CBM spatial units. This handles cases
+  #      where one yield curve spans multiple ecozones/jurisdictions.
   setorderv(spatialDT, cols = c("yieldTableIndex", "ecozone", "juris_id"))
   spatialDT[, newytid := .GRP, by = .(yieldTableIndex, ecozone, juris_id)]
   
-  # Update yieldTablesId. When a yieldTableIndex cross a CBM spatial units, there is a bifurcation.
-  # We should get a number of yieldTableIndex >= than the number before the spatial matching.
+  # 1.3. Update the pixel-level yield table mapping (`sim$yieldTablesId`) to use
+  #      the new yield table ids. 
   sim$yieldTablesId <- spatialDT[, .(pixelIndex, yieldTableIndex = newytid)] 
   
-  # create cohortDT and gcMeta
+  # 1.4. Generate the cohort-level attributes (`cohortDT`).
+  #      This links individual cohorts (pixelGroup x species combinations)
+  #      to their corresponding growth curve IDs (`gcids`).
+  #      Requires the original pixelGroupMap and the updated yieldTablesId.
   cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$yieldTablesId)
+  # Ensure cohort generation worked
+  if (is.null(cohortDT) || nrow(cohortDT) == 0) {
+    stop("generateCohortDT failed.")
+  }
+  
+  # 1.5. Store essential cohort information (cohortID, pixelIndex, age, gcids) in simList.
   sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcids)]
+  
+  # 1.6. Create and store metadata about growth curves (`sim$gcMeta`).
+  #      Links gcids to species information.
   sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
 
-  # create standDT output
+  # 1.7. Create the stand data table (`sim$standDT`).
+  #      Links pixels to their CBM `spatial_unit_id`.
+  #      Starts with pixelIndex, ecozone, jurisdiction from spatialDT.
   sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundaryID = ecozone, abreviation = juris_id)]
+  # Join with CBM administrative lookup table (`sim$cbmAdmin`) to get SpatialUnitID.
   sim$standDT <- sim$cbmAdmin[sim$standDT, on = c("EcoBoundaryID", "abreviation")]
-  sim$standDT <- sim$standDT[, .(pixelIndex, spatial_unit_id = SpatialUnitID)]
+  # Select final columns and rename for clarity.
+  sim$standDT <- sim$standDT[, .(pixelIndex, 
+                                 spatial_unit_id = SpatialUnitID, 
+                                 ecozone = EcoBoundaryID, 
+                                 juris_id = abreviation)]
+  # Ensure all pixels have a spatial_unit_id
+  if (anyNA(sim$standDT$spatial_unit_id)) {
+    stop("Some pixels could not be matched to a CBM SpatialUnitID in sim$cbmAdmin.")
+  }
   
-  spatialUnits <- unique(spatialDT[, pixelIndex := NULL])
+  # 1.8. Prepare yield table data (`sim$yieldTablesCumulative`) for biomass pool splitting.
+  #      Get unique combinations of original yieldTableIndex and spatial units.
   
+  spatialUnits <- unique(spatialDT[, .(yieldTableIndex, spatialYieldTableID, ecozone, juris_id)])
+  # Add these unique spatial units to the raw yield curves.
   allInfoYieldTables <- addSpatialUnits(
     cohortData = sim$yieldTablesCumulative,
     spatialUnits = spatialUnits
   )
-  
-  # add the species code in canfi
+  # Add species codes (e.g., CanfiCode)
   allInfoYieldTables <- addSpeciesCode(
     cohortData = allInfoYieldTables,
     code = "CanfiCode"
   )
   setnames(allInfoYieldTables, old = "newCode", new = "canfi_species")
   
-  ##############################################################################
-  #2. START processing curves from AGB to 3 pools
+  # Step 2: Splitting AGB Curves into CBM Pools --------------------------------
+  # Convert the total Above-Ground Biomass (AGB) yield curves into cumulative biomass
+  # for the three CBM above ground pools: Merchantable (merch), Foliage, and Other.
   
-  # Calculating the yieldTablesCumulative
-  
-  # set correct column names
+  # 2.1. Prepare table for CBM pool splitting function.
+  #      Rename the primary biomass column to 'B' as expected by CBMutils.
   setnames(allInfoYieldTables, c("biomass"), c("B"))
+  # Convert biomass units from g/m^2 to tonnes/ha.
+  # (1 g/m^2 = 0.01 tonnes/ha)
+  allInfoYieldTables[, B := B / 100]
   
-  # convert m^2 into tonnes/ha
-  allInfoYieldTables$B <- allInfoYieldTables$B/100
+  # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
+  #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
+  #      ground biomass as input, implemented in CBMutils.
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
                                           table6 = sim$table6,
                                           table7 = sim$table7,
                                           pixGroupCol = "yieldTableIndex")
   
-  #TODO
-  # MAKE SURE THE PROVIDED CURVES ARE ANNUAL (probably not needed for LandR
-  # connection, but might be needed for future connection to other sources of
-  # AGB).
-  ### if not, we need to extrapolate to make them annual
-  
-  # add missing years (e.g., Boudewyn equation do not handle age 0)
+  # 2.3. Ensure annual resolution by filling missing ages (especially age 0).
   minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("yieldTableIndex", "speciesCode")]
-  fill0s <- minAgeId[,.(age = seq(from = 0, to = minAge, by = 1)), by = c("yieldTableIndex", "speciesCode")]
-  add0s <- data.table(yieldTableIndex = fill0s$yieldTableIndex,
-                      speciesCode = fill0s$speciesCode,
-                      age = fill0s$age,
-                      merch = 0,
-                      foliage = 0,
-                      other = 0 )
+  # Create sequences from 0 up to (but not including) the minimum age found.
+  # Filter out cases where minAge is already 0.
+  fillAgesDT <- minAgeDT[minAge > 0, .(age = seq(from = 0, to = minAge - 1, by = 1)), 
+                         by = .(yieldTableIndex, speciesCode)] 
+  # Only proceed if there are ages to fill
+  if (nrow(fillAgesDT) > 0) {
+    # Create a table with the missing ages and zero biomass for all pools.
+    zeroBiomassDT <- fillAgesDT[, .(merch = 0, foliage = 0, other = 0),
+                                by = .(yieldTableIndex, speciesCode, age)] 
+    
+    # Combine the original curves with the filled zero-biomass ages.
+    sim$yieldTablesCumulative <- rbindlist(list(cumPools, zeroBiomassDT), use.names = TRUE)
+    
+    # Ensure final table is ordered correctly.
+    setorderv(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age")) 
+  } else {
+    # If no filling needed, just assign the calculated pools
+    sim$yieldTablesCumulative <- cumPools
+    # Ensure order just in case
+    setorderv(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age")) 
+  }
   
-  sim$yieldTablesCumulative <- rbind(cumPools,add0s)
-  setcolorder(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age"))
-  setorderv(sim$yieldTablesCumulative, c("yieldTableIndex", "speciesCode", "age"))
+  # Step 3: Calculating Annual Increments --------------------------------------
+  # Calculate the year-to-year increment in biomass for each above ground 
+  # biomass pool. These increments drive the spinup dynamics.
   
-  # 3 Calculating Increments
-  incCols <- c("merch_inc", "foliage_inc", "other_inc")
+  # 3.1. Define pool and increment column names.
   poolCols <- c("merch", "foliage", "other")
-  # This line calculates the first difference of each colNames, shifting it down 
-  # by one row and filling the first entry with NA.
+  incCols <- c("merch_inc", "foliage_inc", "other_inc")
+  
+  # 3.2. Calculate increments using `diff`.
+  # `copy()` is necessary here because we need the cumulative values later,
+  # and the increment calculation modifies the table using `:=`.
   yieldIncrements <- copy(sim$yieldTablesCumulative)
+  # Calculate difference between successive rows within each group.
   yieldIncrements[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols,
                   by = c("yieldTableIndex", "speciesCode")]
-  sim$growth_increments <- merge(yieldIncrements[,.(yieldTableIndex, speciesCode, age, merch_inc, foliage_inc, other_inc)],
-                                unique(cohortDT[, .(yieldTableIndex, speciesCode, gcids)]))
+  
+  # 3.3. Link increments back to growth curve IDs (`gcids`).
+  map_gcid_yield <- unique(cohortDT[, .(yieldTableIndex, speciesCode, gcids)])
+  sim$growth_increments <-  yieldIncrements[map_gcid_yield, 
+                                            on = .(spatialYieldTableID, speciesCode)]
+  
+  # 3.4. Final selection and ordering of columns for `sim$growth_increments`.
   sim$growth_increments <- sim$growth_increments[,.(gcids, yieldTableIndex, age, merch_inc, foliage_inc, other_inc)]
 
   return(invisible(sim))
