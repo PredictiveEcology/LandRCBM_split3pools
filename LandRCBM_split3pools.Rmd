@@ -45,15 +45,14 @@ download.file(url = "https://img.shields.io/badge/Made%20with-Markdown-1f425f.pn
 
 ### Module summary
 
-Provide a brief summary of what the module does / how to use the module.
-
-Module documentation should be written so that others can use your module.
-This is a template for module documentation, and should be changed to reflect your module.
+The objective of this module is to make data coming from the `LandR` ecosystem compatible with the `spadesCBM`. The module provides the yearly increments for the three above ground biomass pools: merchantable, foliage, and  other. It does so for the yield tables useful for the spinup event of `spadesCBM`, and for the yearly cohort data which is used for the annual event of `spadesCBM`. The module can also translate disturbances provided by disturbance modules into the format that is expected in `spadesCBM`.
 
 ### Module inputs and parameters
 
-Describe input data required by the module and how to obtain it (e.g., directly from online sources or supplied by other modules)
-If `sourceURL` is specified, `downloadData("LandRCBM_split3pools", "..")` may be sufficient.
+The inputs of `LandRCBM_split3pools` are a combination expected outputs from `LandR`, data to convert total above ground biomass into above merchantable, foliage and other biomass, and data that are expected as input in `spadesCBM`.
+
+The default inputs are for the RIA study area. Most inputs are expected to be provided by other modules (`CBMdefault`, `Biomass_core`, `Biomass_yieldTables`, `Biomass_borealDataPrep`, etc.).
+
 Table \@ref(tab:moduleInputs-LandRCBM-split3pools) shows the full list of module inputs.
 
 ```{r moduleInputs-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
@@ -63,7 +62,7 @@ knitr::kable(df_inputs,
   kableExtra::kable_styling(latex_options = "scale_down", full_width = TRUE)
 ```
 
-Provide a summary of user-visible parameters (Table \@ref(tab:moduleParams-LandRCBM-split3pools))
+Table \@ref(tab:moduleParams-LandRCBM-split3pools)
 
 
 ```{r moduleParams-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
@@ -74,19 +73,33 @@ knitr::kable(df_params, caption = "List of (ref:LandRCBM-split3pools) parameters
 
 ### Events
 
-Describe what happens for each event type.
+There are 7 events:
+
+1. *init*: Splits the total above ground biomass in yield tables into biomass of each of the three above ground carbon pools.
+2. *plotYC*: Plots the yield tables split in above ground carbon pools and the resulting increments.
+3. *annualIncrements*: Each time step, compares the `cohortData` with previous year, calculates the difference in biomass for each cohort, and convert this difference into increments of the three above ground carbon pools.
+4. *annualDisturbances*: If specified, translates yearly disturbances simulated in other modules into a data.table that can be digested by `CBM_core`.
+5. *summarizeAGBPools*: Each time step, summarizes the above ground biomass in each above ground carbon pools for each species across the landscape.
+6. *plotMaps*: At a regular interval, maps the above ground biomass and increments of each above carbon pools.
+7. *plotSummaries*: At the end of the simulation, plots the evolution of the above ground biomass of each pools for each species and for the entire landscape.
 
 ### Plotting
 
-Write what is plotted.
+There are 3 types of plots that are created.
+
+First, the modules plots figures related to the yield tables. The module returns a figure for the yield curves of total above ground biomass for a number (controlled by the parameter `numPixGroupPlots`) yield table ids. For the same yield table ids, the module also plots the yield tables divided into above ground carbon pools and the resulting increments.
+
+Second, at a regular interval, controlled by the parameter `.plotInterval`, the modules returns maps of the biomass and increments of merchantable, foliage, and other carbon pools.
+
+Third, at the end of the simulation, the modules returns figures of the evolution of the above ground biomass divided into pools across the landscape for each species.
 
 ### Saving
 
-Write what is saved.
+Nothing is saved.
 
 ### Module outputs
 
-Description of the module outputs (Table \@ref(tab:moduleOutputs-LandRCBM-split3pools)).
+Table \@ref(tab:moduleOutputs-LandRCBM-split3pools.
 
 ```{r moduleOutputs-LandRCBM-split3pools, echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE}
 df_outputs <- SpaDES.core::moduleOutputs("LandRCBM_split3pools", "..")
@@ -96,8 +109,18 @@ knitr::kable(df_outputs, caption = "List of (ref:LandRCBM-split3pools) outputs a
 
 ### Links to other modules
 
-Describe any anticipated linkages to other modules, such as modules that supply input data or do post-hoc analysis.
+The module can be used as a standalone, but will be most likely used with other modules. The module from the `Biomass_*` family can provide most inputs needed by `LandRCBM_split3pools` and simulate vegetation dynamics. Disturbance modules like `fireSense` can be used to simulate disturbances. Finally, `CBM_core` can be used to simulate the carbon dynamics between the different carbon pools.
 
-### Getting help
+### Things to do
 
--   provide a way for people to obtain help (e.g., module repository issues page)
+1. Currently the module uses the Forest Carbon Succession parameters to divide total Stemwood into merchantable and not merchantable biomass. This is hard coded right now, and appropriate for the RIA study area. 
+
+2. To review: The module match `LandR` species code with the species code used in the Boudewyn equation parameter tables (canfi code), and the CBM species Id throught columns created in the `LandR::sppEquivalencies_CA` table.
+
+3. To review: the Boudewyn equation parameter are species and ecolocation specific (province x ecozone). If there are no match for a given species in a ecolocation, the module tries to get the parameters for the same species in the same ecozone, but different province. If it does not exist, it tries to get the parameters for the same species in the same province, but a different ecozone. If that also do not exist, it gets the parameters for the species, but in a different ecolocation (province x ecozone). This is implemented in the function `CBM::getParameters`.
+
+4. How disturbances are digested by the module is still preliminary. The event `annualDisturbances` needs to be extended.
+
+5. Ideally, the plots would use the same color scale for species as in `LandR` and the species labels should be their english common name instead of `LandR` species code.
+
+6. More tests. This includes trying the module in more contexts and adding assertions and unit tests.

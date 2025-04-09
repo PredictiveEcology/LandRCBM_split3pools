@@ -17,12 +17,13 @@ defineModule(sim, list(
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
-    defineParameter("numCohortPlots", "integer", 3L, NA, NA,
-                    "When plotting the yield curves, this is how many unique cohorts per ",
-                    "pixelGroup plotted."),
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
+    defineParameter("simulateDisturbances", "character", "none", NA, NA,
+                    paste("Controls which disturbances are simulated by other modules.",
+                          "As of now, this can be 'none' when there are no disturbances module or fire`.")
+                    ),
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
@@ -48,12 +49,12 @@ defineModule(sim, list(
       objectName = "cohortData", objectClass = "data.table",
       desc = "Total above ground biomass (g/m^2) of each cohorts by pixel groups.",
       columns = c(
-        speciesCode = "",
-        ecoregionGroup = "",
-        age = "",
-        B = "",
-        pixelGroup = "",
-        totalBiomass = ""
+        speciesCode = "Species code used by LandR",
+        ecoregionGroup = "The LandR spatial units (i.e., ecoregion).",
+        age = "Age of the cohort.",
+        B = "Total above ground biomass in (g/m^2).",
+        pixelGroup = "Id of the group of pixels sharing the same cohort composition and ecoregion, used in LandR.",
+        totalBiomass = "Total above ground biomass in the pixel group."
       ),
       sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
@@ -62,12 +63,12 @@ defineModule(sim, list(
       desc = paste("Provides equivalent between provincial boundaries,",
                    "CBM-id for provincial boundaries and CBM-spatial unit ids"),
       columns = c(
-        AdminBoundaryID = "",
-        stump_parameter_id = "",
-        adminName = "",
-        abreviation = "",
-        SpatialUnitID = "",
-        EcoBoundaryID = ""
+        AdminBoundaryID = "Integer id for the administrative region.",
+        stump_parameter_id = "Integer id for the administrative region.",
+        adminName = "Name of the administrative region.",
+        abreviation = "Two-letter abreviation of the administrative region.",
+        SpatialUnitID = "Integer id of the CBM-spatial unit ids.",
+        EcoBoundaryID = "Integer id of the ecozones."
       ),
       sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"),
     expectsInput(
@@ -76,9 +77,9 @@ defineModule(sim, list(
                    "This associates CBM-CFS3 disturbances with the",
                    "event IDs in the 'disturbanceEvents' table."),
       columns = c(
-        name = "",
-        eventID = "",
-        priority = ""
+        name = "Name of the disturbance.",
+        eventID = "Disturbance event Id.",
+        priority = "Optional: Control which events gets precedence over others in the case where multiple events happen."
       ),
       sourceURL = "https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link"
     ),
@@ -88,8 +89,8 @@ defineModule(sim, list(
                    "the equation parameters to split the above ground biomass into",
                    "carbon pools."),
       columns = c(
-        pixelIndex = "",
-        ecozone = ""
+        pixelIndex = "Integer id of the pixel.",
+        ecozone = "Integer id of the ecozone."
       ),
       sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
     ),
@@ -99,9 +100,9 @@ defineModule(sim, list(
                    "Used to determine the equation parameters to split the above", 
                    "ground biomass into carbon pools."),
       columns = c(
-        pixelIndex = "",
-        PRUID = "",
-        juris_id = ""
+        pixelIndex = "Integer id of the pixel.",
+        PRUID = "Integer id of the administrative region.",
+        juris_id = "Two-letter abreviation of the administrative region."
       ),
       sourceURL = "https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lpr_000a21a_e.zip"
     ),
@@ -145,10 +146,10 @@ defineModule(sim, list(
                    "growth curve identifier that depends on species combination.",
                    "`biomass` is the biomass for the given species at the pixel age."),
       columns = c(
-        yieldTableIndex = "",
-        age = "",
-        speciesCode = "",
-        biomass = ""
+        yieldTableIndex = "Id of the group of pixels sharing yield tables.",
+        age = "Age of species going from 0 to their longevity.",
+        speciesCode = "Species code used by LandR.",
+        biomass = "Above ground biomass in g/m^2."
       ),
       sourceURL = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link"
     ),
@@ -156,8 +157,8 @@ defineModule(sim, list(
       objectName = "yieldTablesId", objectClass = "data.table",
       desc = paste("A data.table linking spatially the `yieldTableIndex`. Columns are `pixelIndex` and `yieldTableIndex`."),
       columns = c(
-        pixelIndex = "",
-        yieldTableIndex = ""
+        pixelIndex = "Integer id of the pixel.",
+        yieldTableIndex = "Id of the group of pixels sharing yield tables."
       ),
       sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
     )
@@ -220,7 +221,7 @@ defineModule(sim, list(
     createsOutput(
       objectName = "yieldTablesId",
       objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `gcid`. Columns are `pixelIndex` and `yieldTableIndex`.")
+      desc = paste("A data.table linking spatially the yield tables. Columns are `pixelIndex` and `yieldTableIndex`.")
     )
   )
 ))
@@ -630,21 +631,41 @@ AnnualIncrements <- function(sim){
 
 # process annual disturbances
 AnnualDisturbances <- function(sim){
-  # fires
-  fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
-  if (length(unique(fireID)) == 0) {
-    stop("disturbanceMeta does not have fires amongst its disturbances...")
-  } else if (length(unique(fireID)) > 1) {
-    stop("there are multiple eventID for fires in disturbanceMeta...")
+  
+  # Create an empty data.table if disturbanceEvents is not defined
+  if(!exists("sim$disturbanceEvents")){
+    sim$disturbanceEvents <- data.table(
+      pixelIndex = integer(),
+      year = integer(),
+      eventID = integer()
+    )
   }
-  fires <- data.table(
-    fire = as.integer(sim$rstCurrentBurn[])
-  ) 
-  fires <- fires[, pixelIndex := .I]
-  fires <- fires[fire == 1]
-  fires$year <- time(sim)
-  fires$eventID <- fireID[1]
-  sim$disturbanceEvents <- fires[, fire := NULL]
+  
+  # Add them to the disturbanceEvents if fires are simulated
+  if ("fire" %in% P(sim)$simulateDisturbances){
+    # Gets the correct eventID
+    fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
+    
+    # Ensure there is a eventID for fire
+    if (length(unique(fireID)) == 0) {
+      stop("disturbanceMeta does not have fires amongst its disturbances...")
+    } else if (length(unique(fireID)) > 1) {
+      stop("there are multiple eventID for fires in disturbanceMeta...")
+    }
+    
+    # Convert rstCurrentBurn into a data.table
+    fires <- data.table(
+      fire = as.integer(sim$rstCurrentBurn[])
+    ) 
+    fires <- fires[, pixelIndex := .I]
+    fires <- fires[fire == 1]
+    fires$year <- time(sim)
+    fires$eventID <- fireID[1]
+    
+    # Add fires to disturbanceEvents
+    sim$disturbanceEvents <- rbindlist(sim$disturbanceEvents,
+                                       fires)
+  } 
   
   return(invisible(sim))
 }
@@ -823,13 +844,10 @@ AnnualDisturbances <- function(sim){
   # abbreviation and cbm spatial units and ecoBoudnary id is provided with the
   # adminName to avoid confusion.
   if (!suppliedElsewhere("cbmAdmin", sim)) {
-    if (!suppliedElsewhere("cbmAdminURL", sim)) {
-      sim$cbmAdminURL <- extractURL("cbmAdmin")
-    }
-    sim$cbmAdmin <- prepInputs(url = sim$cbmAdminURL,
+    sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
                                targetFile = "cbmAdmin.csv",
                                destinationPath = inputPath(sim),
-                               fun = fread)
+                               fun = "data.table::fread") |> Cache(userTags = "prepInputsCBMAdmin")
   }
   
   return(invisible(sim))

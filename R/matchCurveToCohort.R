@@ -62,7 +62,8 @@ addSpeciesCode <- function(cohortData, code = "CanfiCode"){
   
   sp_code <- data.table(speciesCode = speciesCode,
                         newCode = newCode)
-  allCohortInfo <- merge(cohortData, sp_code, by = "speciesCode")
+  allCohortInfo <- cohortData[sp_code, on = "speciesCode"]
+  
   return(allCohortInfo)
 }
 
@@ -78,6 +79,6 @@ addForestType <- function(cohortData){
   
   refTable <- data.table(speciesCode = speciesCode,
                          sw_hw = sw_hw)
-  allCohortInfo <- merge(cohortData, refTable, by = "speciesCode")
+  allCohortInfo <- cohortData[refTable ,on = "speciesCode"]
   return(allCohortInfo)
 }
