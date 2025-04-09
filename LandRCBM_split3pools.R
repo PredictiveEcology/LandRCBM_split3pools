@@ -474,8 +474,7 @@ SplitYieldTables <- function(sim) {
   
   # 1.8. Prepare yield table data (`sim$yieldTablesCumulative`) for biomass pool splitting.
   #      Get unique combinations of original yieldTableIndex and spatial units.
-  
-  spatialUnits <- unique(spatialDT[, .(yieldTableIndex, spatialYieldTableID, ecozone, juris_id)])
+  spatialUnits <- unique(spatialDT[, .(yieldTableIndex, newytid, ecozone, juris_id)])
   # Add these unique spatial units to the raw yield curves.
   allInfoYieldTables <- addSpatialUnits(
     cohortData = sim$yieldTablesCumulative,
@@ -508,11 +507,11 @@ SplitYieldTables <- function(sim) {
                                           pixGroupCol = "yieldTableIndex")
   
   # 2.3. Ensure annual resolution by filling missing ages (especially age 0).
-  minAgeId <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("yieldTableIndex", "speciesCode")]
+  minAgeDT <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("yieldTableIndex", "speciesCode")]
   # Create sequences from 0 up to (but not including) the minimum age found.
   # Filter out cases where minAge is already 0.
-  fillAgesDT <- minAgeDT[minAge > 0, .(age = seq(from = 0, to = minAge - 1, by = 1)), 
-                         by = .(yieldTableIndex, speciesCode)] 
+  fillAgesDT <-  minAgeDT[,.(age = seq(from = 0, to = minAge, by = 1)), 
+                          by = c("yieldTableIndex", "speciesCode")]
   # Only proceed if there are ages to fill
   if (nrow(fillAgesDT) > 0) {
     # Create a table with the missing ages and zero biomass for all pools.
@@ -550,7 +549,7 @@ SplitYieldTables <- function(sim) {
   # 3.3. Link increments back to growth curve IDs (`gcids`).
   map_gcid_yield <- unique(cohortDT[, .(yieldTableIndex, speciesCode, gcids)])
   sim$growth_increments <-  yieldIncrements[map_gcid_yield, 
-                                            on = .(spatialYieldTableID, speciesCode)]
+                                            on = .(yieldTableIndex, speciesCode)]
   
   # 3.4. Final selection and ordering of columns for `sim$growth_increments`.
   sim$growth_increments <- sim$growth_increments[,.(gcids, yieldTableIndex, age, merch_inc, foliage_inc, other_inc)]

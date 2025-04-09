@@ -111,7 +111,7 @@ test_that("module runs with small example", {
   # check standDT
   expect_is(simTest$standDT, "data.table")
   expect_named(simTest$standDT, 
-               c("pixelIndex", "spatial_unit_id"))
+               c("pixelIndex", "spatial_unit_id", "ecozone", "juris_id"))
   expect_setequal(simTest$standDT$pixelIndex, yieldTablesId$pixelIndex)
   
   # check summaryAGB
