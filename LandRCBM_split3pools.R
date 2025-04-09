@@ -17,9 +17,6 @@ defineModule(sim, list(
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
-    defineParameter("numCohortPlots", "integer", 3L, NA, NA,
-                    "When plotting the yield curves, this is how many unique cohorts per ",
-                    "pixelGroup plotted."),
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
@@ -224,7 +221,7 @@ defineModule(sim, list(
     createsOutput(
       objectName = "yieldTablesId",
       objectClass = "data.table",
-      desc = paste("A data.table linking spatially the `yieldTableIndex`. Columns are `pixelIndex` and `yieldTableIndex`.")
+      desc = paste("A data.table linking spatially the yield tables. Columns are `pixelIndex` and `yieldTableIndex`.")
     )
   )
 ))
