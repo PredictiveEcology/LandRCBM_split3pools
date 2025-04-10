@@ -610,7 +610,7 @@ AnnualIncrements <- function(sim){
     # Increment age to match the *current* age for joining later
     biomassTminus1[, age := age + 1]
     # Rename cols to indicate they are from the previous timestep
-    setnames(annualIncrements, old = c("merch", "foliage", "other"), 
+    setnames(biomassTminus1, old = c("merch", "foliage", "other"), 
              new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
     # Keep only necessary columns for merging
     biomassTminus1 <- biomassTminus1[, .(pixelIndex, speciesCode, age,
@@ -619,8 +619,6 @@ AnnualIncrements <- function(sim){
   }
   
   # Step 2: Prepare cohort data for biomass splitting.--------------------------
-  browser()
-  
   # 2.1     Get spatial information for each pixelGroup
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$pixelGroupMap,
@@ -685,11 +683,15 @@ AnnualIncrements <- function(sim){
       other_inc   = other   - otherTminus1
     )]
     # Create gcids and cohortID (the same for annual increments).
-    incrementsDT <- incrementsDT[, c("gcids", "cohortID") := .(I, I)]
+    incrementsDT[, c("gcids", "cohortID") := .(.I, .I)]
+    # Add CBM species_id for gcMeta (is named newCode in incrementsDT)
+    incrementsDT <- addSpeciesCode(incrementsDT, code = "CBM_speciesID")
+    # Add forest type ("sw" or "hw") for gcMeta
+    incrementsDT <- addForestType(incrementsDT)
     # Create data.table with cohort-level information
     sim$cohortDT <- incrementsDT[, .(cohortID, pixelIndex, age, gcids)]
     # Creta data.table with growth curve-level information
-    sim$gcMeta <- incrementsDT[, .(gcids, species_id, speciesCode, sw_hw)]
+    sim$gcMeta <- incrementsDT[, .(gcids, species_id = newCode, speciesCode, sw_hw)]
     # Create final growth increment data.table
     sim$growth_increments <- incrementsDT[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
     setkey(sim$growth_increments, gcids)
