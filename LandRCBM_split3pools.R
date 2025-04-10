@@ -742,6 +742,7 @@ AnnualDisturbances <- function(sim){
 
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
+  
   # 1. Spatial information
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     sim$rasterToMatch <- prepInputs(
@@ -756,6 +757,7 @@ AnnualDisturbances <- function(sim){
     sim$masterRaster <- sim$rasterToMatch
   }
   
+  # Verify that masterRaster and rasterToMatch are the same.
   if (!compareGeom(sim$masterRaster, sim$rasterToMatch)){
     stop("The masterRaster and rasterToMatch do not match...")
   }
@@ -769,7 +771,8 @@ AnnualDisturbances <- function(sim){
     ) |> Cache(userTags = "prepInputsSA")
   }
   
-  # pixel groups from vegetation data that gets updated annually
+  # Pixel groups from vegetation data.
+  # Is used to link cohortData spatially.
   if (!suppliedElsewhere("pixelGroupMap", sim)) {
     sim$pixelGroupMap <- prepInputs(
       url = extractURL("pixelGroupMap"),
@@ -780,6 +783,8 @@ AnnualDisturbances <- function(sim){
     ) |> Cache(userTags = "prepInputsPGM")
   }
   
+  # Add a small buffer to studyArea to make sure we have ecozones and jurisdiction
+  # for each pixels.
   if(inherits(sim$studyArea, "SpatVector")){
     studyAreaBuffered <- terra::buffer(sim$studyArea, res(sim$rasterToMatch)[1])
   } else if (inherits(sim$studyArea, "sf")) {
@@ -788,7 +793,7 @@ AnnualDisturbances <- function(sim){
     stop("studyArea needs to be a SpatVector or a sf polygon")
   }
   
-  # ecozones
+  # Ecozones as a data.table with the ecozone id for each pixelIndex.
   if (!suppliedElsewhere("ecozones", sim)) {
     ecozones <- prepInputs(
       url = extractURL("ecozones"),
@@ -803,12 +808,13 @@ AnnualDisturbances <- function(sim){
     setcolorder(sim$ecozones, c("pixelIndex", "ecozone"))
   }
   
+  # Jurisdiction as a data.table with the jurisdiction id and its 2-letter 
+  # abreviation for each pixelIndex.
   if (!suppliedElsewhere("jurisdictions", sim)) {
     dt <- data.table(
       PRUID = c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62),
       juris_id = c("NL", "PE", "NS", "NB", "QC", "ON", "MB", "SK", "AB", "BC", "YT", "NT", "NU")
     )
-    
     jurisdictions <- prepInputs(
       url = extractURL("jurisdictions"),
       destinationPath = inputPath(sim),
@@ -824,7 +830,8 @@ AnnualDisturbances <- function(sim){
     setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
   }
   
-  # 2. NFI params
+  # 2. NFI params. Used to split total biomass into biomass of the three CBM
+  #                above ground biomass pools.
   if (!suppliedElsewhere("table6", sim)) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
                              fun = "data.table::fread",
@@ -841,10 +848,10 @@ AnnualDisturbances <- function(sim){
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
   }
   
+  # 3. Yield tables data
   
-  # 3. Yield curve data
-  
-  # reference for species to cohort_id
+  # Data table that links the yieldTableIndex (group of growth curves of coexisting
+  # species) to pixelIndex (one yieldTableIndex per pixelIndex).
   if (!suppliedElsewhere("yieldTablesId", sim)) {
     sim$yieldTablesId <- prepInputs(url = extractURL("yieldTablesId"),
                                     fun = "data.table::fread",
@@ -857,8 +864,7 @@ AnnualDisturbances <- function(sim){
     }
   }
   
-  
-  # actual yield curves
+  # Yield tables. Each yield tables as multiple growth curve (one per species)
   if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
     sim$yieldTablesCumulative <- prepInputs(url = extractURL("yieldTablesCumulative"),
                                             fun = "data.table::fread",
@@ -871,8 +877,7 @@ AnnualDisturbances <- function(sim){
     }
   }
   
-  #4. Cohort data. Information on biomass for each cohort and pixel group. Gets updated
-  # annually.
+  # 4. Cohort data. Information on biomass for each cohort and pixel group.
   if (!suppliedElsewhere("cohortData", sim)){
     sim$cohortData <- prepInputs(url = extractURL("cohortData"),
                                  destinationPath = inputPath(sim),
@@ -892,7 +897,9 @@ AnnualDisturbances <- function(sim){
   #   names(sim$sppColorVect) <- sp
   # }
   
-  # 5. Disturbance meta
+  # 5. Disturbance data
+  
+  # Metadata on disturbance. Links the eventID to the disturbance type.
   if (!suppliedElsewhere("disturbanceMeta", sim)) {
     sim$disturbanceMeta <- prepInputs(url = extractURL("disturbanceMeta"),
                                       destinationPath = inputPath(sim),
@@ -905,14 +912,15 @@ AnnualDisturbances <- function(sim){
     }
   }
   
+  # Raster of the pixel currently burning. Pixels with values of 1 are burning.
   if (!suppliedElsewhere("rstCurrentBurn", sim)) {
     sim$rstCurrentBurn <- sim$rasterToMatch
     sim$rstCurrentBurn[] <- NA
   }
   
-  # cbmAdmin: this is needed to match species and parameters. Boudewyn et al 2007
-  # abbreviation and cbm spatial units and ecoBoudnary id is provided with the
-  # adminName to avoid confusion.
+  # 6. CBM metadata
+  # This table is used to determine the CBM spatial unit based on the jurisdiction
+  # and ecozone.
   if (!suppliedElsewhere("cbmAdmin", sim)) {
     sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
                                targetFile = "cbmAdmin.csv",
