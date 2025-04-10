@@ -65,6 +65,7 @@ test_that("module runs with small example", {
   )
   expect_s4_class(simTest, "simList")
   expect_equal(time(simTest)[[1]], 2016)
+  browser
 
   # check all outputs are there
   expect_true(all(
@@ -111,7 +112,7 @@ test_that("module runs with small example", {
   # check standDT
   expect_is(simTest$standDT, "data.table")
   expect_named(simTest$standDT, 
-               c("pixelIndex", "spatial_unit_id"))
+               c("pixelIndex", "spatial_unit_id", "ecozone", "juris_id"))
   expect_setequal(simTest$standDT$pixelIndex, yieldTablesId$pixelIndex)
   
   # check summaryAGB
@@ -144,6 +145,7 @@ test_that("module runs with small example", {
   expect_equal(length(unique(simTest$yieldTablesId$yieldTableIndex)), length(unique(yieldTablesId$yieldTableIndex)))
   expect_setequal(simTest$yieldTablesId$yieldTableIndex, simTest$yieldTablesCumulative$yieldTableIndex)
   
+  # test splitting the yield tables event only
   simTestInitEvent <-  SpaDEStestMuffleOutput(
     SpaDES.core::simInitAndSpades(modules = module,
                                   object = list(
