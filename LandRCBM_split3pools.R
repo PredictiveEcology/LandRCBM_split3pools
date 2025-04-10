@@ -494,8 +494,7 @@ SplitYieldTables <- function(sim) {
   # 2.1. Prepare table for CBM pool splitting function.
   #      Rename the primary biomass column to 'B' as expected by CBMutils.
   setnames(allInfoYieldTables, c("biomass"), c("B"))
-  # Convert biomass units from g/m^2 to tonnes/ha.
-  # (1 g/m^2 = 0.01 tonnes/ha)
+  # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoYieldTables[, B := B / 100]
   
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
@@ -605,83 +604,95 @@ PlotYieldTablesPools <- function(sim){
 # Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
   # Step 1: Store the above ground biomass of the previous time step.-----------
-  if (time(sim) != start(sim)){
-    annualIncrements <- sim$aboveGroundBiomass
-    annualIncrements$age <- annualIncrements$age + 1
-    setnames(annualIncrements, old = c("merch", "foliage", "other"), new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
+  biomassTminus1 <- NULL 
+  if (time(sim) > start(sim)){
+    biomassTminus1 <- copy(sim$aboveGroundBiomass)
+    # Increment age to match the *current* age for joining later
+    biomassTminus1[, age := age + 1]
+    # Rename cols to indicate they are from the previous timestep
+    setnames(annualIncrements, old = c("merch", "foliage", "other"), 
+             new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
+    # Keep only necessary columns for merging
+    biomassTminus1 <- biomassTminus1[, .(pixelIndex, speciesCode, age,
+                                         merchTminus1, foliageTminus1, otherTminus1)]
+    setkey(biomassTminus1, pixelIndex, speciesCode, age)
   }
   
   # Step 2: Prepare cohort data for biomass splitting.--------------------------
+  browser()
+  
+  # 2.1     Get spatial information for each pixelGroup
   spatialDT <- spatialMatch(
     pixelGroupMap = sim$pixelGroupMap,
     jurisdictions = sim$jurisdictions,
     ecozones = sim$ecozones
   ) |> na.omit()
-  
+  # New pixel group for unique combination of pixelGroup and CBM spatial units
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
-  
-  cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, yieldTablesId = NULL)
-  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcids)]
-  sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
-  
+  # Add spatial information to cohortData
   spatialUnits <- unique(spatialDT[, !("pixelIndex")])
   allInfoCohortData <- addSpatialUnits(
     cohortData = sim$cohortData,
     spatialUnits = spatialUnits
-  )
+  ) # note that the new pixelGroup column is the unique combination of pixelGroup and CBM spatial units
   
-  # add the species code in canfi
+  # 2.2     Get species information
+  # Add the species code in canfi
   allInfoCohortData <- addSpeciesCode(
     cohortData = allInfoCohortData,
     code = "CanfiCode"
   )
   setnames(allInfoCohortData, old = "newCode", new = "canfi_species")
-  
-  # convert m^2 into tonnes/ha
-  allInfoCohortData$B <- allInfoCohortData$B/100
+  # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
+  allInfoCohortData[, B := B/100]
   
   # Step 3: Split above ground biomass of current year.-------------------------
   cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
                                              table6 = sim$table6,
                                              table7 = sim$table7,
                                              "pixelGroup")
-  spatialDT[, pixelGroup := NULL]
-  sim$aboveGroundBiomass <- merge(spatialDT, cohortPools, by.x = "newPixelGroup", by.y = "pixelGroup", allow.cartesian = TRUE)
-  sim$aboveGroundBiomass <- sim$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
-  setorderv(sim$aboveGroundBiomass, c("pixelIndex", "speciesCode", "age"))
   
-  # Step 4: Calculate this year's increments.-----------------------------------
-  if (time(sim) != start(sim)){
-    annualIncrements <- merge(annualIncrements, 
-                              sim$aboveGroundBiomass, 
-                              by = c("pixelIndex", "speciesCode", "age"),
-                              all = TRUE)
-    
-    # adds biomass 0 when there is a new species in a pixelGroup
-    setnafill(annualIncrements, fill = 0, 
-              cols=c("merch", "foliage", "other", "merchTminus1", "foliageTminus1", "otherTminus1"))
-    
-    # Calculate the difference between the above ground biomass between this
-    # this year and the previous year.
-    annualIncrements[, `:=`(merch_inc = merch - merchTminus1,
-                            foliage_inc = foliage - foliageTminus1,
-                            other_inc = other - otherTminus1)]
-    annualIncrements <- merge(annualIncrements[,.(pixelIndex, 
-                                                  speciesCode,
-                                                  age = age, 
-                                                  merch_inc, 
-                                                  foliage_inc, 
-                                                  other_inc)],
-                              cohortDT[,.(pixelIndex, 
-                                              speciesCode,
-                                              age, 
-                                              cohortID, 
-                                              gcids)],
-                              by = c("pixelIndex", "speciesCode", "age")
+  # Step 4: Get pixel-level biomass data.---------------------------------------
+  spatialDT[, pixelGroup := NULL]
+  biomassCurrent  <- merge(spatialDT, # The pixel-pixelGroup reference
+                           cohortPools, # Cohort Biomass data
+                           by.x = "newPixelGroup", 
+                           by.y = "pixelGroup", 
+                           allow.cartesian = TRUE) # There are multiple cohorts per pixelGroup and multiple pixels per pixelGroup
+  # Only keep needed columns
+  biomassCurrent <- biomassCurrent[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
+  setorderv(biomassCurrent, c("pixelIndex", "speciesCode", "age"))
+  sim$aboveGroundBiomass <- biomassCurrent
+  
+  # Step 5: Calculate this year's increments.-----------------------------------
+  if(!is.null(biomassTminus1)){
+    # Full outer join between current biomass and previous biomass (incremented age)
+    incrementsDT <- merge(
+      biomassCurrent,
+      biomassTminus1,
+      by = c("pixelIndex", "speciesCode", "age"),
+      all = TRUE 
     )
-    
-    sim$growth_increments <- setkey(annualIncrements, gcids)
-    sim$growth_increments <- sim$growth_increments[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
+    # Handle NA values resulting from the join:
+    # - NAs in current pools (merch, foliage, other) mean cohort disappeared -> fill with 0
+    # - NAs in previous pools (merchTminus1, etc.) mean cohort is new -> fill with 0
+    fillCols <- c("merch", "foliage", "other", "merchTminus1", "foliageTminus1", "otherTminus1")
+    setnafill(incrementsDT, fill = 0, cols = fillCols)
+    # Calculate increments by subtracting previous from current
+    incrementsDT[, `:=`(
+      merch_inc   = merch   - merchTminus1,
+      foliage_inc = foliage - foliageTminus1,
+      other_inc   = other   - otherTminus1
+    )]
+    # Create gcids and cohortID (the same for annual increments).
+    incrementsDT <- incrementsDT[, c("gcids", "cohortID") := .(I, I)]
+    # Create data.table with cohort-level information
+    sim$cohortDT <- incrementsDT[, .(cohortID, pixelIndex, age, gcids)]
+    # Creta data.table with growth curve-level information
+    sim$gcMeta <- incrementsDT[, .(gcids, species_id, speciesCode, sw_hw)]
+    # Create final growth increment data.table
+    sim$growth_increments <- incrementsDT[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
+    setkey(sim$growth_increments, gcids)
   }
   return(invisible(sim))
 }
