@@ -794,7 +794,7 @@ AnnualDisturbances <- function(sim){
   }
   
   # Ecozones as a data.table with the ecozone id for each pixelIndex.
-  if (!suppliedElsewhere("ecozones", sim)) {
+  if (!suppliedElsewhere("ecozones", sim, where = "sim")) {
     ecozones <- prepInputs(
       url = extractURL("ecozones"),
       destinationPath = inputPath(sim),
@@ -810,7 +810,7 @@ AnnualDisturbances <- function(sim){
   
   # Jurisdiction as a data.table with the jurisdiction id and its 2-letter 
   # abreviation for each pixelIndex.
-  if (!suppliedElsewhere("jurisdictions", sim)) {
+  if (!suppliedElsewhere("jurisdictions", sim, where = "sim")) {
     dt <- data.table(
       PRUID = c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62),
       juris_id = c("NL", "PE", "NS", "NB", "QC", "ON", "MB", "SK", "AB", "BC", "YT", "NT", "NU")
