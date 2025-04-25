@@ -230,50 +230,16 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-      ######
+      
       # split initial above ground biomass
-      spatialDT <- spatialMatch(
+      sim$aboveGroundBiomass <- splitCohortData(
+        cohortData = sim$cohortData,
         pixelGroupMap = sim$pixelGroupMap,
         jurisdictions = sim$jurisdictions,
-        ecozones = sim$ecozones
-      ) |> na.omit()
-      # New pixel group for unique combination of pixelGroup and CBM spatial units
-      spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
-      # Add spatial information to cohortData
-      spatialUnits <- unique(spatialDT[, !("pixelIndex")])
-      allInfoCohortData <- addSpatialUnits(
-        cohortData = sim$cohortData,
-        spatialUnits = spatialUnits
-      ) # note that the new pixelGroup column is the unique combination of pixelGroup and CBM spatial units
-      
-      # 2.2     Get species information
-      # Add the species code in canfi
-      allInfoCohortData <- addSpeciesCode(
-        cohortData = allInfoCohortData,
-        code = "CanfiCode"
+        ecozones = sim$ecozones,
+        table6 = sim$table6,
+        table7 = sim$table7
       )
-      setnames(allInfoCohortData, old = "newCode", new = "canfi_species")
-      # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
-      allInfoCohortData[, B := B/100]
-      
-      # Step 3: Split above ground biomass of current year.-------------------------
-      cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
-                                                 table6 = sim$table6,
-                                                 table7 = sim$table7,
-                                                 "pixelGroup")
-      
-      # Step 4: Get pixel-level biomass data.---------------------------------------
-      spatialDT[, pixelGroup := NULL]
-      biomassCurrent  <- merge(spatialDT, # The pixel-pixelGroup reference
-                               cohortPools, # Cohort Biomass data
-                               by.x = "newPixelGroup", 
-                               by.y = "pixelGroup", 
-                               allow.cartesian = TRUE) # There are multiple cohorts per pixelGroup and multiple pixels per pixelGroup
-      # Only keep needed columns
-      biomassCurrent <- biomassCurrent[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
-      setorderv(biomassCurrent, c("pixelIndex", "speciesCode", "age"))
-      sim$aboveGroundBiomass <- biomassCurrent
-      #######
       
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
@@ -659,54 +625,20 @@ AnnualIncrements <- function(sim){
                                        merchTminus1, foliageTminus1, otherTminus1)]
   setkey(biomassTminus1, pixelIndex, speciesCode, age)
   
-  # Step 2: Prepare cohort data for biomass splitting.--------------------------
-  # 2.1     Get spatial information for each pixelGroup
-  spatialDT <- spatialMatch(
+  # Step 2: Split current total above ground.-----------------------------------
+  sim$aboveGroundBiomass <- splitCohortData(
+    cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
     jurisdictions = sim$jurisdictions,
-    ecozones = sim$ecozones
-  ) |> na.omit()
-  # New pixel group for unique combination of pixelGroup and CBM spatial units
-  spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, ecozone, juris_id)]
-  # Add spatial information to cohortData
-  spatialUnits <- unique(spatialDT[, !("pixelIndex")])
-  allInfoCohortData <- addSpatialUnits(
-    cohortData = sim$cohortData,
-    spatialUnits = spatialUnits
-  ) # note that the new pixelGroup column is the unique combination of pixelGroup and CBM spatial units
-  
-  # 2.2     Get species information
-  # Add the species code in canfi
-  allInfoCohortData <- addSpeciesCode(
-    cohortData = allInfoCohortData,
-    code = "CanfiCode"
+    ecozones = sim$ecozones,
+    table6 = sim$table6,
+    table7 = sim$table7
   )
-  setnames(allInfoCohortData, old = "newCode", new = "canfi_species")
-  # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
-  allInfoCohortData[, B := B/100]
   
-  # Step 3: Split above ground biomass of current year.-------------------------
-  cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
-                                             table6 = sim$table6,
-                                             table7 = sim$table7,
-                                             "pixelGroup")
-  
-  # Step 4: Get pixel-level biomass data.---------------------------------------
-  spatialDT[, pixelGroup := NULL]
-  biomassCurrent  <- merge(spatialDT, # The pixel-pixelGroup reference
-                           cohortPools, # Cohort Biomass data
-                           by.x = "newPixelGroup", 
-                           by.y = "pixelGroup", 
-                           allow.cartesian = TRUE) # There are multiple cohorts per pixelGroup and multiple pixels per pixelGroup
-  # Only keep needed columns
-  biomassCurrent <- biomassCurrent[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
-  setorderv(biomassCurrent, c("pixelIndex", "speciesCode", "age"))
-  sim$aboveGroundBiomass <- biomassCurrent
-  
-  # Step 5: Calculate this year's increments.-----------------------------------
+  # Step 3: Calculate this year's increments.-----------------------------------
   # Full outer join between current biomass and previous biomass (incremented age)
   incrementsDT <- merge(
-    biomassCurrent,
+    sim$aboveGroundBiomass,
     biomassTminus1,
     by = c("pixelIndex", "speciesCode", "age"),
     all = TRUE 
