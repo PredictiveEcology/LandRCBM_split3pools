@@ -675,7 +675,7 @@ AnnualIncrements <- function(sim){
 AnnualDisturbances <- function(sim){
   
   # Create an empty data.table if disturbanceEvents is not defined
-  if(!exists("sim$disturbanceEvents")){
+  if(is.null(sim$disturbanceEvents)){
     sim$disturbanceEvents <- data.table(
       pixelIndex = integer(),
       year = integer(),
