@@ -675,7 +675,7 @@ AnnualIncrements <- function(sim){
 AnnualDisturbances <- function(sim){
   
   # Create an empty data.table if disturbanceEvents is not defined
-  if(is.null(sim$disturbanceEvents)){
+  if(is.null(sim$disturbanceEvents) | (P(sim)$simulateDisturbances == "all")){
     sim$disturbanceEvents <- data.table(
       pixelIndex = integer(),
       year = integer(),
@@ -705,7 +705,7 @@ AnnualDisturbances <- function(sim){
     fires$eventID <- fireID[1]
     
     # Add fires to disturbanceEvents
-    sim$disturbanceEvents <- rbindlist(sim$disturbanceEvents,
+    sim$disturbanceEvents <- rbind(sim$disturbanceEvents,
                                        fires)
   } 
   
