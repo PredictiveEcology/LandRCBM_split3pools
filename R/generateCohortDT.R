@@ -6,7 +6,7 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
   cohortDT <- cohortDT[, pixelIndex := .I] |> na.omit()
   # add cohort information for each pixelIndex
   cohortDT <- merge(cohortDT,
-                    cohortData[,.(speciesCode, age, pixelGroup)],
+                    cohortData[age > 0,.(speciesCode, age, pixelGroup)],
                     allow.cartesian = TRUE)
 
   # add the canfi code of species

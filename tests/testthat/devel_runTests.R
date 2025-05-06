@@ -1,19 +1,23 @@
 ## SET UP ----
 
 # Install required packages
-# Get needed packages
-packages = c("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
-             "SpaDES.tools", "PredictiveEcology/CBMutils@development", "PredictiveEcology/LandR@development")
-if (!requireNamespace("Require", quietly = TRUE)) {
-  install.packages("Require")
-}
-Require::Require(packages, dependencies = TRUE, repos = unique(c("predictiveecology.r-universe.dev", getOption("repos"))))
+## Required because module is not an R package
+install.packages(c("testthat", "SpaDES.core", "SpaDES.project"), repos = unique(c(
+  "predictiveecology.r-universe.dev", getOption("repos")
+)))
+
+Require::Require(c("data.table", "terra", "LandR"))
+
+## OPTIONS ----
 
 # Suppress warnings from calls to setupProject, simInit, and spades
 options("spades.test.suppressWarnings" = TRUE)
 
-# Set custom input data location
-options("reproducible.inputPaths" = NULL)
+# Set custom directory paths
+## Speed up tests by allowing inputs, cache, and R packages to persist between runs
+options("spades.test.paths.inputs"   = NULL) # inputPath
+options("spades.test.paths.cache"    = NULL) # cachePath
+options("spades.test.paths.packages" = NULL) # packagePath
 
 ## RUN ALL TESTS ----
 # Run all tests
@@ -26,4 +30,5 @@ testthat::test_dir(file.path("tests", "testthat"), reporter = testthat::SummaryR
 ## RUN INDIVIDUAL TESTS ----
 testthat::test_file(file.path("tests", "testthat", "test-1-matchCurveToCohort.R"))
 testthat::test_file(file.path("tests", "testthat", "test-2-generateCohortDT.R"))
-testthat::test_file(file.path("tests", "testthat", "test-3-LandRCBM_split3pools.R"))
+testthat::test_file(file.path("tests", "testthat", "test-3-splitCohortData.R"))
+testthat::test_file(file.path("tests", "testthat", "test-4-LandRCBM_split3pools.R"))
