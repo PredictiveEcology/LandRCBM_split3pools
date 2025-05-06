@@ -169,7 +169,7 @@ defineModule(sim, list(
     createsOutput(
       objectName = "aboveGroundBiomass",
       objectClass = "data.table",
-      desc = paste("Above ground biomass (metric tonnes of tree biomass/ha) in each pool",
+      desc = paste("Above ground biomass (metric tonnes of carbon/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
                    "Columns are `pixelIndex`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
     ),
@@ -189,7 +189,7 @@ defineModule(sim, list(
     createsOutput(
       objectName = "growth_increments",
       objectClass = "data.table",
-      desc = paste("Increments (metric tonnes of tree biomass/ha) in each pool",
+      desc = paste("Increments (metric tonnes of carbon/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
                    "Columns are `gcids`, `age`,`merch_inc`, `foliage_inc`, and `other_inc`.")
     ),
@@ -208,7 +208,7 @@ defineModule(sim, list(
     createsOutput(
       objectName = "summaryAGB",
       objectClass = "data.table",
-      desc = paste("Sum of biomass and increments for each species and above ground", 
+      desc = paste("Sum of carbon mass for each species and above ground", 
                    "pool at each timestep across the landscape. Columns are `year`,",
                    "`speciesCode`, `merch`, `foliage`, `other`.")
     ),
