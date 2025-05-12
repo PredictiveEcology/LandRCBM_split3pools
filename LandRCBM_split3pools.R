@@ -198,7 +198,12 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Growth curve-level information.",
                    "Columns are `gcids`, `species_id`, `speciesCode`, and `sw_hw`")
-    ),    
+    ),  
+    createsOutput(
+      objectName = "masterRaster",
+      objectClass = "SpatRaster",
+      desc = paste("The template raster for the CBM simulation. Is equivalent to rasterToMatch.")
+    ),
     createsOutput(
       objectName = "standDT",
       objectClass = "data.table",
@@ -230,6 +235,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
+      
+      # Create masterRaster. Identical to rasterToMatch.
+      sim$masterRaster <- sim$rasterToMatch
       
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
@@ -723,15 +731,6 @@ AnnualDisturbances <- function(sim){
       destinationPath = inputPath(sim),
       overwrite = TRUE
     ) |> Cache(userTags = "prepInputsRTM")
-  }
-  
-  if (!suppliedElsewhere("masterRaster", sim)) {
-    sim$masterRaster <- sim$rasterToMatch
-  }
-  
-  # Verify that masterRaster and rasterToMatch are the same.
-  if (!compareGeom(sim$masterRaster, sim$rasterToMatch)){
-    stop("The masterRaster and rasterToMatch do not match...")
   }
   
   if (!suppliedElsewhere("studyArea", sim)) {
