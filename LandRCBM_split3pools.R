@@ -252,11 +252,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
+      # format disturbance events 
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 5, "LandRCBM_split3pools","annualDisturbances")
+      
       # split AGB of cohorts into pools 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualIncrements")
-      
-      # format disturbance events 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualDisturbances")
       
       # summarize simulation 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
@@ -294,7 +294,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- AnnualDisturbances(sim)
       
       # do this for each timestep
-      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualDisturbances")
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 5, "LandRCBM_split3pools", "annualDisturbances")
     },
     summarizeAGBPools = {
       sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
@@ -714,7 +714,7 @@ AnnualDisturbances <- function(sim){
     
     # Add fires to disturbanceEvents
     sim$disturbanceEvents <- rbind(sim$disturbanceEvents,
-                                       fires)
+                                   fires[, fire := NULL])
   } 
   
   return(invisible(sim))
