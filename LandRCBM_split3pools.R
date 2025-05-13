@@ -683,7 +683,7 @@ AnnualIncrements <- function(sim){
 AnnualDisturbances <- function(sim){
   
   # Create an empty data.table if disturbanceEvents is not defined
-  if(is.null(sim$disturbanceEvents) | (P(sim)$simulateDisturbances == "all")){
+  if(is.null(sim$disturbanceEvents)){
     sim$disturbanceEvents <- data.table(
       pixelIndex = integer(),
       year = integer(),
@@ -692,7 +692,7 @@ AnnualDisturbances <- function(sim){
   }
   
   # Add them to the disturbanceEvents if fires are simulated
-  if ("fire" %in% P(sim)$simulateDisturbances){
+  if ("fire" %in% P(sim)$simulateDisturbances| (P(sim)$simulateDisturbances == "all")){
     # Gets the correct eventID
     fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
     
