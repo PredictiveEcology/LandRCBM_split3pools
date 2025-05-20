@@ -256,7 +256,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- scheduleEvent(sim, start(sim), eventPriority = 5, "LandRCBM_split3pools","annualDisturbances")
       
       # split AGB of cohorts into pools 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualIncrements")
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 7, "LandRCBM_split3pools","annualIncrements")
       
       # summarize simulation 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
@@ -286,7 +286,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- AnnualIncrements(sim)
       
       # do this for each timestep
-      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 7, "LandRCBM_split3pools", "annualIncrements")
     },
     annualDisturbances = {
       
