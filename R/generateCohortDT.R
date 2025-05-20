@@ -1,8 +1,7 @@
 generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
   # get the pixelGroup for each pixelIndex
   cohortDT <- data.table(
-    pixelGroup = as.integer(pixelGroupMap[]),
-    area = terra::values(terra::cellSize(pixelGroupMap, unit = "m", mask = TRUE, transform = FALSE))[,1]
+    pixelGroup = as.integer(pixelGroupMap[])
   ) 
   cohortDT <- cohortDT[, pixelIndex := .I] |> na.omit()
   # add cohort information for each pixelIndex
