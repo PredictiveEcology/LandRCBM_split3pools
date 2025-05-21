@@ -1,7 +1,8 @@
 generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
   # get the pixelGroup for each pixelIndex
   cohortDT <- data.table(
-    pixelGroup = as.integer(pixelGroupMap[])
+    pixelGroup = as.integer(pixelGroupMap[]),
+    area = cellSize(pixelGroupMap, unit = "m", mask = TRUE, transform = TRUE)[]
   ) 
   cohortDT <- cohortDT[, pixelIndex := .I] |> na.omit()
   # add cohort information for each pixelIndex
@@ -16,7 +17,6 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
   setorder(cohortDT, pixelIndex, speciesCode, age)
   # add the index for individual cohorts
   cohortDT[, cohortID := .I]
-  
   if (!is.null(yieldTablesId)){
     # add the yield table index
     cohortDT <- merge(cohortDT, yieldTablesId, by = "pixelIndex")
