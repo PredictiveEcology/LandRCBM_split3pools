@@ -66,7 +66,6 @@ test_that("module runs with small example", {
   )
   expect_s4_class(simTest, "simList")
   expect_equal(time(simTest)[[1]], 2016)
-  browser
 
   # check all outputs are there
   expect_true(all(

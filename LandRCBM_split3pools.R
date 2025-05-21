@@ -478,12 +478,20 @@ SplitYieldTables <- function(sim) {
   # 1.7. Create the stand data table (`sim$standDT`).
   #      Links pixels to their CBM `spatial_unit_id`.
   #      Starts with pixelIndex, ecozone, jurisdiction from spatialDT.
+  areaDT <- data.table(
+    cellSize(sim$pixelGroupMap, unit = "m", mask = TRUE, transform = TRUE)[]
+    )
+  areaDT <- areaDT[, pixelIndex := .I]
+
   sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundaryID = ecozone, abreviation = juris_id)]
   # Join with CBM administrative lookup table (`sim$cbmAdmin`) to get SpatialUnitID.
   sim$standDT <- sim$cbmAdmin[sim$standDT, on = c("EcoBoundaryID", "abreviation")]
+  # Join cell area
+  sim$standDT <- sim$standDT[areaDT, on = "pixelIndex"]
+  
   # Select final columns and rename for clarity.
   sim$standDT <- sim$standDT[, .(pixelIndex, 
-                                 area = 1L,
+                                 area = area,
                                  spatial_unit_id = SpatialUnitID, 
                                  ecozone = EcoBoundaryID, 
                                  juris_id = abreviation)]

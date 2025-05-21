@@ -17,7 +17,7 @@ test_that("function generateDt works", {
   out1 <- generateCohortDT(cohortData, pixelGroupMap, yieldTablesId)
   
   expect_is(out1, "data.table")
-  expect_named(out1, c("cohortID", "area","pixelIndex", "speciesCode", "species_id", "age", 
+  expect_named(out1, c("cohortID","pixelIndex", "speciesCode", "species_id", "age", 
                       "gcids", "yieldTableIndex", "sw_hw"))
   expect_equal(out1$cohortID, c(1:12))
   expect_true(all(out1$sw_hw == "sw"))
@@ -28,7 +28,7 @@ test_that("function generateDt works", {
   out2 <- generateCohortDT(cohortData, pixelGroupMap, yieldTablesId = NULL)
   
   expect_is(out2, "data.table")
-  expect_named(out2, c("cohortID", "area", "pixelIndex", "speciesCode", "species_id", "age", 
+  expect_named(out2, c("cohortID", "pixelIndex", "speciesCode", "species_id", "age", 
                        "gcids", "sw_hw"))
   expect_equal(out2$cohortID, c(1:12))
   expect_true(all(out2$sw_hw == "sw"))
