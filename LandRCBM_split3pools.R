@@ -487,7 +487,7 @@ SplitYieldTables <- function(sim) {
   # Join with CBM administrative lookup table (`sim$cbmAdmin`) to get SpatialUnitID.
   sim$standDT <- sim$cbmAdmin[sim$standDT, on = c("EcoBoundaryID", "abreviation")]
   # Join cell area
-  sim$standDT <- sim$standDT[areaDT, on = "pixelIndex"]
+  sim$standDT <- areaDT[sim$standDT, on = "pixelIndex"]
   
   # Select final columns and rename for clarity.
   sim$standDT <- sim$standDT[, .(pixelIndex, 
