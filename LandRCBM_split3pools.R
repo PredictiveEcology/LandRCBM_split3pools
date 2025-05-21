@@ -479,7 +479,7 @@ SplitYieldTables <- function(sim) {
   #      Links pixels to their CBM `spatial_unit_id`.
   #      Starts with pixelIndex, ecozone, jurisdiction from spatialDT.
   areaDT <- data.table(
-    cellSize(sim$pixelGroupMap, unit = "m", mask = TRUE, transform = TRUE)[]
+    cellSize(sim$pixelGroupMap, unit = "m", mask = FALSE, transform = TRUE)[]
     )
   areaDT <- areaDT[, pixelIndex := .I]
 
