@@ -898,7 +898,8 @@ AnnualDisturbances <- function(sim){
     sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
                                targetFile = "cbmAdmin.csv",
                                destinationPath = inputPath(sim),
-                               fun = "data.table::fread") |> Cache(userTags = "prepInputsCBMAdmin")
+                               fun = "data.table::fread",
+                               overwrite = TRUE) |> Cache(userTags = "prepInputsCBMAdmin")
   }
   
   return(invisible(sim))

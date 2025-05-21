@@ -1,4 +1,5 @@
 test_that("module runs with small example", {
+  
   # Set project path
   projectPath <- file.path(spadesTestPaths$temp$projects, "3-LandRCBM_split3pools")
   dir.create(projectPath)
@@ -112,7 +113,7 @@ test_that("module runs with small example", {
   # check standDT
   expect_is(simTest$standDT, "data.table")
   expect_named(simTest$standDT, 
-               c("pixelIndex", "spatial_unit_id", "ecozone", "juris_id"))
+               c("pixelIndex", "area", "spatial_unit_id", "ecozone", "juris_id"))
   expect_setequal(simTest$standDT$pixelIndex, yieldTablesId$pixelIndex)
   
   # check summaryAGB

@@ -1,4 +1,5 @@
 test_that("functions to match AGB with CBM spatial units and canfi species work", {
+  library(data.table)
 
   # test spatialMatch with pixelGroupDT
   set.seed(1)
