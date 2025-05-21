@@ -238,6 +238,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # Create masterRaster. Identical to rasterToMatch.
       sim$masterRaster <- sim$rasterToMatch
+      names(sim$masterRaster) <- "ldSp_TestArea"
       
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
