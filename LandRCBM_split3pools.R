@@ -198,12 +198,17 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Growth curve-level information.",
                    "Columns are `gcids`, `species_id`, `speciesCode`, and `sw_hw`")
-    ),    
+    ),  
+    createsOutput(
+      objectName = "masterRaster",
+      objectClass = "SpatRaster",
+      desc = paste("The template raster for the CBM simulation. Is equivalent to rasterToMatch.")
+    ),
     createsOutput(
       objectName = "standDT",
       objectClass = "data.table",
       desc = paste("A data table with spatial information for the CBM spinup.",
-                   "Columns are `pixelIndex`, `spatial_unit_id`.")
+                   "Columns are `pixelIndex`, `area`, and `spatial_unit_id`.")
     ),
     createsOutput(
       objectName = "summaryAGB",
@@ -231,6 +236,10 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     eventType,
     init = {
       
+      # Create masterRaster. Identical to rasterToMatch.
+      sim$masterRaster <- sim$rasterToMatch
+      names(sim$masterRaster) <- "ldSp_TestArea"
+      
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
         cohortData = sim$cohortData,
@@ -244,11 +253,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
-      # split AGB of cohorts into pools 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualIncrements")
-      
       # format disturbance events 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 9, "LandRCBM_split3pools","annualDisturbances")
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 5, "LandRCBM_split3pools","annualDisturbances")
+      
+      # split AGB of cohorts into pools 
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 7, "LandRCBM_split3pools","annualIncrements")
       
       # summarize simulation 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
@@ -278,7 +287,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- AnnualIncrements(sim)
       
       # do this for each timestep
-      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualIncrements")
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 7, "LandRCBM_split3pools", "annualIncrements")
     },
     annualDisturbances = {
       
@@ -286,7 +295,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- AnnualDisturbances(sim)
       
       # do this for each timestep
-      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 9, "LandRCBM_split3pools", "annualDisturbances")
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 5, "LandRCBM_split3pools", "annualDisturbances")
     },
     summarizeAGBPools = {
       sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
@@ -469,11 +478,20 @@ SplitYieldTables <- function(sim) {
   # 1.7. Create the stand data table (`sim$standDT`).
   #      Links pixels to their CBM `spatial_unit_id`.
   #      Starts with pixelIndex, ecozone, jurisdiction from spatialDT.
+  areaDT <- data.table(
+    cellSize(sim$pixelGroupMap, unit = "m", mask = FALSE, transform = TRUE)[]
+    )
+  areaDT <- areaDT[, pixelIndex := .I]
+
   sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundaryID = ecozone, abreviation = juris_id)]
   # Join with CBM administrative lookup table (`sim$cbmAdmin`) to get SpatialUnitID.
   sim$standDT <- sim$cbmAdmin[sim$standDT, on = c("EcoBoundaryID", "abreviation")]
+  # Join cell area
+  sim$standDT <- areaDT[sim$standDT, on = "pixelIndex"]
+  
   # Select final columns and rename for clarity.
   sim$standDT <- sim$standDT[, .(pixelIndex, 
+                                 area = area,
                                  spatial_unit_id = SpatialUnitID, 
                                  ecozone = EcoBoundaryID, 
                                  juris_id = abreviation)]
@@ -675,7 +693,7 @@ AnnualIncrements <- function(sim){
 AnnualDisturbances <- function(sim){
   
   # Create an empty data.table if disturbanceEvents is not defined
-  if(is.null(sim$disturbanceEvents) | (P(sim)$simulateDisturbances == "all")){
+  if(is.null(sim$disturbanceEvents)){
     sim$disturbanceEvents <- data.table(
       pixelIndex = integer(),
       year = integer(),
@@ -684,7 +702,7 @@ AnnualDisturbances <- function(sim){
   }
   
   # Add them to the disturbanceEvents if fires are simulated
-  if ("fire" %in% P(sim)$simulateDisturbances){
+  if ("fire" %in% P(sim)$simulateDisturbances| (P(sim)$simulateDisturbances == "all")){
     # Gets the correct eventID
     fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
     
@@ -706,7 +724,7 @@ AnnualDisturbances <- function(sim){
     
     # Add fires to disturbanceEvents
     sim$disturbanceEvents <- rbind(sim$disturbanceEvents,
-                                       fires)
+                                   fires[, fire := NULL])
   } 
   
   return(invisible(sim))
@@ -723,15 +741,6 @@ AnnualDisturbances <- function(sim){
       destinationPath = inputPath(sim),
       overwrite = TRUE
     ) |> Cache(userTags = "prepInputsRTM")
-  }
-  
-  if (!suppliedElsewhere("masterRaster", sim)) {
-    sim$masterRaster <- sim$rasterToMatch
-  }
-  
-  # Verify that masterRaster and rasterToMatch are the same.
-  if (!compareGeom(sim$masterRaster, sim$rasterToMatch)){
-    stop("The masterRaster and rasterToMatch do not match...")
   }
   
   if (!suppliedElsewhere("studyArea", sim)) {
@@ -897,7 +906,8 @@ AnnualDisturbances <- function(sim){
     sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
                                targetFile = "cbmAdmin.csv",
                                destinationPath = inputPath(sim),
-                               fun = "data.table::fread") |> Cache(userTags = "prepInputsCBMAdmin")
+                               fun = "data.table::fread",
+                               overwrite = TRUE) |> Cache(userTags = "prepInputsCBMAdmin")
   }
   
   return(invisible(sim))

@@ -1,4 +1,5 @@
 test_that("function generateDt works", {
+  library(terra)
   # create inputs
   pixelGroupMap <- rast(matrix(c(rep(1,3), NA, rep(1,1), NA, rep(2,2), NA), nrow = 3, ncol = 3))
   yieldTablesId <- data.table(
@@ -16,7 +17,7 @@ test_that("function generateDt works", {
   out1 <- generateCohortDT(cohortData, pixelGroupMap, yieldTablesId)
   
   expect_is(out1, "data.table")
-  expect_named(out1, c("cohortID", "pixelIndex", "speciesCode", "species_id", "age", 
+  expect_named(out1, c("cohortID","pixelIndex", "speciesCode", "species_id", "age", 
                       "gcids", "yieldTableIndex", "sw_hw"))
   expect_equal(out1$cohortID, c(1:12))
   expect_true(all(out1$sw_hw == "sw"))
@@ -33,5 +34,5 @@ test_that("function generateDt works", {
   expect_true(all(out2$sw_hw == "sw"))
   expect_equal(out2$gcids, out2$cohortID)
   expect_equal(unique(out2$pixelIndex), c(1,3:7))
-  
+
 })
