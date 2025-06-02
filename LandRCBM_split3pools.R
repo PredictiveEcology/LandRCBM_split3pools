@@ -253,6 +253,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
+      # adjust that the live biomass post-CBM spinup with the biomass in LandR
+      sim <- scheduleEvent(sim, start(sim), eventPriority = 2, "LandRCBM_split3pools", "postSpinupAdjustBiomass")
+      
       # format disturbance events 
       sim <- scheduleEvent(sim, start(sim), eventPriority = 5, "LandRCBM_split3pools","annualDisturbances")
       
@@ -280,6 +283,32 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # plot the yield tables with pools seperated
       sim <- PlotYieldTablesPools(sim)
+    },
+    postSpinupAdjustBiomass = {
+      
+      # 1. Expand spinup output to have 1 row per cohort
+      spinupOutPools <- sim$spinupResult[sim$spinupKey$cohortGroupID, ]
+      
+      # 2. Replace above ground pools with the LandR biomass.
+      spinupOutPools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+      
+      # 3. Update below ground live pools.
+      #### DC 06-05-2025 VALUES ARE HARDCODED - TODO get values from cbm_exn_get_default_parameters?
+      #### Confirm equation are correct and wrap into a CBMutils function?
+      totAGB <- rowSums(spinupOutPools[, c("Merch", "Foliage", "Other")])
+      # convert to mg/ha of total biomass
+      totAGB <- totAGB * 2
+      rootTotBiom <- ifelse(spinupOut$output$state$sw_hw == 1,
+                            0.222 * totAGB,
+                            1.576 * totAGB^0.615)
+      # reconvert to carbon tonnes/ha
+      rootTotC <- rootTotBiom * 0.5
+      fineRootProp <- 0.072 + 0.354 * exp(-0.060212 * rootTotC)
+      spinupOut$output$pools$CoarseRoots <- rootTotC * (1 - fineRootProp)
+      spinupOut$output$pools$FineRoots <- rootTotC * fineRootProp
+      
+      # 4. Update cohortGroupID
+      spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
     },
     annualIncrements = {
       
