@@ -59,19 +59,6 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
     expectsInput(
-      objectName = "cbmAdmin", objectClass = "data.table",
-      desc = paste("Provides equivalent between provincial boundaries,",
-                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
-      columns = c(
-        AdminBoundaryID = "Integer id for the administrative region.",
-        stump_parameter_id = "Integer id for the administrative region.",
-        adminName = "Name of the administrative region.",
-        abreviation = "Two-letter abreviation of the administrative region.",
-        SpatialUnitID = "Integer id of the CBM-spatial unit ids.",
-        EcoBoundaryID = "Integer id of the ecozones."
-      ),
-      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"),
-    expectsInput(
       objectName = "disturbanceMeta", objectClass = "data.table",
       desc = paste("Table defining the disturbance event types.", 
                    "This associates CBM-CFS3 disturbances with the",
@@ -82,29 +69,6 @@ defineModule(sim, list(
         priority = "Optional: Control which events gets precedence over others in the case where multiple events happen."
       ),
       sourceURL = "https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link"
-    ),
-    expectsInput(
-      objectName = "ecozones", objectClass = "data.table",
-      desc = paste("A data.table with the ecozone for each pixelIndex. Used to determine",
-                   "the equation parameters to split the above ground biomass into",
-                   "carbon pools."),
-      columns = c(
-        pixelIndex = "Integer id of the pixel.",
-        ecozone = "Integer id of the ecozone."
-      ),
-      sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
-    ),
-    expectsInput(
-      objectName = "jurisdictions", objectClass = "data.table",
-      desc = paste("A data.table with the province/territory for each pixelIndex.", 
-                   "Used to determine the equation parameters to split the above", 
-                   "ground biomass into carbon pools."),
-      columns = c(
-        pixelIndex = "Integer id of the pixel.",
-        PRUID = "Integer id of the administrative region.",
-        juris_id = "Two-letter abreviation of the administrative region."
-      ),
-      sourceURL = "https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lpr_000a21a_e.zip"
     ),
     expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
@@ -162,8 +126,6 @@ defineModule(sim, list(
       ),
       sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
     )
-    # expectsInput("sppColorVect", "character",
-    #              desc = paste("A named vector of colors to use for plotting."))
   ),
   outputObjects = bindrows(
     createsOutput(
@@ -505,7 +467,7 @@ PlotYieldTables <- function(sim){
 SplitYieldTables <- function(sim) {
   # Step 1: Spatial Matching and Cohort/Stand Data Preparation -----------------
   # Link yield curve IDs (yieldTableIndex) to CBM spatial units 
-  # (ecozone, jurisdiction) and generate initial cohort/stand data structures.
+  # and generate initial cohort/stand data structures.
 
   # 1.1. Match pixel-level yield table indices with CBM spatial units.
   #      `spatialMatch` creates a data.table linking yieldTableIndex, ecozone, 
@@ -796,53 +758,6 @@ AnnualDisturbances <- function(sim){
       to = sim$rasterToMatch,
       overwrite = TRUE
     ) |> Cache(userTags = "prepInputsPGM")
-  }
-  
-  # Add a small buffer to studyArea to make sure we have ecozones and jurisdiction
-  # for each pixels.
-  if(inherits(sim$studyArea, "SpatVector")){
-    studyAreaBuffered <- terra::buffer(sim$studyArea, res(sim$rasterToMatch)[1])
-  } else if (inherits(sim$studyArea, "sf")) {
-    studyAreaBuffered <- sf::st_buffer(sim$studyArea, res(sim$rasterToMatch)[1])
-  } else {
-    stop("studyArea needs to be a SpatVector or a sf polygon")
-  }
-  
-  # Ecozones as a data.table with the ecozone id for each pixelIndex.
-  if (!suppliedElsewhere("ecozones", sim, where = "sim")) {
-    ecozones <- prepInputs(
-      url = extractURL("ecozones"),
-      destinationPath = inputPath(sim),
-      fun = "terra::vect",
-      to = studyAreaBuffered,
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsEcozones")
-    ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
-    sim$ecozones <- data.table(ecozone = as.integer(ez[]))
-    sim$ecozones <- sim$ecozones[, pixelIndex := .I] |> na.omit()
-    setcolorder(sim$ecozones, c("pixelIndex", "ecozone"))
-  }
-  
-  # Jurisdiction as a data.table with the jurisdiction id and its 2-letter 
-  # abreviation for each pixelIndex.
-  if (!suppliedElsewhere("jurisdictions", sim, where = "sim")) {
-    dt <- data.table(
-      PRUID = c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62),
-      juris_id = c("NL", "PE", "NS", "NB", "QC", "ON", "MB", "SK", "AB", "BC", "YT", "NT", "NU")
-    )
-    jurisdictions <- prepInputs(
-      url = extractURL("jurisdictions"),
-      destinationPath = inputPath(sim),
-      fun = "terra::vect",
-      to = studyAreaBuffered,
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsJurisdictions")
-    juris_id <- rasterize(jurisdictions, sim$rasterToMatch, field = "PRUID")
-    juris_id <- as.data.table(juris_id, na.rm = FALSE)
-    juris_id$PRUID <- as.integer(as.character(juris_id$PRUID))
-    sim$jurisdictions <- dt[juris_id, on = "PRUID"]
-    sim$jurisdictions <- sim$jurisdictions[, pixelIndex := .I] |> na.omit()
-    setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
   }
   
   # 2. NFI params. Used to split total biomass into biomass of the three CBM
