@@ -285,17 +285,21 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- PlotYieldTablesPools(sim)
     },
     postSpinupAdjustBiomass = {
+
+      spinupOut <- sim$spinupResults
       
       # 1. Expand spinup output to have 1 row per cohort
-      spinupOutPools <- sim$spinupResult[sim$spinupKey$cohortGroupID, ]
+      spinupOut$output <- lapply(spinupOut$output, function(tbl) {
+        tbl <- tbl[spinupOut$key$cohortGroupID, ]
+      })
       
       # 2. Replace above ground pools with the LandR biomass.
-      spinupOutPools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+      spinupOut$output$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
       
       # 3. Update below ground live pools.
       #### DC 06-05-2025 VALUES ARE HARDCODED - TODO get values from cbm_exn_get_default_parameters?
       #### Confirm equation are correct and wrap into a CBMutils function?
-      totAGB <- rowSums(spinupOutPools[, c("Merch", "Foliage", "Other")])
+      totAGB <- rowSums(spinupOut$output$pools[, c("Merch", "Foliage", "Other")])
       # convert to mg/ha of total biomass
       totAGB <- totAGB * 2
       rootTotBiom <- ifelse(spinupOut$output$state$sw_hw == 1,
@@ -308,8 +312,34 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       spinupOut$output$pools$FineRoots <- rootTotC * fineRootProp
       
       # 4. Update cohortGroupID
-      spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
-    },
+      spinupOut$key$cohortGroupID <- spinupOut$key$cohortIDspinupOut$key$cohortGroupID <- spinupOut$key$cohortID
+      
+      sim$spinupResults <- spinupOut
+      
+      # 5. Prepare cohort groups and cbm_vars
+      # Save cohort group key
+      sim$cohortGroupKeep <- merge(spinupOut$key, sim$cohortDT, by = "cohortID")[, .(cohortID, pixelIndex, cohortGroupID)]
+      sim$cohortGroupKeep[, cohortGroupPrev := NA_integer_]
+      sim$cohortGroupKeep[, spinup          := cohortGroupID]
+      data.table::setkey(sim$cohortGroupKeep, cohortID)
+      
+      # Prepare cohort group attributes for annual event
+      sim$cohortGroups <- unique(merge(
+        sim$cohortGroupKeep[, .(cohortID, cohortGroupID)],
+        merge(sim$standDT[, .(pixelIndex, spatial_unit_id)], sim$cohortDT, by = "pixelIndex"),
+        by = "cohortID"
+      )[, .SD, .SDcols = !c("cohortID", "pixelIndex")])
+      data.table::setkey(sim$cohortGroups, cohortGroupID)
+      
+      # Prepare spinup output data for annual event
+      ## data.table with row_idx to match cohortGroupID
+      sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
+        tbl <- data.table::data.table(row_idx = sort(unique(spinupOut$key$cohortGroupID)), tbl)
+        data.table::setkey(tbl, row_idx)
+        tbl
+      })
+      
+    }, 
     annualIncrements = {
       
       # split AGB of cohorts into pools
