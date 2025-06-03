@@ -353,17 +353,16 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     
     postAnnualChecks = {
-      
       # Check if the above ground biomass are synchronize
       LandR_AGB <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
       cbm_AGB <- as.data.table(cbm_vars$pools[, c("Merch", "Foliage", "Other")])
-     
+      
       # Filtered to remove 0s and artifacts
       if (any(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-6)) {
         stop("LandR above ground biomass do not match CBM above ground biomass")
       }
+      
     }, 
-    
     annualDisturbances = {
       
       # process annual disturbances
@@ -767,16 +766,12 @@ AnnualIncrements <- function(sim){
 # process annual disturbances
 AnnualDisturbances <- function(sim){
   
-  # Create an empty data.table if disturbanceEvents is not defined
-  if(is.null(sim$disturbanceEvents)){
-    sim$disturbanceEvents <- data.table(
-      pixelIndex = integer(),
-      year = integer(),
-      eventID = integer()
-    )
+  # Create an empty list if disturbanceRasters is not defined
+  if(is.null(sim$disturbanceRasters)){
+    sim$disturbanceRasters <- list()
   }
   
-  # Add them to the disturbanceEvents if fires are simulated
+  # Add them to the disturbanceRasters if fires are simulated
   if ("fire" %in% P(sim)$simulateDisturbances| (P(sim)$simulateDisturbances == "all")){
     # Gets the correct eventID
     fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
@@ -788,18 +783,11 @@ AnnualDisturbances <- function(sim){
       stop("there are multiple eventID for fires in disturbanceMeta...")
     }
     
-    # Convert rstCurrentBurn into a data.table
-    fires <- data.table(
-      fire = as.integer(sim$rstCurrentBurn[])
-    ) 
-    fires <- fires[, pixelIndex := .I]
-    fires <- fires[fire == 1]
-    fires$year <- time(sim)
-    fires$eventID <- fireID[1]
+    # Convert rstCurrentBurn into a disturbanceRasters
+    disturbanceRaster <- ifel(rstCurrentBurn == 1, fireID, rstCurrentBurn)
     
-    # Add fires to disturbanceEvents
-    sim$disturbanceEvents <- rbind(sim$disturbanceEvents,
-                                   fires[, fire := NULL])
+    # Add fires to disturbanceRasters
+    disturbanceRasters[[as.character(fireID)]][[as.character(time(sim))]] <- disturbanceRaster
   } 
   
   return(invisible(sim))
