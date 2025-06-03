@@ -237,7 +237,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- SplitYieldTables(sim)
       
       # adjust that the live biomass post-CBM spinup with the biomass in LandR
-      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "postSpinupAdjustBiomass", eventPriority = 2)
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "postSpinupAdjustBiomass", eventPriority = 5.5)
       
       # format disturbance events 
       sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","annualDisturbances", eventPriority = 5)
