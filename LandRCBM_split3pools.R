@@ -254,16 +254,19 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- SplitYieldTables(sim)
       
       # adjust that the live biomass post-CBM spinup with the biomass in LandR
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 2, "LandRCBM_split3pools", "postSpinupAdjustBiomass")
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "postSpinupAdjustBiomass", eventPriority = 2)
       
       # format disturbance events 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 5, "LandRCBM_split3pools","annualDisturbances")
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","annualDisturbances", eventPriority = 5)
       
       # split AGB of cohorts into pools 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 7, "LandRCBM_split3pools","annualIncrements")
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","annualIncrements", eventPriority = 7)
+      
+      # Post annual checks
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "postAnnualChecks", eventPriority = 8.5)
       
       # summarize simulation 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","summarizeAGBPools", eventPriority = 10)
       # plots
       if (anyPlotting(P(sim)$.plots)) {
         sim <- scheduleEvent(sim, P(sim)$.plotInitialTime,
@@ -348,6 +351,19 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 7, "LandRCBM_split3pools", "annualIncrements")
     },
+    
+    postAnnualChecks = {
+      
+      # Check if the above ground biomass are synchronize
+      LandR_AGB <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+      cbm_AGB <- as.data.table(cbm_vars$pools[, c("Merch", "Foliage", "Other")])
+     
+      # Filtered to remove 0s and artifacts
+      if (any(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-6)) {
+        stop("LandR above ground biomass do not match CBM above ground biomass")
+      }
+    }, 
+    
     annualDisturbances = {
       
       # process annual disturbances
