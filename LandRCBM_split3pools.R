@@ -244,8 +244,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim$aboveGroundBiomass <- splitCohortData(
         cohortData = sim$cohortData,
         pixelGroupMap = sim$pixelGroupMap,
-        jurisdictions = sim$jurisdictions,
-        ecozones = sim$ecozones,
+        standDT = sim$standDT,
         table6 = sim$table6,
         table7 = sim$table7
       )
@@ -512,21 +511,19 @@ SplitYieldTables <- function(sim) {
   #      `spatialMatch` creates a data.table linking yieldTableIndex, ecozone, 
   #      and jurisdiction.
   #      `na.omit` removes pixels not forested.
-  spatialDT <- spatialMatch(
-    pixelGroupMap = sim$yieldTablesId,
-    jurisdictions = sim$jurisdictions,
-    ecozones = sim$ecozones
-  ) |> na.omit()
+  spatialDT <- merge(
+    sim$standDT,
+    sim$yieldTablesId) |> na.omit()
   # Ensure spatial matching produced results
   if (nrow(spatialDT) == 0) {
-    stop("Spatial matching between yieldTablesId, jurisdictions, and ecozones failed.")
+    stop("Spatial matching between yieldTablesId, standDT failed.")
   }
   
   # 1.2. Create a new, unique ID for each unique combination of original yield 
   #      table index and CBM spatial units. This handles cases
   #      where one yield curve spans multiple ecozones/jurisdictions.
-  setorderv(spatialDT, cols = c("yieldTableIndex", "ecozone", "juris_id"))
-  spatialDT[, newytid := .GRP, by = .(yieldTableIndex, ecozone, juris_id)]
+  setorderv(spatialDT, cols = c("yieldTableIndex", "spatial_unit_id"))
+  spatialDT[, newytid := .GRP, by = .(yieldTableIndex, spatial_unit_id)]
   
   # 1.3. Update the pixel-level yield table mapping (`sim$yieldTablesId`) to use
   #      the new yield table ids. 
@@ -548,35 +545,10 @@ SplitYieldTables <- function(sim) {
   # 1.6. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcids to species information.
   sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
-
-  # 1.7. Create the stand data table (`sim$standDT`).
-  #      Links pixels to their CBM `spatial_unit_id`.
-  #      Starts with pixelIndex, ecozone, jurisdiction from spatialDT.
-  areaDT <- data.table(
-    cellSize(sim$pixelGroupMap, unit = "m", mask = FALSE, transform = TRUE)[]
-    )
-  areaDT <- areaDT[, pixelIndex := .I]
-
-  sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundaryID = ecozone, abreviation = juris_id)]
-  # Join with CBM administrative lookup table (`sim$cbmAdmin`) to get SpatialUnitID.
-  sim$standDT <- sim$cbmAdmin[sim$standDT, on = c("EcoBoundaryID", "abreviation")]
-  # Join cell area
-  sim$standDT <- areaDT[sim$standDT, on = "pixelIndex"]
-  
-  # Select final columns and rename for clarity.
-  sim$standDT <- sim$standDT[, .(pixelIndex, 
-                                 area = area,
-                                 spatial_unit_id = SpatialUnitID, 
-                                 ecozone = EcoBoundaryID, 
-                                 juris_id = abreviation)]
-  # Ensure all pixels have a spatial_unit_id
-  if (anyNA(sim$standDT$spatial_unit_id)) {
-    stop("Some pixels could not be matched to a CBM SpatialUnitID in sim$cbmAdmin.")
-  }
   
   # 1.8. Prepare yield table data (`sim$yieldTablesCumulative`) for biomass pool splitting.
   #      Get unique combinations of original yieldTableIndex and spatial units.
-  spatialUnits <- unique(spatialDT[, .(yieldTableIndex, newytid, ecozone, juris_id)])
+  spatialUnits <- unique(spatialDT[, .(yieldTableIndex, newytid, spatial_unit_id)])
   # Add these unique spatial units to the raw yield curves.
   allInfoYieldTables <- addSpatialUnits(
     cohortData = sim$yieldTablesCumulative,
@@ -721,8 +693,7 @@ AnnualIncrements <- function(sim){
   sim$aboveGroundBiomass <- splitCohortData(
     cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
-    jurisdictions = sim$jurisdictions,
-    ecozones = sim$ecozones,
+    standDT = sim$standDT,
     table6 = sim$table6,
     table7 = sim$table7
   )
