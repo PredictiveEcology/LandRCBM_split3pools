@@ -216,12 +216,19 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # Create masterRaster. Identical to rasterToMatch.
       sim$masterRaster <- sim$rasterToMatch
       names(sim$masterRaster) <- "ldSp_TestArea"
-      
+      #### temporary
+      standDT <- merge(sim$standDT,
+                       sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
+                       by.x = "spatial_unit_id",
+                       by.y = "SpatialUnitID")
+      setnames(standDT, old = "abreviation", new = "juris_id")
+      setkey(standDT, pixelIndex)
+      ####
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
         cohortData = sim$cohortData,
         pixelGroupMap = sim$pixelGroupMap,
-        standDT = sim$standDT,
+        standDT = standDT,
         table6 = sim$table6,
         table7 = sim$table7
       )
@@ -547,7 +554,14 @@ SplitYieldTables <- function(sim) {
   setnames(allInfoYieldTables, c("biomass"), c("B"))
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoYieldTables[, B := B / 100]
-  
+  ### temporary
+  standDT <- merge(sim$standDT,
+                   sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
+                   by.x = "spatial_unit_id",
+                   by.y = "SpatialUnitID")
+  setnames(standDT, old = "abreviation", new = "juris_id")
+  ###
+  allInfoYieldTables <- merge(allInfoYieldTables, unique(standDT[,.(spatial_unit_id, ecozone, juris_id)]))
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
   #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
   #      ground biomass as input, implemented in CBMutils.
@@ -667,10 +681,18 @@ AnnualIncrements <- function(sim){
   setkey(biomassTminus1, pixelIndex, speciesCode, age)
   
   # Step 2: Split current total above ground.-----------------------------------
+  ### temporary
+  standDT <- merge(sim$standDT,
+                   sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
+                   by.x = "spatial_unit_id",
+                   by.y = "SpatialUnitID")
+  setnames(standDT, old = "abreviation", new = "juris_id")
+  setkey(standDT, pixelIndexIndex)
+  ###
   sim$aboveGroundBiomass <- splitCohortData(
     cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
-    standDT = sim$standDT,
+    standDT = standDT,
     table6 = sim$table6,
     table7 = sim$table7
   )
