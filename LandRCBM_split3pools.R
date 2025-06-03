@@ -59,6 +59,21 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
     expectsInput(
+      objectName = "cbmAdmin",
+      objectClass = "data.table",
+      desc = paste("Provides equivalent between provincial boundaries,",
+                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
+      columns = c(
+        AdminBoundaryID = "Integer id for the administrative region.",
+        stump_parameter_id = "Integer id for the administrative region.",
+        adminName = "Name of the administrative region.",
+        abreviation = "Two-letter abreviation of the administrative region.",
+        SpatialUnitID = "Integer id of the CBM-spatial unit ids.",
+        EcoBoundaryID = "Integer id of the ecozones."
+      ),
+      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
+    ), 
+    expectsInput(
       objectName = "disturbanceMeta", objectClass = "data.table",
       desc = paste("Table defining the disturbance event types.", 
                    "This associates CBM-CFS3 disturbances with the",
@@ -717,10 +732,10 @@ AnnualDisturbances <- function(sim){
     }
     
     # Convert rstCurrentBurn into a disturbanceRasters
-    disturbanceRaster <- ifel(rstCurrentBurn == 1, fireID, rstCurrentBurn)
+    disturbanceRaster <- ifel(sim$rstCurrentBurn == 1, fireID, sim$rstCurrentBurn)
     
     # Add fires to disturbanceRasters
-    disturbanceRasters[[as.character(fireID)]][[as.character(time(sim))]] <- disturbanceRaster
+    sim$disturbanceRasters[[as.character(fireID[1])]][[as.character(time(sim))]] <- disturbanceRaster
   } 
   
   return(invisible(sim))
@@ -839,6 +854,14 @@ AnnualDisturbances <- function(sim){
   if (!suppliedElsewhere("rstCurrentBurn", sim)) {
     sim$rstCurrentBurn <- sim$rasterToMatch
     sim$rstCurrentBurn[] <- NA
+  }
+  
+  if (!suppliedElsewhere("cbmAdmin", sim)) {
+    sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
+                               targetFile = "cbmAdmin.csv",
+                               destinationPath = inputPath(sim),
+                               fun = "data.table::fread",
+                               overwrite = TRUE) |> Cache(userTags = "prepInputsCBMAdmin")
   }
   
   return(invisible(sim))
