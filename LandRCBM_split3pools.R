@@ -820,13 +820,6 @@ AnnualDisturbances <- function(sim){
     }
   }
   
-  # TODO will be used for plotting to keep the same colors of species as in LandR modules
-  # if (!suppliedElsewhere("sppColorVect", sim)){
-  #   sp <- sort(unique(sim$yieldSpeciesCodes$SpeciesCode))
-  #   sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
-  #   names(sim$sppColorVect) <- sp
-  # }
-  
   # 5. Disturbance data
   
   # Metadata on disturbance. Links the eventID to the disturbance type.
@@ -846,17 +839,6 @@ AnnualDisturbances <- function(sim){
   if (!suppliedElsewhere("rstCurrentBurn", sim)) {
     sim$rstCurrentBurn <- sim$rasterToMatch
     sim$rstCurrentBurn[] <- NA
-  }
-  
-  # 6. CBM metadata
-  # This table is used to determine the CBM spatial unit based on the jurisdiction
-  # and ecozone.
-  if (!suppliedElsewhere("cbmAdmin", sim)) {
-    sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
-                               targetFile = "cbmAdmin.csv",
-                               destinationPath = inputPath(sim),
-                               fun = "data.table::fread",
-                               overwrite = TRUE) |> Cache(userTags = "prepInputsCBMAdmin")
   }
   
   return(invisible(sim))

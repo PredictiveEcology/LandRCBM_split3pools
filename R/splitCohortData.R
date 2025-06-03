@@ -1,9 +1,13 @@
 splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7){
   # Prepare cohort data for biomass splitting-----------------------------------
   # Match pixel group with jurisdiction and CBM spatial units
+  spatialDT <- data.table(
+    pixelGroup = as.integer(pixelGroupMap[])
+  ) 
+  spatialDT <- spatialDT[, pixelIndex := .I]
   spatialDT <- merge(
     standDT,
-    pixelGroupMap) |> na.omit()
+    spatialDT) |> na.omit()
   # New pixel group for unique combination of pixelGroup and CBM spatial units
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, spatial_unit_id)]
   # Add spatial information to cohortData

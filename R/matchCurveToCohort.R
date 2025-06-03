@@ -1,29 +1,3 @@
-spatialMatch <- function(pixelGroupMap, jurisdictions, ecozones){
-  if(is.data.table(pixelGroupMap)) {
-    if(all(c("pixelIndex", "yieldTableIndex") %in% names(pixelGroupMap))) {
-      spatialMatch <- pixelGroupMap
-    } else {
-      stop("The data table pixelGroupMap need to have the column `pixelIndex`and `yieldTableIndex`")
-    }
-  } else if (inherits(pixelGroupMap, "SpatRaster")) {
-    spatialMatch <- data.table(
-      pixelGroup = as.integer(pixelGroupMap[])
-    ) 
-    spatialMatch <- spatialMatch[, pixelIndex := .I] |> na.omit()
-  } else {
-    stop("The object pixelGroupMap needs to be a data.table or a SpatRaster")
-  }
-  if (any(!(spatialMatch$pixelIndex %in% ecozones$pixelIndex))) {
-    stop("There is a problem: some pixels cannot be matched to an ecozone...")
-  }
-  spatialMatch <- spatialMatch[ecozones, on = "pixelIndex"]
-  
-  if (any(!(spatialMatch$pixelIndex %in% jurisdictions$pixelIndex))) {
-    stop("There is a problem: some pixels cannot be matched to a jurisdiction...")
-  }
-  spatialMatch <- spatialMatch[jurisdictions, on = "pixelIndex"]
-  return(spatialMatch)
-}
 
 addSpatialUnits <- function(cohortData, spatialUnits) {
   if ("yieldTableIndex" %in% names(spatialUnits)) {
