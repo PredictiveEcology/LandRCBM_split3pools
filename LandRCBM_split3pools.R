@@ -272,7 +272,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     postSpinupAdjustBiomass = {
 
-      spinupOut <- sim$spinupResults
+      spinupOut <- sim$spinupResult
       
       # 1. Expand spinup output to have 1 row per cohort
       spinupOut$output <- lapply(spinupOut$output, function(tbl) {
@@ -298,7 +298,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       spinupOut$output$pools$FineRoots <- rootTotC * fineRootProp
       
       # 4. Update cohortGroupID
-      spinupOut$key$cohortGroupID <- spinupOut$key$cohortIDspinupOut$key$cohortGroupID <- spinupOut$key$cohortID
+      spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
       
       sim$spinupResults <- spinupOut
       
@@ -687,7 +687,7 @@ AnnualIncrements <- function(sim){
                    by.x = "spatial_unit_id",
                    by.y = "SpatialUnitID")
   setnames(standDT, old = "abreviation", new = "juris_id")
-  setkey(standDT, pixelIndexIndex)
+  setkey(standDT, pixelIndex)
   ###
   sim$aboveGroundBiomass <- splitCohortData(
     cohortData = sim$cohortData,
