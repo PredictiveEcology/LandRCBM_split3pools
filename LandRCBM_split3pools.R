@@ -20,10 +20,6 @@ defineModule(sim, list(
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
-    defineParameter("simulateDisturbances", "character", "none", NA, NA,
-                    paste("Controls which disturbances are simulated by other modules.",
-                          "As of now, this can be 'none' when there are no disturbances module or fire`.")
-                    ),
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
@@ -74,18 +70,6 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
     ), 
     expectsInput(
-      objectName = "disturbanceMeta", objectClass = "data.table",
-      desc = paste("Table defining the disturbance event types.", 
-                   "This associates CBM-CFS3 disturbances with the",
-                   "event IDs in the 'disturbanceEvents' table."),
-      columns = c(
-        name = "Name of the disturbance.",
-        eventID = "Disturbance event Id.",
-        priority = "Optional: Control which events gets precedence over others in the case where multiple events happen."
-      ),
-      sourceURL = "https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link"
-    ),
-    expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = paste("PixelGroup map from LandR. Group of pixels that shares the same.",
                    "cohort composition"),
@@ -95,10 +79,6 @@ defineModule(sim, list(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
       desc = "Template raster to use for simulations; defaults is the RIA study area.", 
       sourceURL = "https://drive.google.com/file/d/1LUEiVMUWd_rlG9AAFan7zKyoUs22YIX2/view?usp=drive_link"
-    ),
-    expectsInput(
-      objectName = "rstCurrentBurn", objectClass = "SpatRaster",
-      desc = "Raster of fires with 1 indicating burned pixels."
     ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
@@ -155,13 +135,6 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Cohort-level information.",
                    "Columns are `cohortID`, `pixelIndex`, `age`, and `gcids`.")
-    ),
-    createsOutput(
-      objectName = "disturbanceEvents",
-      objectClass = "data.table",
-      desc = paste("Table with disturbance events for each simulation year.",
-                   "Events types are defined in the 'disturbanceMeta' table.",
-                   "Columns are `pixelIndex`, `year`, `eventID`.")
     ),
     createsOutput(
       objectName = "growth_increments",
@@ -238,9 +211,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # adjust that the live biomass post-CBM spinup with the biomass in LandR
       sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "postSpinupAdjustBiomass", eventPriority = 5.5)
-      
-      # format disturbance events 
-      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","annualDisturbances", eventPriority = 5)
       
       # split AGB of cohorts into pools 
       sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","annualIncrements", eventPriority = 7)
@@ -817,27 +787,6 @@ AnnualIncrements <- function(sim){
     if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))){
       stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
     }
-  }
-  
-  # 5. Disturbance data
-  
-  # Metadata on disturbance. Links the eventID to the disturbance type.
-  if (!suppliedElsewhere("disturbanceMeta", sim)) {
-    sim$disturbanceMeta <- prepInputs(url = extractURL("disturbanceMeta"),
-                                      destinationPath = inputPath(sim),
-                                      fun = "data.table::fread",
-                                      overwrite = TRUE,
-                                      filename2 = "disturbanceMeta.csv") |> Cache(userTags = "prepInputsDistMeta")
-  } else if (!is.null(sim$disturbanceMeta)) {
-    if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
-      stop("disturbanceMeta needs the columns eventID and distName")
-    }
-  }
-  
-  # Raster of the pixel currently burning. Pixels with values of 1 are burning.
-  if (!suppliedElsewhere("rstCurrentBurn", sim)) {
-    sim$rstCurrentBurn <- sim$rasterToMatch
-    sim$rstCurrentBurn[] <- NA
   }
   
   if (!suppliedElsewhere("cbmAdmin", sim)) {
