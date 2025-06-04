@@ -300,7 +300,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # 4. Update cohortGroupID
       spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
       
-      sim$spinupResults <- spinupOut
+      sim$spinupResult <- spinupOut
       
       # 5. Prepare cohort groups and cbm_vars
       # Save cohort group key
@@ -338,21 +338,13 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     postAnnualChecks = {
       # Check if the above ground biomass are synchronize
       LandR_AGB <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
-      cbm_AGB <- as.data.table(cbm_vars$pools[, c("Merch", "Foliage", "Other")])
+      cbm_AGB <- as.data.table(sim$cbm_vars$pools[, c("Merch", "Foliage", "Other")])
       
       # Filtered to remove 0s and artifacts
       if (any(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-6)) {
         stop("LandR above ground biomass do not match CBM above ground biomass")
       }
       
-    }, 
-    annualDisturbances = {
-      
-      # process annual disturbances
-      sim <- AnnualDisturbances(sim)
-      
-      # do this for each timestep
-      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 5, "LandRCBM_split3pools", "annualDisturbances")
     },
     summarizeAGBPools = {
       sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
@@ -729,36 +721,6 @@ AnnualIncrements <- function(sim){
   # Create final growth increment data.table
   sim$growth_increments <- incrementsDT[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
   setkey(sim$growth_increments, gcids)
-  
-  return(invisible(sim))
-}
-
-# process annual disturbances
-AnnualDisturbances <- function(sim){
-  
-  # Create an empty list if disturbanceRasters is not defined
-  if(is.null(sim$disturbanceRasters)){
-    sim$disturbanceRasters <- list()
-  }
-  
-  # Add them to the disturbanceRasters if fires are simulated
-  if ("fire" %in% P(sim)$simulateDisturbances| (P(sim)$simulateDisturbances == "all")){
-    # Gets the correct eventID
-    fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
-    
-    # Ensure there is a eventID for fire
-    if (length(unique(fireID)) == 0) {
-      stop("disturbanceMeta does not have fires amongst its disturbances...")
-    } else if (length(unique(fireID)) > 1) {
-      stop("there are multiple eventID for fires in disturbanceMeta...")
-    }
-    
-    # Convert rstCurrentBurn into a disturbanceRasters
-    disturbanceRaster <- ifel(sim$rstCurrentBurn == 1, fireID, sim$rstCurrentBurn)
-    
-    # Add fires to disturbanceRasters
-    sim$disturbanceRasters[[as.character(fireID[1])]][[as.character(time(sim))]] <- disturbanceRaster
-  } 
   
   return(invisible(sim))
 }
