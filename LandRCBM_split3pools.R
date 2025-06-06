@@ -658,7 +658,7 @@ AnnualIncrements <- function(sim){
   
   # Step 2: Split current total above ground.-----------------------------------
   ### temporary
-  standDT <- merge(sim$standDT,
+  standDT <- merge(sim$standDT[, .(pixelIndex, area, ecozone, spatial_unit_id)],
                    sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
                    by.x = "spatial_unit_id",
                    by.y = "SpatialUnitID")
