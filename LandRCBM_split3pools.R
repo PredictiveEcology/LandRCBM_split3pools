@@ -845,7 +845,6 @@ PrepareCBMvars <- function(sim){
   setkey(new_cbm_parameters, row_idx)
   
   # Update parameters of disturbed cohorts
-  browser()
   distStands <- sim$standDT[!is.na(disturbance_type_id)]
   if (nrow(distStands) > 0) {
     
