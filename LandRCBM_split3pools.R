@@ -301,6 +301,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # split AGB of cohorts into pools
       sim <- AnnualIncrements(sim)
       
+      # prepare cohort groups
+      sim <- CohortGroupHandling(sim)
+      
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 7, "LandRCBM_split3pools", "annualIncrements")
     },
@@ -311,7 +314,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       cbm_AGB <- as.data.table(sim$cbm_vars$pools[, c("Merch", "Foliage", "Other")])
       
       # Filtered to remove 0s and artifacts
-      if (any(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-6)) {
+      if (max(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10]) > 10^-6)) {
         stop("LandR above ground biomass do not match CBM above ground biomass")
       }
       
@@ -694,6 +697,60 @@ AnnualIncrements <- function(sim){
   
   return(invisible(sim))
 }
+
+# Update cohort groups for CBM annual event
+CohortGroupHandling <- function(sim){
+  sim$cohortGroupKeep[, cohortGroupPrev := cohortGroupID]
+  
+  # Get the pools for the cohorts of the previous timestep
+  cohorts <- merge(unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)]),
+                   sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
+                   by.x = "cohortGroupPrev",
+                   by.y = "row_idx")
+  
+  # Match the cohort pools to this timestep cohorts based on pixel, age, and species.
+  cohorts <- merge(
+    cohorts[, age := age + 1],
+    merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)]),
+    by = c("pixelIndex", "age", "species_id"),
+    all = TRUE
+  )
+  
+  # Add spatial unit
+  cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
+  cohorts[, cohortGroupID := gcids]
+  
+  # Handle DOM cohorts
+  if(any(is.na(cohorts$cohortGroupID))){
+    missingCohorts <- cohorts[is.na(cohortGroupID), ]
+    # Check that the DOM cohorts have live pools close to 0
+    if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other")] > 10^-6)) {
+      stop("Some cohorts with positive above ground biomasses are missing.")
+    }
+    missingCohorts[, gcids := 0]
+    missingCohorts[, age := 0]
+    missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
+    cohorts[is.na(cohortGroupID), ] <- missingCohorts
+  }
+  
+  # Update cohortGroupKeep
+  sim$cohortGroupKeep <- merge(
+    sim$cohortGroupKeep[, cohortGroupID := NULL],
+    cohorts[, .(pixelIndex, cohortGroupPrev, cohortGroupID)],
+    by = c("pixelIndex", "cohortGroupPrev"),
+    all.y = TRUE
+  )
+  setkey(sim$cohortGroupKeep, cohortID)
+  
+  # Update cohortGroups
+  sim$cohortGroups <- unique(cohorts[, .(cohortGroupID, spatial_unit_id, age, gcids)])
+  setkey(sim$cohortGroups, cohortGroupID)
+  
+  # Set cohort groups for the year
+  sim$cohortGroupKeep[[as.character(time(sim))]] <- sim$cohortGroupKeep$cohortGroupID
+  
+}
+  
 
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
