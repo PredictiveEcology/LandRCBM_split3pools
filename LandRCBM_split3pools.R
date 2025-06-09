@@ -70,6 +70,12 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
     ), 
     expectsInput(
+      objectName = "cbm_vars",
+      objectClass = "list",
+      desc = paste("List of 4 data tables: parameters, pools, flux, and state.",
+                    "This is created initially during the spinup and updated each year."),
+    ), 
+    expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = paste("PixelGroup map from LandR. Group of pixels that shares the same.",
                    "cohort composition"),
@@ -79,6 +85,19 @@ defineModule(sim, list(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
       desc = "Template raster to use for simulations; defaults is the RIA study area.", 
       sourceURL = "https://drive.google.com/file/d/1LUEiVMUWd_rlG9AAFan7zKyoUs22YIX2/view?usp=drive_link"
+    ),
+    expectsInput(
+      objectName = "standDT", objectClass =  "data.table",
+      desc = paste0("A data table with spatial information for the CBM spinup.",
+                    "Columns are `pixelIndex`, `area`, and `spatial_unit_id`.")
+    ),
+    expectsInput(
+      objectName = "spinupResult", objectClass =  "list",
+      desc = paste0("A list of data.tables with the results from the CBM spinup.")
+    ),
+    expectsInput(
+      objectName = "spinupSQL", objectClass =  "dataset",
+      desc = paste0("Table containing many necesary spinup parameters used in CBM_core")
     ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
@@ -131,10 +150,27 @@ defineModule(sim, list(
                    "Columns are `pixelIndex`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
     ),
     createsOutput(
+      objectName = "cbm_vars", objectClass = "list",
+      desc = paste(
+        "List of 4 data tables: parameters, pools, flux, and state.",
+        "This is created initially during the spinup and updated each year.")
+    ),
+    createsOutput(
       objectName = "cohortDT",
       objectClass = "data.table",
       desc = paste("Cohort-level information.",
                    "Columns are `cohortID`, `pixelIndex`, `age`, and `gcids`.")
+    ),
+    createsOutput(
+      objectName = "cohortGroupKeep",
+      objectClass = "data.table",
+      desc = paste("Key connecting `cohortID` with current and previous `cohortGroupID`",
+                   "associations for each year of the simulation")
+    ),
+    createsOutput(
+      objectName = "cohortGroups",
+      objectClass = "data.table",
+      desc = paste("Cohort group shared attributes")
     ),
     createsOutput(
       objectName = "growth_increments",
@@ -154,6 +190,9 @@ defineModule(sim, list(
       objectClass = "SpatRaster",
       desc = paste("The template raster for the CBM simulation. Is equivalent to rasterToMatch.")
     ),
+    createsOutput(
+      objectName = "spinupResult", objectClass = "data.frame",
+      desc = "Spinup results updated with the live biomass matching the observed data."),
     createsOutput(
       objectName = "standDT",
       objectClass = "data.table",
