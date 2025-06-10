@@ -20,10 +20,6 @@ defineModule(sim, list(
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
-    defineParameter("simulateDisturbances", "character", "none", NA, NA,
-                    paste("Controls which disturbances are simulated by other modules.",
-                          "As of now, this can be 'none' when there are no disturbances module or fire`.")
-                    ),
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
@@ -59,7 +55,8 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
     ),
     expectsInput(
-      objectName = "cbmAdmin", objectClass = "data.table",
+      objectName = "cbmAdmin",
+      objectClass = "data.table",
       desc = paste("Provides equivalent between provincial boundaries,",
                    "CBM-id for provincial boundaries and CBM-spatial unit ids"),
       columns = c(
@@ -70,42 +67,14 @@ defineModule(sim, list(
         SpatialUnitID = "Integer id of the CBM-spatial unit ids.",
         EcoBoundaryID = "Integer id of the ecozones."
       ),
-      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"),
+      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
+    ), 
     expectsInput(
-      objectName = "disturbanceMeta", objectClass = "data.table",
-      desc = paste("Table defining the disturbance event types.", 
-                   "This associates CBM-CFS3 disturbances with the",
-                   "event IDs in the 'disturbanceEvents' table."),
-      columns = c(
-        name = "Name of the disturbance.",
-        eventID = "Disturbance event Id.",
-        priority = "Optional: Control which events gets precedence over others in the case where multiple events happen."
-      ),
-      sourceURL = "https://drive.google.com/file/d/11nIiLeRwgA7R7Lw685WIfb6HPGjM6kiB/view?usp=drive_link"
-    ),
-    expectsInput(
-      objectName = "ecozones", objectClass = "data.table",
-      desc = paste("A data.table with the ecozone for each pixelIndex. Used to determine",
-                   "the equation parameters to split the above ground biomass into",
-                   "carbon pools."),
-      columns = c(
-        pixelIndex = "Integer id of the pixel.",
-        ecozone = "Integer id of the ecozone."
-      ),
-      sourceURL = "http://sis.agr.gc.ca/cansis/nsdb/ecostrat/zone/ecozone_shp.zip"
-    ),
-    expectsInput(
-      objectName = "jurisdictions", objectClass = "data.table",
-      desc = paste("A data.table with the province/territory for each pixelIndex.", 
-                   "Used to determine the equation parameters to split the above", 
-                   "ground biomass into carbon pools."),
-      columns = c(
-        pixelIndex = "Integer id of the pixel.",
-        PRUID = "Integer id of the administrative region.",
-        juris_id = "Two-letter abreviation of the administrative region."
-      ),
-      sourceURL = "https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/boundary-limites/files-fichiers/lpr_000a21a_e.zip"
-    ),
+      objectName = "cbm_vars",
+      objectClass = "list",
+      desc = paste("List of 4 data tables: parameters, pools, flux, and state.",
+                    "This is created initially during the spinup and updated each year."),
+    ), 
     expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = paste("PixelGroup map from LandR. Group of pixels that shares the same.",
@@ -118,8 +87,17 @@ defineModule(sim, list(
       sourceURL = "https://drive.google.com/file/d/1LUEiVMUWd_rlG9AAFan7zKyoUs22YIX2/view?usp=drive_link"
     ),
     expectsInput(
-      objectName = "rstCurrentBurn", objectClass = "SpatRaster",
-      desc = "Raster of fires with 1 indicating burned pixels."
+      objectName = "standDT", objectClass =  "data.table",
+      desc = paste0("A data table with spatial information for the CBM spinup.",
+                    "Columns are `pixelIndex`, `area`, and `spatial_unit_id`.")
+    ),
+    expectsInput(
+      objectName = "spinupResult", objectClass =  "list",
+      desc = paste0("A list of data.tables with the results from the CBM spinup.")
+    ),
+    expectsInput(
+      objectName = "spinupSQL", objectClass =  "dataset",
+      desc = paste0("Table containing many necesary spinup parameters used in CBM_core")
     ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
@@ -162,8 +140,6 @@ defineModule(sim, list(
       ),
       sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
     )
-    # expectsInput("sppColorVect", "character",
-    #              desc = paste("A named vector of colors to use for plotting."))
   ),
   outputObjects = bindrows(
     createsOutput(
@@ -174,17 +150,27 @@ defineModule(sim, list(
                    "Columns are `pixelIndex`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
     ),
     createsOutput(
+      objectName = "cbm_vars", objectClass = "list",
+      desc = paste(
+        "List of 4 data tables: parameters, pools, flux, and state.",
+        "This is created initially during the spinup and updated each year.")
+    ),
+    createsOutput(
       objectName = "cohortDT",
       objectClass = "data.table",
       desc = paste("Cohort-level information.",
                    "Columns are `cohortID`, `pixelIndex`, `age`, and `gcids`.")
     ),
     createsOutput(
-      objectName = "disturbanceEvents",
+      objectName = "cohortGroupKeep",
       objectClass = "data.table",
-      desc = paste("Table with disturbance events for each simulation year.",
-                   "Events types are defined in the 'disturbanceMeta' table.",
-                   "Columns are `pixelIndex`, `year`, `eventID`.")
+      desc = paste("Key connecting `cohortID` with current and previous `cohortGroupID`",
+                   "associations for each year of the simulation")
+    ),
+    createsOutput(
+      objectName = "cohortGroups",
+      objectClass = "data.table",
+      desc = paste("Cohort group shared attributes")
     ),
     createsOutput(
       objectName = "growth_increments",
@@ -204,6 +190,9 @@ defineModule(sim, list(
       objectClass = "SpatRaster",
       desc = paste("The template raster for the CBM simulation. Is equivalent to rasterToMatch.")
     ),
+    createsOutput(
+      objectName = "spinupResult", objectClass = "data.frame",
+      desc = "Spinup results updated with the live biomass matching the observed data."),
     createsOutput(
       objectName = "standDT",
       objectClass = "data.table",
@@ -239,13 +228,19 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # Create masterRaster. Identical to rasterToMatch.
       sim$masterRaster <- sim$rasterToMatch
       names(sim$masterRaster) <- "ldSp_TestArea"
-      
+      #### temporary
+      standDT <- merge(sim$standDT,
+                       sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
+                       by.x = "spatial_unit_id",
+                       by.y = "SpatialUnitID")
+      setnames(standDT, old = "abreviation", new = "juris_id")
+      setkey(standDT, pixelIndex)
+      ####
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
         cohortData = sim$cohortData,
         pixelGroupMap = sim$pixelGroupMap,
-        jurisdictions = sim$jurisdictions,
-        ecozones = sim$ecozones,
+        standDT = standDT,
         table6 = sim$table6,
         table7 = sim$table7
       )
@@ -253,14 +248,20 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
       
-      # format disturbance events 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 5, "LandRCBM_split3pools","annualDisturbances")
+      # adjust that the live biomass post-CBM spinup with the biomass in LandR
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "postSpinupAdjustBiomass", eventPriority = 5.5)
       
       # split AGB of cohorts into pools 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 7, "LandRCBM_split3pools","annualIncrements")
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","annualIncrements", eventPriority = 7)
+      
+      # prepare inputs for CBM annual event (cbm_vars)
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","prepareCBMvars", eventPriority = 8.25)
+      
+      # Post annual checks
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "postAnnualChecks", eventPriority = 8.75)
       
       # summarize simulation 
-      sim <- scheduleEvent(sim, start(sim), eventPriority = 10, "LandRCBM_split3pools","summarizeAGBPools")
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools","summarizeAGBPools", eventPriority = 10)
       # plots
       if (anyPlotting(P(sim)$.plots)) {
         sim <- scheduleEvent(sim, P(sim)$.plotInitialTime,
@@ -281,21 +282,92 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # plot the yield tables with pools seperated
       sim <- PlotYieldTablesPools(sim)
     },
+    postSpinupAdjustBiomass = {
+
+      spinupOut <- sim$spinupResult
+      
+      # 1. Expand spinup output to have 1 row per cohort
+      spinupOut$output <- lapply(spinupOut$output, function(tbl) {
+        tbl <- tbl[spinupOut$key$cohortGroupID, ]
+      })
+      
+      # 2. Replace above ground pools with the LandR biomass.
+      spinupOut$output$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+      
+      # 3. Update below ground live pools.
+      #### DC 06-05-2025 VALUES ARE HARDCODED - TODO get values from cbm_exn_get_default_parameters?
+      #### Confirm equation are correct and wrap into a CBMutils function?
+      totAGB <- rowSums(spinupOut$output$pools[, c("Merch", "Foliage", "Other")])
+      # convert to mg/ha of total biomass
+      totAGB <- totAGB * 2
+      rootTotBiom <- ifelse(spinupOut$output$state$sw_hw == 1,
+                            0.222 * totAGB,
+                            1.576 * totAGB^0.615)
+      # reconvert to carbon tonnes/ha
+      rootTotC <- rootTotBiom * 0.5
+      fineRootProp <- 0.072 + 0.354 * exp(-0.060212 * rootTotC)
+      spinupOut$output$pools$CoarseRoots <- rootTotC * (1 - fineRootProp)
+      spinupOut$output$pools$FineRoots <- rootTotC * fineRootProp
+      
+      # 4. Update cohortGroupID
+      spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
+      
+      sim$spinupResult <- spinupOut
+      
+      # 5. Prepare cohort groups and cbm_vars
+      # Save cohort group key
+      sim$cohortGroupKeep <- merge(spinupOut$key, sim$cohortDT, by = "cohortID")[, .(cohortID, pixelIndex, cohortGroupID)]
+      sim$cohortGroupKeep[, cohortGroupPrev := NA_integer_]
+      sim$cohortGroupKeep[, spinup          := cohortGroupID]
+      data.table::setkey(sim$cohortGroupKeep, cohortID)
+      
+      # Prepare cohort group attributes for annual event
+      sim$cohortGroups <- unique(merge(
+        sim$cohortGroupKeep[, .(cohortID, cohortGroupID)],
+        merge(sim$standDT[, .(pixelIndex, spatial_unit_id)], sim$cohortDT, by = "pixelIndex"),
+        by = "cohortID"
+      )[, .SD, .SDcols = !c("cohortID", "pixelIndex")])
+      data.table::setkey(sim$cohortGroups, cohortGroupID)
+      
+      # Prepare spinup output data for annual event
+      ## data.table with row_idx to match cohortGroupID
+      sim$cbm_vars <- lapply(spinupOut$output, function(tbl){
+        tbl <- data.table::data.table(row_idx = sort(unique(spinupOut$key$cohortGroupID)), tbl)
+        data.table::setkey(tbl, row_idx)
+        tbl
+      })
+      
+    }, 
     annualIncrements = {
       
       # split AGB of cohorts into pools
       sim <- AnnualIncrements(sim)
       
+      # prepare cohort groups
+      sim <- UpdateCohortGroups(sim)
+      
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 7, "LandRCBM_split3pools", "annualIncrements")
     },
-    annualDisturbances = {
+    prepareCBMvars = {
       
-      # process annual disturbances
-      sim <- AnnualDisturbances(sim)
+      # split AGB of cohorts into pools
+      sim <- PrepareCBMvars(sim)
       
       # do this for each timestep
-      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 5, "LandRCBM_split3pools", "annualDisturbances")
+      sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 8.25, "LandRCBM_split3pools", "prepareCBMvars")
+    },
+    
+    postAnnualChecks = {
+      # Check if the above ground biomass are synchronize
+      LandR_AGB <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+      cbm_AGB <- as.data.table(sim$cbm_vars$pools[, c("Merch", "Foliage", "Other")])
+      
+      # Filtered to remove 0s and artifacts
+      # if (max(abs(cbm_AGB[Merch > 10^-10] - LandR_AGB[merch > 10^-10])) > 10^-6) {
+      #   stop("LandR above ground biomass do not match CBM above ground biomass")
+      # }
+      
     },
     summarizeAGBPools = {
       sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
@@ -432,27 +504,25 @@ PlotYieldTables <- function(sim){
 SplitYieldTables <- function(sim) {
   # Step 1: Spatial Matching and Cohort/Stand Data Preparation -----------------
   # Link yield curve IDs (yieldTableIndex) to CBM spatial units 
-  # (ecozone, jurisdiction) and generate initial cohort/stand data structures.
+  # and generate initial cohort/stand data structures.
 
   # 1.1. Match pixel-level yield table indices with CBM spatial units.
   #      `spatialMatch` creates a data.table linking yieldTableIndex, ecozone, 
   #      and jurisdiction.
   #      `na.omit` removes pixels not forested.
-  spatialDT <- spatialMatch(
-    pixelGroupMap = sim$yieldTablesId,
-    jurisdictions = sim$jurisdictions,
-    ecozones = sim$ecozones
-  ) |> na.omit()
+  spatialDT <- merge(
+    sim$standDT,
+    sim$yieldTablesId) |> na.omit()
   # Ensure spatial matching produced results
   if (nrow(spatialDT) == 0) {
-    stop("Spatial matching between yieldTablesId, jurisdictions, and ecozones failed.")
+    stop("Spatial matching between yieldTablesId, standDT failed.")
   }
   
   # 1.2. Create a new, unique ID for each unique combination of original yield 
   #      table index and CBM spatial units. This handles cases
   #      where one yield curve spans multiple ecozones/jurisdictions.
-  setorderv(spatialDT, cols = c("yieldTableIndex", "ecozone", "juris_id"))
-  spatialDT[, newytid := .GRP, by = .(yieldTableIndex, ecozone, juris_id)]
+  setorderv(spatialDT, cols = c("yieldTableIndex", "spatial_unit_id"))
+  spatialDT[, newytid := .GRP, by = .(yieldTableIndex, spatial_unit_id)]
   
   # 1.3. Update the pixel-level yield table mapping (`sim$yieldTablesId`) to use
   #      the new yield table ids. 
@@ -474,35 +544,10 @@ SplitYieldTables <- function(sim) {
   # 1.6. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcids to species information.
   sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
-
-  # 1.7. Create the stand data table (`sim$standDT`).
-  #      Links pixels to their CBM `spatial_unit_id`.
-  #      Starts with pixelIndex, ecozone, jurisdiction from spatialDT.
-  areaDT <- data.table(
-    cellSize(sim$pixelGroupMap, unit = "m", mask = FALSE, transform = TRUE)[]
-    )
-  areaDT <- areaDT[, pixelIndex := .I]
-
-  sim$standDT <- spatialDT[, .(pixelIndex, EcoBoundaryID = ecozone, abreviation = juris_id)]
-  # Join with CBM administrative lookup table (`sim$cbmAdmin`) to get SpatialUnitID.
-  sim$standDT <- sim$cbmAdmin[sim$standDT, on = c("EcoBoundaryID", "abreviation")]
-  # Join cell area
-  sim$standDT <- areaDT[sim$standDT, on = "pixelIndex"]
-  
-  # Select final columns and rename for clarity.
-  sim$standDT <- sim$standDT[, .(pixelIndex, 
-                                 area = area,
-                                 spatial_unit_id = SpatialUnitID, 
-                                 ecozone = EcoBoundaryID, 
-                                 juris_id = abreviation)]
-  # Ensure all pixels have a spatial_unit_id
-  if (anyNA(sim$standDT$spatial_unit_id)) {
-    stop("Some pixels could not be matched to a CBM SpatialUnitID in sim$cbmAdmin.")
-  }
   
   # 1.8. Prepare yield table data (`sim$yieldTablesCumulative`) for biomass pool splitting.
   #      Get unique combinations of original yieldTableIndex and spatial units.
-  spatialUnits <- unique(spatialDT[, .(yieldTableIndex, newytid, ecozone, juris_id)])
+  spatialUnits <- unique(spatialDT[, .(yieldTableIndex, newytid, spatial_unit_id)])
   # Add these unique spatial units to the raw yield curves.
   allInfoYieldTables <- addSpatialUnits(
     cohortData = sim$yieldTablesCumulative,
@@ -524,7 +569,14 @@ SplitYieldTables <- function(sim) {
   setnames(allInfoYieldTables, c("biomass"), c("B"))
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoYieldTables[, B := B / 100]
-  
+  ### temporary
+  standDT <- merge(sim$standDT,
+                   sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
+                   by.x = "spatial_unit_id",
+                   by.y = "SpatialUnitID")
+  setnames(standDT, old = "abreviation", new = "juris_id")
+  ###
+  allInfoYieldTables <- merge(allInfoYieldTables, unique(standDT[,.(spatial_unit_id, ecozone, juris_id)]))
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
   #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
   #      ground biomass as input, implemented in CBMutils.
@@ -644,11 +696,18 @@ AnnualIncrements <- function(sim){
   setkey(biomassTminus1, pixelIndex, speciesCode, age)
   
   # Step 2: Split current total above ground.-----------------------------------
+  ### temporary
+  standDT <- merge(sim$standDT[, .(pixelIndex, area, ecozone, spatial_unit_id)],
+                   sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
+                   by.x = "spatial_unit_id",
+                   by.y = "SpatialUnitID")
+  setnames(standDT, old = "abreviation", new = "juris_id")
+  setkey(standDT, pixelIndex)
+  ###
   sim$aboveGroundBiomass <- splitCohortData(
     cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
-    jurisdictions = sim$jurisdictions,
-    ecozones = sim$ecozones,
+    standDT = standDT,
     table6 = sim$table6,
     table7 = sim$table7
   )
@@ -689,44 +748,216 @@ AnnualIncrements <- function(sim){
   return(invisible(sim))
 }
 
-# process annual disturbances
-AnnualDisturbances <- function(sim){
+# Update cohort groups for CBM annual event
+UpdateCohortGroups <- function(sim){
+  sim$cohortGroupKeep[, cohortGroupPrev := cohortGroupID]
   
-  # Create an empty data.table if disturbanceEvents is not defined
-  if(is.null(sim$disturbanceEvents)){
-    sim$disturbanceEvents <- data.table(
-      pixelIndex = integer(),
-      year = integer(),
-      eventID = integer()
-    )
+  # Get the pools for the cohorts of the previous timestep
+  cohorts <- merge(unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)]),
+                   sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
+                   by.x = "cohortGroupPrev",
+                   by.y = "row_idx")
+  
+  # Match the cohort pools to this timestep cohorts based on pixel, age, and species.
+  cohorts <- merge(
+    cohorts[, age := age + 1],
+    merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)]),
+    by = c("pixelIndex", "age", "species_id"),
+    all = TRUE
+  )
+  
+  # Add spatial unit
+  cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
+  cohorts[, cohortGroupID := gcids]
+  
+  # Handle DOM cohorts
+  if(any(is.na(cohorts$cohortGroupID))){
+    missingCohorts <- cohorts[is.na(cohortGroupID), ]
+    # Check that the DOM cohorts have live pools close to 0
+    if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other")] > 10^-6)) {
+      stop("Some cohorts with positive above ground biomasses are missing.")
+    }
+    missingCohorts[, gcids := 0]
+    missingCohorts[, age := 0]
+    missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
+    cohorts[is.na(cohortGroupID), ] <- missingCohorts
   }
   
-  # Add them to the disturbanceEvents if fires are simulated
-  if ("fire" %in% P(sim)$simulateDisturbances| (P(sim)$simulateDisturbances == "all")){
-    # Gets the correct eventID
-    fireID <- sim$disturbanceMeta$eventID[sim$disturbanceMeta$distName %in% c("wildfire", "Wildfire", "fire", "wildfire")]
-    
-    # Ensure there is a eventID for fire
-    if (length(unique(fireID)) == 0) {
-      stop("disturbanceMeta does not have fires amongst its disturbances...")
-    } else if (length(unique(fireID)) > 1) {
-      stop("there are multiple eventID for fires in disturbanceMeta...")
-    }
-    
-    # Convert rstCurrentBurn into a data.table
-    fires <- data.table(
-      fire = as.integer(sim$rstCurrentBurn[])
-    ) 
-    fires <- fires[, pixelIndex := .I]
-    fires <- fires[fire == 1]
-    fires$year <- time(sim)
-    fires$eventID <- fireID[1]
-    
-    # Add fires to disturbanceEvents
-    sim$disturbanceEvents <- rbind(sim$disturbanceEvents,
-                                   fires[, fire := NULL])
-  } 
+  # Update cohortGroupKeep
+  sim$cohortGroupKeep <- merge(
+    sim$cohortGroupKeep[, cohortGroupID := NULL],
+    cohorts[, .(pixelIndex, cohortGroupPrev, cohortGroupID)],
+    by = c("pixelIndex", "cohortGroupPrev"),
+    all.y = TRUE
+  )
+  setkey(sim$cohortGroupKeep, cohortID)
   
+  # Update cohortGroups
+  sim$cohortGroups <- unique(cohorts[, .(cohortGroupID, spatial_unit_id, age, gcids)])
+  setkey(sim$cohortGroups, cohortGroupID)
+  
+  # Set cohort groups for the year
+  sim$cohortGroupKeep[[as.character(time(sim))]] <- sim$cohortGroupKeep$cohortGroupID
+  
+  return(invisible(sim))
+
+}
+  
+PrepareCBMvars <- function(sim){
+  
+  # 1. Prepare cbm pools
+  # Get the pools of cohorts of the previous timestep
+  new_cbm_pools <- merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
+                         sim$cbm_vars$pools,
+                         by.x = "cohortGroupPrev",
+                         by.y = "row_idx",
+                         all.x = TRUE)
+  new_cbm_pools[, cohortGroupPrev := NULL]
+  setnames(new_cbm_pools, old = "cohortGroupID", new = "row_idx")
+  
+  # Fill pools of new cohorts with 0s
+  if(any(is.na(new_cbm_pools[, Merch]))) {
+    new_cbm_pools$Input[is.na(new_cbm_pools$Input)] <- 1L
+    setnafill(new_cbm_pools, fill = 0L)
+  }
+  
+  # Aggregate DOM cohorts of the sharing pixel
+  if(any(sim$cohortGroups$gcids == 0)){
+    pool_columns <- setdiff(colnames(new_cbm_pools), "row_idx")
+    new_cbm_pools <- new_cbm_pools[, lapply(.SD, sum), by = row_idx, .SDcols = pool_columns]
+    new_cbm_pools$Input <- 1L
+    # Set live pools to 0 for DOM cohorts.
+    new_cbm_pools[row_idx %in% sim$cohortGroups[gcids == 0, cohortGroupID], c("Merch", "Foliage", "Other", "CoarseRoots", "FineRoots") := 0L]
+  }
+  setkey(new_cbm_pools, row_idx)
+  
+  # 2. Prepare cbm flux
+  # Get the flux of the cohorts of the previous timestep
+  new_cbm_flux <- merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
+                        sim$cbm_vars$flux,
+                        by.x = "cohortGroupPrev",
+                        by.y = "row_idx",
+                        all.x = TRUE)
+  new_cbm_flux[, cohortGroupPrev := NULL]
+  setnames(new_cbm_flux, old = "cohortGroupID", new = "row_idx")
+  
+  # Fill fluxes of new cohorts with 0s.
+  if(any(is.na(new_cbm_flux))) {
+    setnafill(new_cbm_flux, fill = 0L)
+  }
+  
+  # Aggregate DOM cohorts of the sharing pixel
+  if(any(sim$cohortGroups$gcids == 0)){
+    flux_columns <- setdiff(colnames(new_cbm_flux), "row_idx")
+    new_cbm_flux <- new_cbm_flux[, lapply(.SD, sum), by = row_idx, .SDcols = flux_columns]
+  }
+  setkey(new_cbm_flux, row_idx)
+  
+  # 3. Prepare cbm parameters
+  # Get the mean annual temperature based on spatial unit.
+  new_cbm_parameters <- merge(sim$cohortGroups,
+                              sim$spinupSQL[, .(id, mean_annual_temperature)],
+                              by.x = "spatial_unit_id",
+                              by.y = "id",
+                              all.x = TRUE)
+  
+  # Set no disturbance by default (will be changed later for disturbed cohorts)
+  new_cbm_parameters[, disturbance_type := 0]
+  
+  # Get the increments
+  new_cbm_parameters <- merge(new_cbm_parameters,
+                              sim$growth_increments,
+                              by = c("gcids", "age"),
+                              all.x = TRUE)
+  
+  # For the DOM cohorts (gcids = 0) set increments to 0
+  setnafill(new_cbm_parameters, fill = 0L, cols = c("merch_inc", "foliage_inc", "other_inc"))
+  
+  new_cbm_parameters <- new_cbm_parameters[, .(
+    row_idx = cohortGroupID,
+    mean_annual_temperature,
+    disturbance_type,
+    merch_inc,
+    foliage_inc,
+    other_inc
+  )]
+  setkey(new_cbm_parameters, row_idx)
+  
+  # Update parameters of disturbed cohorts
+  distStands <- sim$standDT[!is.na(disturbance_type_id)]
+  if (nrow(distStands) > 0) {
+    
+    # Get attributes for disturbed cohorts
+    distCohorts <- merge(
+      sim$cohortGroupKeep[, .(cohortID, pixelIndex, cohortGroupPrev, cohortGroupID)],
+      distStands,
+      by = "pixelIndex")
+    # Remove new cohorts
+    distCohorts <- distCohorts[!is.na(cohortGroupPrev)]
+    
+    new_cbm_parameters[distCohorts$cohortGroupID, "disturbance_type"] <- distCohorts$disturbance_type_id
+    # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
+    new_cbm_parameters[distCohorts$cohortGroupID, merch_inc := 0L]
+    new_cbm_parameters[distCohorts$cohortGroupID, foliage_inc := 0L]
+    new_cbm_parameters[distCohorts$cohortGroupID, other_inc := 0L]
+  }
+  
+  # 4. Prepare cbm state
+  # Get the state of the cohorts of the previous timestep
+  new_cbm_state <-  merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
+                          sim$cbm_vars$state,
+                          by.x = "cohortGroupPrev",
+                          by.y = "row_idx",
+                          all.x = TRUE)
+  new_cbm_state[, cohortGroupPrev := NULL]
+  setnames(new_cbm_state, old = "cohortGroupID", new = "row_idx")
+  
+  # Change the state of DOM cohorts
+  if(any(sim$cohortGroups$gcids == 0)){
+    DOMcohorts <- sim$cohortGroups[gcids == 0, cohortGroupID]
+    new_cbm_state[row_idx %in% DOMcohorts, age := 0]
+    new_cbm_state[row_idx %in% DOMcohorts, species := 0]
+    new_cbm_state[row_idx %in% DOMcohorts, sw_hw := 0]
+    new_cbm_state[row_idx %in% DOMcohorts, time_since_last_disturbance := 0]
+    new_cbm_state[row_idx %in% DOMcohorts, time_since_land_use_change  := -1]
+    new_cbm_state[row_idx %in% DOMcohorts, last_disturbance_type := -1]
+    new_cbm_state <- unique(new_cbm_state)
+  }
+  
+  # Set the state of the new cohorts
+  if(any(is.na(new_cbm_state))) {
+    newCohorts_cbm_state <- new_cbm_state[is.na(area), ]
+    setnafill(newCohorts_cbm_state, fill = 1L, cols = c("area", "last_disturbance_type", "enabled"))
+    setnafill(newCohorts_cbm_state, fill = -1L, cols = c("land_class_id", "time_since_land_use_change")) 
+    
+    # Get growth curve information
+    newCohorts_cbm_state[sim$cohortGroups, on = c("row_idx" = "cohortGroupID"), `:=`(
+      spatial_unit_id = fifelse(is.na(spatial_unit_id), i.spatial_unit_id, spatial_unit_id),
+      age  = fifelse(is.na(age),  i.age - 1,  age) # age minus 1 because we added 1 in cohortGroups
+    )]
+    newCohort_gcids <- sim$cohortGroups[newCohorts_cbm_state$row_idx, gcids]
+    newCohorts_gcMeta <- sim$gcMeta[match(newCohort_gcids, sim$gcMeta$gcids)]
+    newCohorts_cbm_state[, species := newCohorts_gcMeta$species_id]
+    newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "sw")]
+    newCohorts_cbm_state[, time_since_last_disturbance := age]
+    
+    # Combine with cohorts that were present before
+    new_cbm_state <- rbind(
+      new_cbm_state[!is.na(area),],
+      newCohorts_cbm_state
+    )
+  }
+  setkey(new_cbm_state, row_idx)
+  
+  # 5. Put in cbm_vars
+  cbm_vars <- list(
+    pools = new_cbm_pools[!is.na(row_idx)],
+    flux = new_cbm_flux[!is.na(row_idx)],
+    parameters = new_cbm_parameters[!is.na(row_idx)],
+    state = new_cbm_state[!is.na(row_idx)]
+  )
+  
+  sim$cbm_vars <- cbm_vars
   return(invisible(sim))
 }
 
@@ -762,53 +993,6 @@ AnnualDisturbances <- function(sim){
       to = sim$rasterToMatch,
       overwrite = TRUE
     ) |> Cache(userTags = "prepInputsPGM")
-  }
-  
-  # Add a small buffer to studyArea to make sure we have ecozones and jurisdiction
-  # for each pixels.
-  if(inherits(sim$studyArea, "SpatVector")){
-    studyAreaBuffered <- terra::buffer(sim$studyArea, res(sim$rasterToMatch)[1])
-  } else if (inherits(sim$studyArea, "sf")) {
-    studyAreaBuffered <- sf::st_buffer(sim$studyArea, res(sim$rasterToMatch)[1])
-  } else {
-    stop("studyArea needs to be a SpatVector or a sf polygon")
-  }
-  
-  # Ecozones as a data.table with the ecozone id for each pixelIndex.
-  if (!suppliedElsewhere("ecozones", sim, where = "sim")) {
-    ecozones <- prepInputs(
-      url = extractURL("ecozones"),
-      destinationPath = inputPath(sim),
-      fun = "terra::vect",
-      to = studyAreaBuffered,
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsEcozones")
-    ez <- rasterize(ecozones, sim$rasterToMatch, field = "ECOZONE")
-    sim$ecozones <- data.table(ecozone = as.integer(ez[]))
-    sim$ecozones <- sim$ecozones[, pixelIndex := .I] |> na.omit()
-    setcolorder(sim$ecozones, c("pixelIndex", "ecozone"))
-  }
-  
-  # Jurisdiction as a data.table with the jurisdiction id and its 2-letter 
-  # abreviation for each pixelIndex.
-  if (!suppliedElsewhere("jurisdictions", sim, where = "sim")) {
-    dt <- data.table(
-      PRUID = c(10, 11, 12, 13, 24, 35, 46, 47, 48, 59, 60, 61, 62),
-      juris_id = c("NL", "PE", "NS", "NB", "QC", "ON", "MB", "SK", "AB", "BC", "YT", "NT", "NU")
-    )
-    jurisdictions <- prepInputs(
-      url = extractURL("jurisdictions"),
-      destinationPath = inputPath(sim),
-      fun = "terra::vect",
-      to = studyAreaBuffered,
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsJurisdictions")
-    juris_id <- rasterize(jurisdictions, sim$rasterToMatch, field = "PRUID")
-    juris_id <- as.data.table(juris_id, na.rm = FALSE)
-    juris_id$PRUID <- as.integer(as.character(juris_id$PRUID))
-    sim$jurisdictions <- dt[juris_id, on = "PRUID"]
-    sim$jurisdictions <- sim$jurisdictions[, pixelIndex := .I] |> na.omit()
-    setcolorder(sim$jurisdictions, c("pixelIndex", "PRUID", "juris_id"))
   }
   
   # 2. NFI params. Used to split total biomass into biomass of the three CBM
@@ -871,37 +1055,6 @@ AnnualDisturbances <- function(sim){
     }
   }
   
-  # TODO will be used for plotting to keep the same colors of species as in LandR modules
-  # if (!suppliedElsewhere("sppColorVect", sim)){
-  #   sp <- sort(unique(sim$yieldSpeciesCodes$SpeciesCode))
-  #   sim$sppColorVect <- RColorBrewer::brewer.pal(n = length(sp), name = 'Accent')
-  #   names(sim$sppColorVect) <- sp
-  # }
-  
-  # 5. Disturbance data
-  
-  # Metadata on disturbance. Links the eventID to the disturbance type.
-  if (!suppliedElsewhere("disturbanceMeta", sim)) {
-    sim$disturbanceMeta <- prepInputs(url = extractURL("disturbanceMeta"),
-                                      destinationPath = inputPath(sim),
-                                      fun = "data.table::fread",
-                                      overwrite = TRUE,
-                                      filename2 = "disturbanceMeta.csv") |> Cache(userTags = "prepInputsDistMeta")
-  } else if (!is.null(sim$disturbanceMeta)) {
-    if(!all(c("eventID", "distName") %in% colnames(sim$disturbanceMeta))) {
-      stop("disturbanceMeta needs the columns eventID and distName")
-    }
-  }
-  
-  # Raster of the pixel currently burning. Pixels with values of 1 are burning.
-  if (!suppliedElsewhere("rstCurrentBurn", sim)) {
-    sim$rstCurrentBurn <- sim$rasterToMatch
-    sim$rstCurrentBurn[] <- NA
-  }
-  
-  # 6. CBM metadata
-  # This table is used to determine the CBM spatial unit based on the jurisdiction
-  # and ecozone.
   if (!suppliedElsewhere("cbmAdmin", sim)) {
     sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
                                targetFile = "cbmAdmin.csv",
