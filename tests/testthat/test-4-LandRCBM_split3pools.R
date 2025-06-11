@@ -2,73 +2,107 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("module runs as a standAlone when not dynamic", {
   
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "3-LandRCBM_split3pools")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
-  module <- "LandRCBM_split3pools"
-  
-  # prepare inputs
-  rtm <- rast(ext(c(-1614000, -1612000, 7654000, 7656000)), 
-                resolution = c(250, 250),
-                crs = "+proj=lcc +lat_0=0 +lon_0=-95 +lat_1=49 +lat_2=77 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
-  rtm[] <- 1L
-  studyArea <- vect(ext(c(-1614000, -1612000, 7654000, 7656000)), crs = crs(rtm))
-  yieldTablesId <- prepInputs(url = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link",
-                              fun = "data.table::fread",
-                              destinationPath = spadesTestPaths$temp$inputs,
-                              filename2 = "yieldTablesId.csv",
-                              overwrite = TRUE)
-  yieldTablesId$pixelIndex[c(1:ncell(rtm))] <- c(1:ncell(rtm))
-  yieldTablesId <- yieldTablesId[c(1:ncell(rtm)), ]
-  
-  yieldTablesCumulative <- prepInputs(url = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link",
-                              fun = "data.table::fread",
-                              destinationPath = spadesTestPaths$temp$inputs,
-                              filename2 = "yieldTablesCumulative.csv",
-                              overwrite = TRUE)
-  yieldTablesCumulative <- yieldTablesCumulative[yieldTablesCumulative$yieldTableIndex %in% yieldTablesId$yieldTableIndex, ]
-  ecozones <- data.table(
-    pixelIndex = c(1:ncell(rtm)),
-    ecozone = 14
-  )
-  jurisdictions <- data.table(
-    pixelIndex = c(1:ncell(rtm)),
-    juris_id = "BC"
-  )
-
-  simInitInput <-  SpaDEStestMuffleOutput(
-    SpaDES.project::setupProject(
-      times = list(start = 2011, end = 2016),
-      modules = module,
-      paths   = list(
-        projectPath = projectPath,
-        modulePath  = spadesTestPaths$temp$modules,
-        inputPath   = spadesTestPaths$temp$inputs,
-        outputPath = spadesTestPaths$temp$outputs
-      ),
-      rasterToMatch = rtm,
-      studyArea = studyArea,
-      jurisdictions = jurisdictions,
-      ecozones = ecozones,
-      yieldTablesCumulative = yieldTablesCumulative,
-      yieldTablesId = yieldTablesId
+  ## Gets throught simInit
+  simInitTest <- SpaDEStestMuffleOutput(
+    simInit(
+      times = list(start = 2000, end = 2000),
+      params = list(),
+      modules = list("LandRCBM_split3pools"),
+      paths = list(modulePath = spadesTestPaths$temp$modules,
+                   inputPath = spadesTestPaths$inputPath,
+                   outputPath = spadesTestPaths$outputPath,
+                   cachePath = spadesTestPaths$cachePath),
+      cohortData = data.table::fread(),
+      pixelGroupMap = terra::rast(),
+      rasterToMatch = terra::rast(),
+      standDT = data.table::fread(),
+      studyArea = terra::vect(),
+      yieldTablesCumulative = data.table::fread(),
+      yieldTablesId = data.table::fread()
     )
   )
   
-  simTestInit <-  SpaDEStestMuffleOutput(
+  # Run tests
+  expect_s4_class(simInitTest, "simList")
+  
+  ## Get through init event:
+  #  splits the cohort data and the yield tables
+  simTest <- SpaDEStestMuffleOutput(
+    spades(simInitTest,
+           events = list("LandRCBM_split3pools" = "init")
+    )
+  )
+  
+  # Run tests
+  expect_s4_class(simTest, "simList")
+  
+})
+
+test_that("module runs with Biomass_core and CBM_core when dynamic", {
+  
+  # Set times
+  times <- list(start = 2000, end = 2002)
+  
+  # Set project path
+  projectPath <- file.path(spadesTestPaths$temp$projects, "integration_LandRCBM")
+  dir.create(projectPath)
+  withr::local_dir(projectPath)
+  
+  ## Gets throught simInit
+  simInitInput <- SpaDEStestMuffleOutput(
+    
+    SpaDES.project::setupProject(
+      
+      modules = c(
+        "DominiqueCaron/CBM_core@run-with-LandR",
+        "PredictiveEcology/Biomass_core@development",
+        "LandRCBM_split3pools"
+      ),
+      times   = times,
+      paths   = list(
+        projectPath = projectPath,
+        modulePath  = spadesTestPaths$temp$modules,
+        packagePath = spadesTestPaths$packagePath,
+        inputPath   = spadesTestPaths$inputPath,
+        cachePath   = spadesTestPaths$cachePath,
+        outputPath  = file.path(projectPath, "outputs")
+      ),
+      cohortData = data.table::fread(),
+      ecoregion = data.table::fread(),
+      ecoregionMAp = terra::rast(),
+      minRelativeB = data.table::fread(),
+      pixelGroupMap = terra::rast(),
+      rasterToMatch = terra::rast(),
+      species = data.table::fread(),
+      speciesEcoregion = data.table::fread(),
+      speciesLayers = terra::rast(),
+      standDT = data.table::fread(),
+      studyArea = terra::vect(),
+      yieldTablesCumulative = data.table::fread(),
+      yieldTablesId = data.table::fread(),
+      pooldef = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt") |> readLines(),
+      spinupSQL = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread()
+      
+    )
+  )
+  
+  # Run simInit
+  simTestInit <- SpaDEStestMuffleOutput(
     SpaDES.core::simInit2(simInitInput)
   )
-
-  # is output a simList?
+  
   expect_s4_class(simTestInit, "simList")
   
-  simTest <-  SpaDEStestMuffleOutput(
+  # Run spades
+  simTest <- SpaDEStestMuffleOutput(
     SpaDES.core::spades(simTestInit)
   )
+  
   expect_s4_class(simTest, "simList")
-  expect_equal(time(simTest)[[1]], 2016)
-
+  
+  # Run tests
+  expect_s4_class(simTest, "simList")
+  
   # check all outputs are there
   expect_true(all(
     c("aboveGroundBiomass", "cohortDT", "disturbanceEvents", "growth_increments", 
