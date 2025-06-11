@@ -1,4 +1,6 @@
-test_that("module runs with small example", {
+if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
+
+test_that("module runs as a standAlone when not dynamic", {
   
   # Set project path
   projectPath <- file.path(spadesTestPaths$temp$projects, "3-LandRCBM_split3pools")

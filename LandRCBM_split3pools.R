@@ -51,8 +51,7 @@ defineModule(sim, list(
         B = "Total above ground biomass in (g/m^2).",
         pixelGroup = "Id of the group of pixels sharing the same cohort composition and ecoregion, used in LandR.",
         totalBiomass = "Total above ground biomass in the pixel group."
-      ),
-      sourceURL = "https://drive.google.com/file/d/1vwyp_i4rLncT2L1ukOvOI20DFxfYuni5/view?usp=drive_link" 
+      )
     ),
     expectsInput(
       objectName = "cbmAdmin",
@@ -78,13 +77,11 @@ defineModule(sim, list(
     expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = paste("PixelGroup map from LandR. Group of pixels that shares the same.",
-                   "cohort composition"),
-      sourceURL = "https://drive.google.com/file/d/1oCL8EgZ6l8Bn0q1iJuu2yP3M7khUtTO4/view?usp=drive_link"
+                   "cohort composition")
     ),
     expectsInput(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
-      desc = "Template raster to use for simulations; defaults is the RIA study area.", 
-      sourceURL = "https://drive.google.com/file/d/1LUEiVMUWd_rlG9AAFan7zKyoUs22YIX2/view?usp=drive_link"
+      desc = "Template raster to use for simulations; defaults is the RIA study area."
     ),
     expectsInput(
       objectName = "standDT", objectClass =  "data.table",
@@ -101,8 +98,7 @@ defineModule(sim, list(
     ),
     expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
-      desc = "Polygon to use as the study area; default is the RIA study area.", 
-      sourceURL = "https://drive.google.com/file/d/1M8jGAuq1wuavSb40c-s9HKyigCuTt9Rf/view?usp=drive_link"
+      desc = "Polygon to use as the study area; default is the RIA study area."
     ),
     expectsInput(
       objectName = "table6", objectClass = "data.table",
@@ -128,8 +124,7 @@ defineModule(sim, list(
         age = "Age of species going from 0 to their longevity.",
         speciesCode = "Species code used by LandR.",
         biomass = "Above ground biomass in g/m^2."
-      ),
-      sourceURL = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link"
+      )
     ),
     expectsInput(
       objectName = "yieldTablesId", objectClass = "data.table",
@@ -137,8 +132,7 @@ defineModule(sim, list(
       columns = c(
         pixelIndex = "Integer id of the pixel.",
         yieldTableIndex = "Id of the group of pixels sharing yield tables."
-      ),
-      sourceURL = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link"
+      )
     )
   ),
   outputObjects = bindrows(
@@ -964,38 +958,7 @@ PrepareCBMvars <- function(sim){
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   
-  # 1. Spatial information
-  if (!suppliedElsewhere("rasterToMatch", sim)) {
-    sim$rasterToMatch <- prepInputs(
-      url = extractURL("rasterToMatch"),
-      fun = "terra::rast",
-      destinationPath = inputPath(sim),
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsRTM")
-  }
-  
-  if (!suppliedElsewhere("studyArea", sim)) {
-    sim$studyArea <- prepInputs(
-      url = extractURL("studyArea"),
-      fun = "terra::vect",
-      destinationPath = inputPath(sim),
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsSA")
-  }
-  
-  # Pixel groups from vegetation data.
-  # Is used to link cohortData spatially.
-  if (!suppliedElsewhere("pixelGroupMap", sim)) {
-    sim$pixelGroupMap <- prepInputs(
-      url = extractURL("pixelGroupMap"),
-      destinationPath = inputPath(sim),
-      fun = "terra::rast",
-      to = sim$rasterToMatch,
-      overwrite = TRUE
-    ) |> Cache(userTags = "prepInputsPGM")
-  }
-  
-  # 2. NFI params. Used to split total biomass into biomass of the three CBM
+  # NFI params. Used to split total biomass into biomass of the three CBM
   #                above ground biomass pools.
   if (!suppliedElsewhere("table6", sim)) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
@@ -1011,48 +974,6 @@ PrepareCBMvars <- function(sim){
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv",
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
-  }
-  
-  # 3. Yield tables data
-  
-  # Data table that links the yieldTableIndex (group of growth curves of coexisting
-  # species) to pixelIndex (one yieldTableIndex per pixelIndex).
-  if (!suppliedElsewhere("yieldTablesId", sim)) {
-    sim$yieldTablesId <- prepInputs(url = extractURL("yieldTablesId"),
-                                    fun = "data.table::fread",
-                                    destinationPath = inputPath(sim),
-                                    filename2 = "yieldTablesId.csv",
-                                    overwrite = TRUE) |> Cache(userTags = "prepInputsYTId")
-  } else if (!is.null(sim$yieldTablesId)) {
-    if(!all(c("yieldTableIndex", "pixelIndex") %in% colnames(sim$yieldTablesId))) {
-      stop("yieldTablesId needs the columns yieldTableIndex and pixelIndex")
-    }
-  }
-  
-  # Yield tables. Each yield tables as multiple growth curve (one per species)
-  if (!suppliedElsewhere("yieldTablesCumulative", sim)) {
-    sim$yieldTablesCumulative <- prepInputs(url = extractURL("yieldTablesCumulative"),
-                                            fun = "data.table::fread",
-                                            destinationPath = inputPath(sim),
-                                            filename2 = "yieldTablesCumulative.csv",
-                                            overwrite = TRUE) |> Cache(userTags = "prepInputsYTC")
-  } else if (!is.null(sim$yieldTablesCumulative)) {
-    if(!all(c("yieldTableIndex", "speciesCode", "biomass", "age") %in% colnames(sim$yieldTablesCumulative))){
-      stop("yieldTablesCumulative needs the columns yieldTableIndex, age, biomass, and speciesCode")
-    }
-  }
-  
-  # 4. Cohort data. Information on biomass for each cohort and pixel group.
-  if (!suppliedElsewhere("cohortData", sim)){
-    sim$cohortData <- prepInputs(url = extractURL("cohortData"),
-                                 destinationPath = inputPath(sim),
-                                 fun = "data.table::fread",
-                                 overwrite = TRUE,
-                                 filename2 = "cohortData.csv") |> Cache(userTags = "prepInputsCD")
-  } else if (!is.null(sim$cohortData)) {
-    if(!all(c("pixelGroup", "speciesCode", "B", "age") %in% colnames(sim$cohortData))){
-      stop("cohortData needs the columns pixelGroup, age, B, and speciesCode")
-    }
   }
   
   if (!suppliedElsewhere("cbmAdmin", sim)) {
