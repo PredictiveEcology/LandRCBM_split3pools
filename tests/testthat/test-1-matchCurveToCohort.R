@@ -1,94 +1,158 @@
-test_that("functions to match AGB with CBM spatial units and canfi species work", {
-  library(data.table)
+if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-  # test spatialMatch with pixelGroupDT
-  set.seed(1)
-  nonforested <- sample(c(1:9), 3)
-  pixelGroup <- data.table(pixelIndex = c(1:9),
-                           yieldTableIndex = c(rep(1,3), rep(2,3), rep(3,3)))
-  pixelGroup <- pixelGroup[-nonforested,]
+test_that("function addSpatialUnits works", {
   
-  jurisdictions <- data.table(pixelIndex = c(1:9),
-                             jurisdiction = c(rep("a", 5), rep("b", 4)))
-  ecozones <- data.table(pixelIndex = c(1:9),
-                         ecozone = c(rep(1, 2), rep(2, 5), rep(1, 2)))
-  out1 <- spatialMatch(pixelGroup, jurisdictions, ecozones)
+  ## With yield tables
   
-  expect_is(out1, "data.table")
-  expect_named(out1, c("pixelIndex", "yieldTableIndex", "ecozone", "jurisdiction"))
-  expect_equal(out1$ecozone, ecozones$ecozone)
-  expect_equal(out1$jurisdiction, jurisdictions$jurisdiction)
-  expect_true(all(is.na(out1$gcid[nonforested])))
-
-  # test spatialMatch with spatRast
-  pixelGroupMap <- terra::rast(
-    matrix(data = c(rep(1,3), rep(2, 3), rep(3, 3)), nrow = 3, ncol = 3)
+  # Setup: Create sample data
+  yieldTableId <- data.table(
+    yieldTableIndex = c(101, 102, 103),
+    someValue = c(10, 20, 30)
   )
-  pixelGroupMap[nonforested] <- NA
-  out2 <- spatialMatch(pixelGroupMap, jurisdictions, ecozones)
-  expect_is(out2, "data.table")
-  expect_named(out2, c("pixelIndex", "pixelGroup", "ecozone", "jurisdiction"), ignore.order = T)
-  expect_equal(out2$ecozone, ecozones$ecozone)
-  expect_equal(out2$jurisdiction, jurisdictions$jurisdiction)
-  expect_true(all(is.na(out2$gcid[nonforested])))
   
-  # test addSpatialUnits with yield tables
-  spatialUnits <- na.omit(out1)
-  spatialUnits[, newytid := .GRP, by = .(yieldTableIndex, ecozone, jurisdiction)]
-  spatialUnits <- unique(spatialUnits[, pixelIndex := NULL])
-  LandR_species = c("Abie_las", "Betu_pap", "Pice_gla")
-  yieldTables <- data.table(
-    expand.grid(speciesCode = LandR_species, 
-                yieldTableIndex = c(1:3))
+  spatialUnits <- data.table(
+    yieldTableIndex = c(101, 102, 103),
+    newytid = c(201, 202, 203),
+    spatialAttribute = c("A", "B", "C")
   )
-  out3 <- addSpatialUnits(yieldTables, spatialUnits)
+  # Expected results
+  expected_output <- data.table(
+    someValue = c(10, 20, 30),
+    yieldTableIndex = c(201, 202, 203),
+    spatialAttribute = c("A", "B", "C")
+  )
   
-  expect_true(all(LandR_species %in% out3$speciesCode))
-  expect_equal(nrow(out3), 15)
-  expect_named(out3, c("yieldTableIndex", "speciesCode", "ecozone", "jurisdiction"), ignore.order = TRUE)
-
-  # test with cohortData
+  # Run function
+  result <- addSpatialUnits(yieldTableId, spatialUnits)
+  
+  # Tests
+  expect_is(result, "data.table")
+  expect_equal(result, expected_output)
+  expect_true("yieldTableIndex" %in% names(result))
+  expect_false("newytid" %in% names(result))
+  expect_equal(nrow(result), 3)
+  
+  ## With cohortData
+  
+  # Setup: create sample data
   cohortData <- data.table(
-    expand.grid(speciesCode = LandR_species, 
-                pixelGroup = c(1:3))
+    pixelGroup = c(1, 2, 3),
+    someValue = c(10, 20, 30)
   )
-  setnames(spatialUnits, old = c("yieldTableIndex", "newytid"), new = c("pixelGroup", "newPixelGroup"))
-  out4 <- addSpatialUnits(cohortData, spatialUnits)
   
-  expect_true(all(LandR_species %in% out4$speciesCode))
-  expect_equal(nrow(out4), 15)
-  expect_named(out4, c("pixelGroup", "speciesCode", "ecozone", "jurisdiction"), ignore.order = TRUE)
+  spatialUnits <- data.table(
+    pixelGroup = c(1, 2, 3),
+    newPixelGroup = c(11, 22, 33),
+    spatialAttribute = c("X", "Y", "Z")
+  )
+  
+  # Expected Result
+  expected_output <- data.table(
+    someValue = c(10, 20, 30),
+    pixelGroup = c(11, 22, 33),
+    spatialAttribute = c("X", "Y", "Z")
+  )
+  
+  # Run function
+  result <- addSpatialUnits(cohortData, spatialUnits)
+  
+  # Tests
+  expect_is(result, "data.table")
+  expect_equal(result, expected_output)
+  expect_true("pixelGroup" %in% names(result))
+  expect_false("newPixelGroup" %in% names(result))
+  
+})
 
-    # test addSpeciesCode
-  out5 <- addSpeciesCode(out3, "CanfiCode")
-  expect_equal(nrow(out5), nrow(out3))
-  expect_named(out5, c("speciesCode", "ecozone", "jurisdiction", "yieldTableIndex", "newCode"), ignore.order = TRUE)
-  expect_is(out5$newCode, "integer")
-  expect_true(all(out5$newCode[out5$speciesCode == "Abie_las"] == 304))
-  expect_true(all(out5$newCode[out5$speciesCode == "Betu_pap"] == 1303))
-  expect_true(all(out5$newCode[out5$speciesCode == "Pice_gla"] == 105))
+test_that("function addSpeciesCode works", {
   
-  out6 <- addSpeciesCode(out3, "CBM_speciesID")
-  expect_equal(nrow(out6), nrow(out3))
-  expect_named(out6, c("speciesCode", "ecozone", "jurisdiction", "yieldTableIndex", "newCode"), ignore.order = TRUE)
-  expect_is(out6$newCode, "integer")
-  expect_true(all(out6$newCode[out6$speciesCode == "Abie_las"] == 31))
-  expect_true(all(out6$newCode[out6$speciesCode == "Betu_pap"] == 76))
-  expect_true(all(out6$newCode[out6$speciesCode == "Pice_gla"] == 6))
-  expect_error(addSpeciesCode(out3, "notacolumn"))
+  # Test data
+  cohortData <- data.table(
+    pixelGroup = c(1, 2, 3),
+    speciesCode = c("Abie_las", "Betu_pap", "Pice_gla"),
+    someValue = c(10, 20, 30)
+  )
   
-  x <- out3
-  x$speciesCode <- as.character(x$speciesCode)
-  x$speciesCode[1] <- "notaspecies"
-  expect_error(addSpeciesCode(x))
+  ## With default CanfiCode
+  # Expected result
+  expected_output <- data.table(
+    pixelGroup = c(1, 2, 3),
+    speciesCode = c("Abie_las", "Betu_pap", "Pice_gla"),
+    someValue = c(10, 20, 30),
+    newCode = c(304, 1303, 105)
+  )
   
-  # test add forest Type
-  out7 <- addForestType(out3)
-  expect_equal(nrow(out7), nrow(out3))
-  expect_true("sw_hw" %in% colnames(out7))
-  expect_is(out7$sw_hw, "character")
-  expect_true(all(out7$sw_hw[out7$speciesCode == "Pice_gla"] == "sw"))
-  expect_true(all(out7$sw_hw[out7$speciesCode == "Betu_pap"] == "hw"))
-  expect_true(all(out7$canfi_species[out7$speciesCode == "Abie_las"] == "sw"))
+  # Run function
+  result <- addSpeciesCode(cohortData)
   
-  })
+  # Tests
+  expect_is(result, "data.table")
+  expect_equal(result, expected_output)
+  expect_true("newCode" %in% names(result))
+  
+  ## With other species code
+  # Expected result
+  expected_output <- data.table(
+    pixelGroup = c(1, 2, 3),
+    speciesCode = c("Abie_las", "Betu_pap", "Pice_gla"),
+    someValue = c(10, 20, 30),
+    newCode = c(31, 76, 6)
+  )
+  
+  # Run function
+  result <- addSpeciesCode(cohortData, code = "CBM_speciesID")
+  
+  # Tests
+  expect_equal(result, expected_output)
+  expect_true("newCode" %in% names(result))
+  
+  ## Errors
+  
+  # Throws an error when run with column not in LandR::sppSpeciesEquivalencies_CA
+  expect_error(addSpeciesCode(cohortData, code = "Not a column"))
+  
+  # Throws an error when species not found
+  cohortData <- data.table(
+    pixelGroup = c(1, 2, 3),
+    speciesCode = c("Abie_las", "Betu_pap", "notaspecies"),
+    someValue = c(10, 20, 30)
+  )
+  
+  expect_error(addSpeciesCode(cohortData))
+  
+})
+
+test_that("function addForestType works", {
+  
+  # Test data
+  cohortData <- data.table(
+    pixelGroup = 1:4,
+    speciesCode = c("Acer_sac", "Betu_pap", "Pinu_con", "Thuj_jun")
+  )
+  
+  # Run function
+  result <- addForestType(cohortData)
+  
+  # Expected result
+  expected_output <- data.table(
+    pixelGroup = c(1, 2, 3, 4),
+    speciesCode = c("Acer_sac", "Betu_pap", "Pinu_con", "Thuj_jun"),
+    sw_hw = c("hw", "hw", "sw", "sw")
+  )
+  
+  # Tests
+  expect_is(result, "data.table")
+  expect_equal(result, expected_output)
+  expect_true("sw_hw" %in% names(result))
+  expect_equal(nrow(result), 4)
+  
+  # Error when incorrect species name
+  cohortData <- data.table(
+    pixelGroup = 1:2,
+    speciesCode = c("Acer_sac", "NotASpecies")
+  )
+  
+  expect_error(addForestType(cohortData))
+  
+})
+  

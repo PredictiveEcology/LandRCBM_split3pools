@@ -1,76 +1,159 @@
-test_that("module runs with small example", {
-  
-  # Set project path
-  projectPath <- file.path(spadesTestPaths$temp$projects, "3-LandRCBM_split3pools")
-  dir.create(projectPath)
-  withr::local_dir(projectPath)
-  module <- "LandRCBM_split3pools"
-  
-  # prepare inputs
-  rtm <- rast(ext(c(-1614000, -1612000, 7654000, 7656000)), 
-                resolution = c(250, 250),
-                crs = "+proj=lcc +lat_0=0 +lon_0=-95 +lat_1=49 +lat_2=77 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
-  rtm[] <- 1L
-  studyArea <- vect(ext(c(-1614000, -1612000, 7654000, 7656000)), crs = crs(rtm))
-  yieldTablesId <- prepInputs(url = "https://drive.google.com/file/d/1OExYMhxDvTWuShlRoCMeJEDW2PgSHofW/view?usp=drive_link",
-                              fun = "data.table::fread",
-                              destinationPath = spadesTestPaths$temp$inputs,
-                              filename2 = "yieldTablesId.csv",
-                              overwrite = TRUE)
-  yieldTablesId$pixelIndex[c(1:ncell(rtm))] <- c(1:ncell(rtm))
-  yieldTablesId <- yieldTablesId[c(1:ncell(rtm)), ]
-  
-  yieldTablesCumulative <- prepInputs(url = "https://drive.google.com/file/d/1ePPc_a8u6K_Sefd_wVS3E9BiSqK9DOnO/view?usp=drive_link",
-                              fun = "data.table::fread",
-                              destinationPath = spadesTestPaths$temp$inputs,
-                              filename2 = "yieldTablesCumulative.csv",
-                              overwrite = TRUE)
-  yieldTablesCumulative <- yieldTablesCumulative[yieldTablesCumulative$yieldTableIndex %in% yieldTablesId$yieldTableIndex, ]
-  ecozones <- data.table(
-    pixelIndex = c(1:ncell(rtm)),
-    ecozone = 14
-  )
-  jurisdictions <- data.table(
-    pixelIndex = c(1:ncell(rtm)),
-    juris_id = "BC"
-  )
+if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-  simInitInput <-  SpaDEStestMuffleOutput(
-    SpaDES.project::setupProject(
-      times = list(start = 2011, end = 2016),
-      modules = module,
-      paths   = list(
-        projectPath = projectPath,
-        modulePath  = spadesTestPaths$temp$modules,
-        inputPath   = spadesTestPaths$temp$inputs,
-        outputPath = spadesTestPaths$temp$outputs
-      ),
-      rasterToMatch = rtm,
-      studyArea = studyArea,
-      jurisdictions = jurisdictions,
-      ecozones = ecozones,
-      yieldTablesCumulative = yieldTablesCumulative,
-      yieldTablesId = yieldTablesId
+test_that("module runs as a standAlone when not dynamic", {
+
+  ## Gets throught simInit
+  simInitTest <- SpaDEStestMuffleOutput(
+    simInit(
+      times = list(start = 2000, end = 2000),
+      modules = "LandRCBM_split3pools",
+      paths = list(modulePath = spadesTestPaths$temp$modules,
+                   inputPath = spadesTestPaths$temp$inputs,
+                   outputPath = spadesTestPaths$temp$outputs,
+                   cachePath = spadesTestPaths$temp$cache),
+      objects = list(
+        cohortData            = file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv") |> data.table::fread(),
+        pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
+        rasterToMatch         = file.path(spadesTestPaths$testdata, "rasterToMatch.tif") |> terra::rast(),
+        standDT               = file.path(spadesTestPaths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
+        studyArea             = file.path(spadesTestPaths$testdata, "studyArea.shp") |> sf::st_read(),
+        yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+        yieldTablesId         = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+      )
     )
   )
   
-  simTestInit <-  SpaDEStestMuffleOutput(
+  # Run tests
+  expect_s4_class(simInitTest, "simList")
+  
+  ## Get through init event:
+  #  splits the cohort data and the yield tables
+  simTest <- SpaDEStestMuffleOutput(
+    spades(simInitTest,
+           events = list("LandRCBM_split3pools" = "init")
+    )
+  )
+  
+  ## Run tests
+  expect_s4_class(simTest, "simList")
+  
+  # check abovegroundbiomass
+  expect_is(simTest$aboveGroundBiomass, "data.table")
+  expect_named(simTest$aboveGroundBiomass, c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"))
+  # check that total biomass per species match cohortData
+  expectedSpeciesB <- simTest$cohortData[, .(total_biomass = sum(B)/200), by = speciesCode]
+  resultSpeciesB <- copy(simTest$aboveGroundBiomass)[, B := merch + foliage + other]
+  resultSpeciesB <- resultSpeciesB[, .(total_biomass = sum(B)), by = speciesCode]
+  expect_equal(expectedSpeciesB, resultSpeciesB)
+  
+  # check cohortDT
+  expect_is(simTest$cohortDT, "data.table")
+  expect_named(simTest$cohortDT, c("cohortID", "pixelIndex", "age", "gcids"))
+  expect_true(all(simTest$cohortDT$age %in% simTest$cohortData$age))
+  
+  # check gcMeta
+  expect_is(simTest$gcMeta, "data.table")
+  expect_named(simTest$gcMeta, c("gcids", "species_id", "speciesCode", "sw_hw"))
+  expect_true(all(simTest$cohortDT$gcids %in% simTest$gcMeta$gcids))
+  
+  # check growth_increments
+  expect_is(simTest$growth_increments, "data.table")
+  expect_named(simTest$growth_increments, c("gcids", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc"))
+  expect_true(all(simTest$growth_increments$gcids %in% simTest$gcMeta$gcids))
+  expect_true(all(simTest$growth_increments$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
+  
+  # check yieldTablesCumulative
+  expect_is(simTest$yieldTablesCumulative, "data.table")
+  expect_named(simTest$yieldTablesCumulative, c("speciesCode", "age", "yieldTableIndex", "merch", "foliage", "other"))
+  preLandRCBM_ytc <- file.path(spadesTestPaths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread()
+  expect_equal(nrow(simTest$yieldTablesCumulative), nrow(preLandRCBM_ytc))
+  expect_true(all(simTest$yieldTablesCumulative$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
+  
+  # check yieldTablesId
+  expect_is(simTest$yieldTablesId, "data.table")
+  expect_named(simTest$yieldTablesId, c("pixelIndex", "yieldTableIndex"))
+  
+  # check events
+})
+
+test_that("module runs with Biomass_core and CBM_core when dynamic", {
+
+  # Set times
+  times <- list(start = 2000, end = 2002)
+  
+  # Set project path
+  projectPath <- file.path(spadesTestPaths$temp$projects, "integration_LandRCBM")
+  dir.create(projectPath)
+  withr::local_dir(projectPath)
+  
+  ## Gets throught simInit
+  simInitInput <- SpaDEStestMuffleOutput(
+    
+    SpaDES.project::setupProject(
+      
+      modules = c(
+        "DominiqueCaron/CBM_core@run-with-LandR",
+        "PredictiveEcology/Biomass_core@development",
+        "LandRCBM_split3pools"
+      ),
+      times   = times,
+      params = list(
+        CBM_core = list(
+          skipCohortGroupHandling = TRUE,
+          skipPrepareCBMvars = TRUE
+        )
+      ),
+      paths   = list(
+        projectPath = projectPath,
+        modulePath  = spadesTestPaths$temp$modules,
+        packagePath = spadesTestPaths$packagePath,
+        inputPath   = spadesTestPaths$inputPath,
+        cachePath   = spadesTestPaths$cachePath,
+        outputPath  = file.path(projectPath, "outputs")
+      ),
+      biomassMap = file.path(spadesTestPaths$testdata, "LandR", "biomassMap.tif") |> terra::rast(),
+      cohortData            = file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      ecoregion = file.path(spadesTestPaths$testdata, "LandR", "ecoregion.csv") |> data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
+      ecoregionMap = file.path(spadesTestPaths$testdata, "LandR", "ecoregionMap.tif") |> terra::rast(),
+      minRelativeB = file.path(spadesTestPaths$testdata, "LandR", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
+      rasterToMatch         = file.path(spadesTestPaths$testdata, "rasterToMatch.tif") |> terra::rast(),
+      species = file.path(spadesTestPaths$testdata, "LandR", "species.csv") |> data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
+      speciesEcoregion = file.path(spadesTestPaths$testdata, "LandR", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
+      speciesLayers = file.path(spadesTestPaths$testdata, "LandR", "speciesLayers.tif") |> terra::rast(),
+      standDT               = {
+        standDT = file.path(spadesTestPaths$testdata, "CBM", "standDT.csv") |> data.table::fread()
+        standDT$disturbance_type_id = 0L
+        standDT
+        },
+      studyArea             = file.path(spadesTestPaths$testdata, "studyArea.shp") |> sf::st_read(),
+      yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+      pooldef               = file.path(spadesTestPaths$testdata, "CBM", "pooldef.txt") |> readLines(),
+      spinupSQL             = file.path(spadesTestPaths$testdata, "CBM", "spinupSQL.csv") |> data.table::fread()
+      
+    )
+  )
+  
+  # Run simInit
+  simTestInit <- SpaDEStestMuffleOutput(
     SpaDES.core::simInit2(simInitInput)
   )
-
-  # is output a simList?
+  
   expect_s4_class(simTestInit, "simList")
   
-  simTest <-  SpaDEStestMuffleOutput(
+  # Run spades
+  simTest <- SpaDEStestMuffleOutput(
     SpaDES.core::spades(simTestInit)
   )
+  
+  # Run tests
   expect_s4_class(simTest, "simList")
-  expect_equal(time(simTest)[[1]], 2016)
-
+  
   # check all outputs are there
   expect_true(all(
-    c("aboveGroundBiomass", "cohortDT", "disturbanceEvents", "growth_increments", 
-      "gcMeta", "standDT", "summaryAGB", "yieldTablesCumulative", "yieldTablesId") %in%
+    c("aboveGroundBiomass", "cbm_vars", "cohortDT", "cohortGroupKeep", "cohortGroups", "growth_increments", 
+      "gcMeta", "masterRaster", "spinupResult", "summaryAGB", "yieldTablesCumulative", "yieldTablesId") %in%
       names(simTest)
   ))
   
@@ -79,6 +162,35 @@ test_that("module runs with small example", {
   expect_named(simTest$aboveGroundBiomass,
                c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"),
                ignore.order = TRUE)
+  # check that total biomass per species match cohortData
+  expectedSpeciesB <- simTest$cohortData[, .(total_biomass = sum(B)/200), by = speciesCode]
+  resultSpeciesB <- copy(simTest$aboveGroundBiomass)[, B := merch + foliage + other]
+  resultSpeciesB <- resultSpeciesB[, .(total_biomass = sum(B)), by = speciesCode]
+  expect_equal(expectedSpeciesB, resultSpeciesB)
+  
+  # check cbm_vars
+  expect_is(simTest$cbm_vars, "list")
+  expect_named(simTest$cbm_vars, c("pools", "flux", "parameters", "state"))
+  expect_equal(nrow(simTest$cbm_vars$pools), nrow(simTest$aboveGroundBiomass))
+  expect_equal(nrow(simTest$cbm_vars$pools), nrow(simTest$cohortGroups))
+  expect_equal(simTest$cbm_vars$pools$Merch, simTest$aboveGroundBiomass$merch)
+  expect_equal(simTest$cbm_vars$pools$Foliage, simTest$aboveGroundBiomass$foliage)
+  expect_equal(simTest$cbm_vars$pools$Other, simTest$aboveGroundBiomass$other)
+  expect_equal(nrow(simTest$cbm_vars$flux), nrow(simTest$cohortGroups))
+  expect_equal(nrow(simTest$cbm_vars$parameters), nrow(simTest$cohortGroups))
+  expect_equal(simTest$cbm_vars$parameters$merch_inc, simTest$growth_increments$merch_inc)
+  expect_equal(simTest$cbm_vars$parameters$foliage_inc, simTest$growth_increments$foliage_inc)
+  expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$growth_increments$other_inc)
+  expect_equal(nrow(simTest$cbm_vars$state), nrow(simTest$cohortGroups))
+  expect_equal(simTest$cbm_vars$state$age, simTest$cohortGroups$age)
+  
+  # check cohortGroupKeep
+  expect_is(simTest$cohortGroupKeep, "data.table")
+  expect_named(simTest$cohortGroupKeep, c("pixelIndex", "cohortGroupPrev", "cohortID", "spinup", "2000", "2001", "cohortGroupID", "2002"), ignore.order = TRUE)
+  
+  # check cohortGroups
+  expect_is(simTest$cohortGroups, "data.table")
+  expect_named(simTest$cohortGroups, c("cohortGroupID", "spatial_unit_id", "age", "gcids"), ignore.order = TRUE)
   
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
@@ -86,13 +198,6 @@ test_that("module runs with small example", {
                c("cohortID", "pixelIndex", "age", "gcids"),
                ignore.order = TRUE)
   expect_setequal(simTest$cohortDT$gcids, simTest$cohortDT$cohortID)
-  
-  # check disturbanceEvents
-  expect_is(simTest$disturbanceEvents, "data.table")
-  expect_named(simTest$disturbanceEvents,
-               c("pixelIndex", "year", "eventID"),
-               ignore.order = TRUE)
-  expect_equal(nrow(simTest$disturbanceEvents), 0)
   
   # check growth_increments
   expect_is(simTest$growth_increments, "data.table")
@@ -109,12 +214,6 @@ test_that("module runs with small example", {
   expect_equal(nrow(simTest$gcMeta), nrow(simTest$growth_increments))
   expect_setequal(simTest$gcMeta$gcids, simTest$growth_increments$gcids)
   
-  # check standDT
-  expect_is(simTest$standDT, "data.table")
-  expect_named(simTest$standDT, 
-               c("pixelIndex", "area", "spatial_unit_id", "ecozone", "juris_id"))
-  expect_setequal(simTest$standDT$pixelIndex, yieldTablesId$pixelIndex)
-  
   # check summaryAGB
   expect_is(simTest$summaryAGB, "data.table")
   expect_named(
@@ -122,61 +221,49 @@ test_that("module runs with small example", {
     c("speciesCode", "merch", "foliage", "other", "year"),
     ignore.order = TRUE
   )
-  expect_contains(simTest$summaryAGB$year, c(2011:2016))
+  expect_equal(simTest$summaryAGB$year, c(2000, 2000, 2001, 2001,  2002, 2002))
   
-  # check yieldTablesCumulative
-  expect_is(simTest$yieldTablesCumulative, "data.table")
-  expect_named(
-    simTest$yieldTablesCumulative, 
-    c("yieldTableIndex", "speciesCode", "age", "merch", "foliage", "other"),
-    ignore.order = TRUE
-    )
-  expect_equal(nrow(simTest$yieldTablesCumulative), nrow(yieldTablesCumulative))
-  setorderv(yieldTablesCumulative, cols = c("yieldTableIndex", "speciesCode"))
-  simTest$yieldTablesCumulative$B <- (simTest$yieldTablesCumulative$merch + simTest$yieldTablesCumulative$foliage + simTest$yieldTablesCumulative$other)*200
-  expect_true(all((
-    yieldTablesCumulative$biomass[yieldTablesCumulative$age != 0] - 
-      simTest$yieldTablesCumulative$B[simTest$yieldTablesCumulative$age != 0]) <= 0.001 ))
-  
-  # check yieldTablesId
-  expect_is(simTest$yieldTablesId, "data.table")
-  expect_named(simTest$yieldTablesId, c("pixelIndex", "yieldTableIndex"), ignore.order = TRUE)
-  expect_setequal(simTest$yieldTablesId$pixelIndex, yieldTablesId$pixelIndex)
-  expect_equal(length(unique(simTest$yieldTablesId$yieldTableIndex)), length(unique(yieldTablesId$yieldTableIndex)))
-  expect_setequal(simTest$yieldTablesId$yieldTableIndex, simTest$yieldTablesCumulative$yieldTableIndex)
-  
-  # test splitting the yield tables event only
-  simTestInitEvent <-  SpaDEStestMuffleOutput(
-    SpaDES.core::simInitAndSpades(modules = module,
-                                  object = list(
-                                    rasterToMatch = rtm,
-                                    studyArea = studyArea,
-                                    jurisdictions = jurisdictions,
-                                    ecozones = ecozones,
-                                    yieldTablesCumulative = yieldTablesCumulative,
-                                    yieldTablesId = yieldTablesId
-                                    ), 
-                                  paths = list(
-                                    cachePath = spadesTestPaths$temp$cache,
-                                    modulePath  = spadesTestPaths$temp$modules,
-                                    inputPath   = spadesTestPaths$temp$inputs,
-                                    outputPath = spadesTestPaths$temp$outputs
-                                  ),
-                                  events = "init")
+  ## Check event order
+  completedEvents <- completed(simTest)
+  eventsToCheck <- c(
+    "spinup",
+    "postSpinupAdjustBiomass",
+    "mortalityAndGrowth",
+    "annualIncrements",
+    "annual_preprocessing",
+    "prepareCBMvars",
+    "annual_carbonDynamics",
+    "summarizeAGBPools",
+    "accumulateResults",
+    "plotSummaries"
   )
   
-  # check growth_increments
-  expect_is(simTestInitEvent$growth_increments, "data.table")
-  expect_named(simTestInitEvent$growth_increments,
-               c("gcids", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc"),
-               ignore.order = TRUE)
-  expect_in(simTestInitEvent$growth_increments$yieldTableIndex, simTestInitEvent$yieldTablesCumulative$yieldTableIndex)
-  expect_in(simTestInitEvent$growth_increments$gcids, simTestInitEvent$gcMeta$gcids)
+  # check event 1st year
+  expectedEventOrder <- c(
+    "spinup",
+    "postSpinupAdjustBiomass",
+    "mortalityAndGrowth",
+    "annualIncrements",
+    "annual_preprocessing",
+    "prepareCBMvars",
+    "annual_carbonDynamics",
+    "summarizeAGBPools"
+  )
+  realizedEventOrder <- completedEvents[eventTime == start(simTest) & eventType %in% eventsToCheck]
+  expect_equal(expectedEventOrder, realizedEventOrder$eventType)
   
-  # check cohortDT
-  expect_is(simTestInitEvent$cohortDT, "data.table")
-  expect_named(simTestInitEvent$cohortDT,
-               c("cohortID", "pixelIndex", "age", "gcids"),
-               ignore.order = TRUE)
-
+  # check events last year
+  expectedEventOrder <- c(
+    "mortalityAndGrowth",
+    "annualIncrements",
+    "annual_preprocessing",
+    "prepareCBMvars",
+    "annual_carbonDynamics",
+    "summarizeAGBPools",
+    "accumulateResults",
+    "plotSummaries"
+  )
+  realizedEventOrder <- completedEvents[eventTime == end(simTest) & eventType %in% eventsToCheck]
+  expect_equal(expectedEventOrder, realizedEventOrder$eventType)
+  
 })

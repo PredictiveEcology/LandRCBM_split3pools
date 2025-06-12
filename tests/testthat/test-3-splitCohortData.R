@@ -1,17 +1,15 @@
+if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
+
 test_that("function to split cohortData works", {
   
   # Prepare mock inputs
   pixelGroupMap <- rast(matrix(c(10,10,20,20), nrow = 2, ncol = 2))
   
-  jurisdictions <- data.table(
+  standDT <- data.table(
     pixelIndex = 1:4,
-    PRUID = c(48, 48, 59, 59), 
-    juris_id = c("AB", "AB", "BC", "BC")
-  )
-  
-  ecozones <- data.table(
-    pixelIndex = 1:4,
-    ecozone = c(5, 6, 5, 5) 
+    ecozone = c(5, 6, 5, 5), 
+    juris_id = c("AB", "AB", "BC", "BC"),
+    spatial_unit_id = c(1, 2, 3, 3)
   )
   
   cohortData <- data.table(
@@ -29,13 +27,12 @@ test_that("function to split cohortData works", {
     result <- splitCohortData(
       cohortData = copy(cohortData), # Use copy to avoid side effects
       pixelGroupMap = copy(pixelGroupMap),
-      jurisdictions = copy(jurisdictions),
-      ecozones = copy(ecozones),
+      standDT = copy(standDT),
       table6 = copy(table6),
       table7 = copy(table7)
     )
   })
-  
+
   # Check result type and columns
   expect_s3_class(result, "data.table")
   expect_named(result, c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"))
@@ -52,8 +49,7 @@ test_that("function to split cohortData works", {
   result <- splitCohortData(
     cohortData = copy(cohortData),
     pixelGroupMap = copy(pixelGroupMap),
-    jurisdictions = copy(jurisdictions),
-    ecozones = copy(ecozones),
+    standDT = copy(standDT),
     table6 = copy(table6),
     table7 = copy(table7)
   )
@@ -73,9 +69,8 @@ test_that("function to split cohortData works", {
   result <- splitCohortData(
     cohortData = copy(cohortData),
     pixelGroupMap = copy(pixelGroupMap),
-    jurisdictions = copy(jurisdictions),
-    ecozones = copy(ecozones),
-    table6 = copy(table6), # Use simplified table
+    standDT = copy(standDT),
+    table6 = copy(table6), 
     table7 = copy(table7)
   )
   
