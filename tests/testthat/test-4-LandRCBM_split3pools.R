@@ -104,21 +104,22 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
         cachePath   = spadesTestPaths$cachePath,
         outputPath  = file.path(projectPath, "outputs")
       ),
-      cohortData = data.table::fread(),
-      ecoregion = data.table::fread(),
-      ecoregionMAp = terra::rast(),
-      minRelativeB = data.table::fread(),
-      pixelGroupMap = terra::rast(),
-      rasterToMatch = terra::rast(),
-      species = data.table::fread(),
-      speciesEcoregion = data.table::fread(),
-      speciesLayers = terra::rast(),
-      standDT = data.table::fread(),
-      studyArea = terra::vect(),
-      yieldTablesCumulative = data.table::fread(),
-      yieldTablesId = data.table::fread(),
-      pooldef = file.path(spadesTestPaths$testdata, "SK/input", "pooldef.txt") |> readLines(),
-      spinupSQL = file.path(spadesTestPaths$testdata, "SK/input", "spinupSQL.csv") |> data.table::fread()
+      biomassMap = file.path(spadesTestPaths$testdata, "LandR", "biomassMap.tif") |> terra::rast(),
+      cohortData            = file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv") |> data.table::fread(),
+      ecoregion = file.path(spadesTestPaths$testdata, "LandR", "ecoregion.csv") |> data.table::fread(),
+      ecoregionMap = file.path(spadesTestPaths$testdata, "LandR", "ecoregionMap.tif") |> terra::rast(),
+      minRelativeB = file.path(spadesTestPaths$testdata, "LandR", "minRelativeB") |> data.table::fread(),
+      pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
+      rasterToMatch         = file.path(spadesTestPaths$testdata, "rasterToMatch.tif") |> terra::rast(),
+      species = file.path(spadesTestPaths$testdata, "LandR", "species.csv") |> data.table::fread(),
+      speciesEcoregion = file.path(spadesTestPaths$testdata, "LandR", "speciesEcoregion.csv") |> data.table::fread(),,
+      speciesLayers = file.path(spadesTestPaths$testdata, "LandR", "speciesLayers.tif") |> terra::rast(),
+      standDT               = file.path(spadesTestPaths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
+      studyArea             = file.path(spadesTestPaths$testdata, "studyArea.shp") |> sf::st_read(),
+      yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+      pooldef               = file.path(spadesTestPaths$testdata, "CBM", "pooldef.txt") |> readLines(),
+      spinupSQL             = file.path(spadesTestPaths$testdata, "CBM", "spinupSQL.csv") |> data.table::fread()
       
     )
   )
