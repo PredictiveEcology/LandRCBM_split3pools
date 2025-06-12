@@ -72,6 +72,8 @@ test_that("module runs as a standAlone when not dynamic", {
   # check yieldTablesId
   expect_is(simTest$yieldTablesId, "data.table")
   expect_named(simTest$yieldTablesId, c("pixelIndex", "yieldTableIndex"))
+  
+  # check events
 })
 
 test_that("module runs with Biomass_core and CBM_core when dynamic", {
@@ -237,7 +239,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   )
   
   # check event 1st year
-  
   expectedEventOrder <- c(
     "spinup",
     "postSpinupAdjustBiomass",
