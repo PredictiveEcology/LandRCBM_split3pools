@@ -1,6 +1,7 @@
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("module runs as a standAlone when not dynamic", {
+
   ## Gets throught simInit
   simInitTest <- SpaDEStestMuffleOutput(
     simInit(
@@ -33,12 +34,48 @@ test_that("module runs as a standAlone when not dynamic", {
     )
   )
   
-  # Run tests
+  ## Run tests
   expect_s4_class(simTest, "simList")
   
+  # check abovegroundbiomass
+  expect_is(simTest$aboveGroundBiomass, "data.table")
+  expect_named(simTest$aboveGroundBiomass, c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"))
+  # check that total biomass per species match cohortData
+  expectedSpeciesB <- simTest$cohortData[, .(total_biomass = sum(B)/200), by = speciesCode]
+  resultSpeciesB <- copy(simTest$aboveGroundBiomass)[, B := merch + foliage + other]
+  resultSpeciesB <- resultSpeciesB[, .(total_biomass = sum(B)), by = speciesCode]
+  expect_equal(expectedSpeciesB, resultSpeciesB)
+  
+  # check cohortDT
+  expect_is(simTest$cohortDT, "data.table")
+  expect_named(simTest$cohortDT, c("cohortID", "pixelIndex", "age", "gcids"))
+  expect_true(all(simTest$cohortDT$age %in% simTest$cohortData$age))
+  
+  # check gcMeta
+  expect_is(simTest$gcMeta, "data.table")
+  expect_named(simTest$gcMeta, c("gcids", "species_id", "speciesCode", "sw_hw"))
+  expect_true(all(simTest$cohortDT$gcids %in% simTest$gcMeta$gcids))
+  
+  # check growth_increments
+  expect_is(simTest$growth_increments, "data.table")
+  expect_named(simTest$growth_increments, c("gcids", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc"))
+  expect_true(all(simTest$growth_increments$gcids %in% simTest$gcMeta$gcids))
+  expect_true(all(simTest$growth_increments$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
+  
+  # check yieldTablesCumulative
+  expect_is(simTest$yieldTablesCumulative, "data.table")
+  expect_named(simTest$yieldTablesCumulative, c("speciesCode", "age", "yieldTableIndex", "merch", "foliage", "other"))
+  preLandRCBM_ytc <- file.path(spadesTestPaths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread()
+  expect_equal(nrow(simTest$yieldTablesCumulative), nrow(preLandRCBM_ytc))
+  expect_true(all(simTest$yieldTablesCumulative$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
+  
+  # check yieldTablesId
+  expect_is(simTest$yieldTablesId, "data.table")
+  expect_named(simTest$yieldTablesId, c("pixelIndex", "yieldTableIndex"))
 })
 
 test_that("module runs with Biomass_core and CBM_core when dynamic", {
+  browser()
   
   # Set times
   times <- list(start = 2000, end = 2002)
