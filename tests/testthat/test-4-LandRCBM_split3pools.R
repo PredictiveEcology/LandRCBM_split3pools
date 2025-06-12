@@ -1,24 +1,24 @@
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("module runs as a standAlone when not dynamic", {
-  
   ## Gets throught simInit
   simInitTest <- SpaDEStestMuffleOutput(
     simInit(
       times = list(start = 2000, end = 2000),
-      params = list(),
-      modules = list("LandRCBM_split3pools"),
+      modules = "LandRCBM_split3pools",
       paths = list(modulePath = spadesTestPaths$temp$modules,
-                   inputPath = spadesTestPaths$inputPath,
-                   outputPath = spadesTestPaths$outputPath,
-                   cachePath = spadesTestPaths$cachePath),
-      cohortData = data.table::fread(),
-      pixelGroupMap = terra::rast(),
-      rasterToMatch = terra::rast(),
-      standDT = data.table::fread(),
-      studyArea = terra::vect(),
-      yieldTablesCumulative = data.table::fread(),
-      yieldTablesId = data.table::fread()
+                   inputPath = spadesTestPaths$temp$inputs,
+                   outputPath = spadesTestPaths$temp$outputs,
+                   cachePath = spadesTestPaths$temp$cache),
+      objects = list(
+        cohortData            = file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv") |> data.table::fread(),
+        pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
+        rasterToMatch         = file.path(spadesTestPaths$testdata, "rasterToMatch.tif") |> terra::rast(),
+        standDT               = file.path(spadesTestPaths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
+        studyArea             = file.path(spadesTestPaths$testdata, "studyArea.shp") |> sf::st_read(),
+        yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+        yieldTablesId         = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+      )
     )
   )
   
