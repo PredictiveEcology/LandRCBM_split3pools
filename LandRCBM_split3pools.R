@@ -54,21 +54,6 @@ defineModule(sim, list(
       )
     ),
     expectsInput(
-      objectName = "cbmAdmin",
-      objectClass = "data.table",
-      desc = paste("Provides equivalent between provincial boundaries,",
-                   "CBM-id for provincial boundaries and CBM-spatial unit ids"),
-      columns = c(
-        AdminBoundaryID = "Integer id for the administrative region.",
-        stump_parameter_id = "Integer id for the administrative region.",
-        adminName = "Name of the administrative region.",
-        abreviation = "Two-letter abreviation of the administrative region.",
-        SpatialUnitID = "Integer id of the CBM-spatial unit ids.",
-        EcoBoundaryID = "Integer id of the ecozones."
-      ),
-      sourceURL = "https://drive.google.com/file/d/1xdQt9JB5KRIw72uaN5m3iOk8e34t9dyz"
-    ), 
-    expectsInput(
       objectName = "cbm_vars",
       objectClass = "list",
       desc = paste("List of 4 data tables: parameters, pools, flux, and state.",
@@ -85,8 +70,15 @@ defineModule(sim, list(
     ),
     expectsInput(
       objectName = "standDT", objectClass =  "data.table",
-      desc = paste0("A data table with spatial information for the CBM spinup.",
-                    "Columns are `pixelIndex`, `area`, and `spatial_unit_id`.")
+      desc = paste0("A data table with spatial information of each pixel."),
+      columns = c(
+        pixelIndex         = "`masterRaster` cell index",
+        area               = "`masterRaster` cell area in meters",
+        admin_abbrev       = "Canada administrative abbreviation extracted from `adminLocator`",
+        admin_boundary_id  = "CBM-CFS3 administrative boundary ID",
+        ecozone            = "Canada ecozone ID extracted from `ecoLocator`",
+        spatial_unit_id    = "CBM-CFS3 spatial unit ID"
+      )
     ),
     expectsInput(
       objectName = "spinupResult", objectClass =  "list",
@@ -221,19 +213,12 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # Create masterRaster. Identical to rasterToMatch.
       sim$masterRaster <- sim$rasterToMatch
-      #### temporary
-      standDT <- merge(sim$standDT,
-                       sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
-                       by.x = "spatial_unit_id",
-                       by.y = "SpatialUnitID")
-      setnames(standDT, old = "abreviation", new = "juris_id")
-      setkey(standDT, pixelIndex)
-      ####
+
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
         cohortData = sim$cohortData,
         pixelGroupMap = sim$pixelGroupMap,
-        standDT = standDT,
+        standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone, spatial_unit_id)],
         table6 = sim$table6,
         table7 = sim$table7
       )
@@ -562,14 +547,7 @@ SplitYieldTables <- function(sim) {
   setnames(allInfoYieldTables, c("biomass"), c("B"))
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoYieldTables[, B := B / 100]
-  ### temporary
-  standDT <- merge(sim$standDT,
-                   sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
-                   by.x = "spatial_unit_id",
-                   by.y = "SpatialUnitID")
-  setnames(standDT, old = "abreviation", new = "juris_id")
-  ###
-  allInfoYieldTables <- merge(allInfoYieldTables, unique(standDT[,.(spatial_unit_id, ecozone, juris_id)]))
+  allInfoYieldTables <- merge(allInfoYieldTables, unique(sim$standDT[,.(spatial_unit_id, ecozone, juris_id = admin_abbrev)]))
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
   #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
   #      ground biomass as input, implemented in CBMutils.
@@ -689,18 +667,10 @@ AnnualIncrements <- function(sim){
   setkey(biomassTminus1, pixelIndex, speciesCode, age)
   
   # Step 2: Split current total above ground.-----------------------------------
-  ### temporary
-  standDT <- merge(sim$standDT[, .(pixelIndex, area, ecozone, spatial_unit_id)],
-                   sim$cbmAdmin[,c("SpatialUnitID", "abreviation")],
-                   by.x = "spatial_unit_id",
-                   by.y = "SpatialUnitID")
-  setnames(standDT, old = "abreviation", new = "juris_id")
-  setkey(standDT, pixelIndex)
-  ###
   sim$aboveGroundBiomass <- splitCohortData(
     cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
-    standDT = standDT,
+    standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone, spatial_unit_id)],
     table6 = sim$table6,
     table7 = sim$table7
   )
@@ -973,14 +943,6 @@ PrepareCBMvars <- function(sim){
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv",
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
-  }
-  
-  if (!suppliedElsewhere("cbmAdmin", sim)) {
-    sim$cbmAdmin <- prepInputs(url = extractURL("cbmAdmin"),
-                               targetFile = "cbmAdmin.csv",
-                               destinationPath = inputPath(sim),
-                               fun = "data.table::fread",
-                               overwrite = TRUE) |> Cache(userTags = "prepInputsCBMAdmin")
   }
   
   return(invisible(sim))
