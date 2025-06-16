@@ -547,7 +547,7 @@ SplitYieldTables <- function(sim) {
   setnames(allInfoYieldTables, c("biomass"), c("B"))
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoYieldTables[, B := B / 100]
-  allInfoYieldTables <- merge(allInfoYieldTables, unique(standDT[,.(spatial_unit_id, ecozone, juris_id = admin_abbrev)]))
+  allInfoYieldTables <- merge(allInfoYieldTables, unique(sim$standDT[,.(spatial_unit_id, ecozone, juris_id = admin_abbrev)]))
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
   #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
   #      ground biomass as input, implemented in CBMutils.
