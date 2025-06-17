@@ -92,7 +92,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     SpaDES.project::setupProject(
       
       modules = c(
-        "DominiqueCaron/CBM_core@run-with-LandR",
+        "DominiqueCaron/CBM_core@LandRCBM-simplify-core",
         "PredictiveEcology/Biomass_core@development",
         "LandRCBM_split3pools"
       ),
@@ -134,7 +134,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
       
     )
   )
-  
   # Run simInit
   simTestInit <- SpaDEStestMuffleOutput(
     SpaDES.core::simInit2(simInitInput)
@@ -190,7 +189,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   
   # check cohortGroups
   expect_is(simTest$cohortGroups, "data.table")
-  expect_named(simTest$cohortGroups, c("cohortGroupID", "spatial_unit_id", "age", "gcids"), ignore.order = TRUE)
+  expect_named(simTest$cohortGroups, c("cohortGroupID", "spatial_unit_id", "age", "ages", "gcids"), ignore.order = TRUE)
   
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
