@@ -92,7 +92,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     SpaDES.project::setupProject(
       
       modules = c(
-        "DominiqueCaron/CBM_core@LandRCBM-simplify-core",
+        "PredictiveEcology/CBM_core@development",
         "PredictiveEcology/Biomass_core@development",
         "LandRCBM_split3pools"
       ),
