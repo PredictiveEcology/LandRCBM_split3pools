@@ -684,7 +684,9 @@ AnnualIncrements <- function(sim){
     other_inc   = other   - otherTminus1
   )]
   # Create gcids and cohortID (the same for annual increments).
-  incrementsDT[, c("gcids", "cohortID") := .(.I, .I)]
+  groupCols <- c("speciesCode", "age", "merch_inc", "foliage_inc", "other_inc")
+  incrementsDT[, gcids := .GRP, by = groupCols]
+  incrementsDT[, cohortID := .I]
   # Add CBM species_id for gcMeta (is named newCode in incrementsDT)
   incrementsDT <- addSpeciesCode(incrementsDT, code = "CBM_speciesID")
   # Add forest type ("sw" or "hw") for gcMeta
@@ -692,7 +694,7 @@ AnnualIncrements <- function(sim){
   # Create data.table with cohort-level information
   sim$cohortDT <- incrementsDT[, .(cohortID, pixelIndex, age, gcids)]
   # Creta data.table with growth curve-level information
-  sim$gcMeta <- incrementsDT[, .(gcids, species_id = newCode, speciesCode, sw_hw)]
+  sim$gcMeta <- unique(incrementsDT[, .(gcids, species_id = newCode, speciesCode, sw_hw)])
   # Create final growth increment data.table
   sim$growth_increments <- incrementsDT[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
   setkey(sim$growth_increments, gcids)
@@ -847,11 +849,11 @@ PrepareCBMvars <- function(sim){
     # Remove new cohorts
     distCohorts <- distCohorts[!is.na(cohortGroupPrev)]
     
-    new_cbm_parameters[distCohorts$cohortGroupID, "disturbance_type"] <- distCohorts$disturbance_type_id
+    new_cbm_parameters[unique(distCohorts$cohortGroupID), "disturbance_type"] <- distCohorts$disturbance_type_id
     # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
-    new_cbm_parameters[distCohorts$cohortGroupID, merch_inc := 0L]
-    new_cbm_parameters[distCohorts$cohortGroupID, foliage_inc := 0L]
-    new_cbm_parameters[distCohorts$cohortGroupID, other_inc := 0L]
+    new_cbm_parameters[unique(distCohorts$cohortGroupID), merch_inc := 0L]
+    new_cbm_parameters[unique(distCohorts$cohortGroupID), foliage_inc := 0L]
+    new_cbm_parameters[unique(distCohorts$cohortGroupID), other_inc := 0L]
   }
   
   # 4. Prepare cbm state
