@@ -145,7 +145,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   simTest <- SpaDEStestMuffleOutput(
     SpaDES.core::spades(simTestInit)
   )
-  
   # Run tests
   expect_s4_class(simTest, "simList")
   
@@ -170,7 +169,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # check cbm_vars
   expect_is(simTest$cbm_vars, "list")
   expect_named(simTest$cbm_vars, c("pools", "flux", "parameters", "state"))
-  expect_equal(nrow(simTest$cbm_vars$pools), nrow(simTest$aboveGroundBiomass))
   expect_equal(nrow(simTest$cbm_vars$pools), nrow(simTest$cohortGroups))
   expect_equal(simTest$cbm_vars$pools$Merch, simTest$aboveGroundBiomass$merch)
   expect_equal(simTest$cbm_vars$pools$Foliage, simTest$aboveGroundBiomass$foliage)
