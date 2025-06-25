@@ -262,7 +262,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     postSpinupAdjustBiomass = {
       spinupOut <- sim$spinupResult
-      
+
       # 1. Expand spinup output to have 1 row per cohort
       spinupOut$output <- lapply(spinupOut$output, function(tbl) {
         tbl <- tbl[spinupOut$key$cohortGroupID, ]
@@ -276,7 +276,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       spinupOut$output$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
       
       # 4. Update cohortGroupID
-      spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
+      spinupOut <- updateSpinupCohortGroups(spinupOut)
       
       sim$spinupResult <- spinupOut
       
@@ -722,6 +722,7 @@ UpdateCohortGroups <- function(sim){
   # Add spatial unit
   cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
   cohorts <- merge(cohorts, sim$cbm_vars$pools, by.x = "cohortGroupPrev", by.y = "row_idx")
+  ### SPEED UP: LESS COLUMN IS FASTER FOR .GRP: COULD BE THE COHORT GROUP OF PREV + GCIDS
   cohortGroupsIdentifiers <- c("gcids", setdiff(colnames(sim$cbm_vars$pools), "row_idx"))
   cohorts[, cohortGroupID := .GRP, by = cohortGroupsIdentifiers]
   
