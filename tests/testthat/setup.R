@@ -22,6 +22,7 @@ spadesTestPaths <- SpaDEStestSetUpDirectories()
 
 # Source the functions
 lapply(list.files(file.path(spadesTestPaths$RProj, "R"), full.names = TRUE), source)
+Require::Require(c("data.table", "terra"))
 
 # Install required packages
 withr::with_options(c(timeout = 600), Require::Install(

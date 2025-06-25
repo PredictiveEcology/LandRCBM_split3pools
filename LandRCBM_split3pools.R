@@ -261,7 +261,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- PlotYieldTablesPools(sim)
     },
     postSpinupAdjustBiomass = {
-
       spinupOut <- sim$spinupResult
       
       # 1. Expand spinup output to have 1 row per cohort
