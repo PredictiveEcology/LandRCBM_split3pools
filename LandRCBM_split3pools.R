@@ -704,7 +704,6 @@ AnnualIncrements <- function(sim){
 # Update cohort groups for CBM annual event
 UpdateCohortGroups <- function(sim){
   sim$cohortGroupKeep[, cohortGroupPrev := cohortGroupID]
-  
   # Get the pools for the cohorts of the previous timestep
   cohorts <- merge(unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)]),
                    sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
@@ -721,7 +720,8 @@ UpdateCohortGroups <- function(sim){
   
   # Add spatial unit
   cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
-  cohorts[, cohortGroupID := .GRP, by = c("gcids", "row_idx")]
+  # Cohort groups have the same increments and the same group in the previous timestep
+  cohorts[, cohortGroupID := .GRP, by = c("cohortGroupPrev", "gcids")]
   
   # Handle DOM cohorts
   if(any(is.na(cohorts$gcids))){
