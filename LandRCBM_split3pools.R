@@ -721,22 +721,18 @@ UpdateCohortGroups <- function(sim){
   
   # Add spatial unit
   cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
-  cohorts <- merge(cohorts, sim$cbm_vars$pools, by.x = "cohortGroupPrev", by.y = "row_idx")
-  ### SPEED UP: LESS COLUMN IS FASTER FOR .GRP: COULD BE THE COHORT GROUP OF PREV + GCIDS
-  cohortGroupsIdentifiers <- c("gcids", setdiff(colnames(sim$cbm_vars$pools), "row_idx"))
-  cohorts[, cohortGroupID := .GRP, by = cohortGroupsIdentifiers]
+  cohorts[, cohortGroupID := .GRP, by = c("gcids", "row_idx")]
   
   # Handle DOM cohorts
-  if(any(is.na(cohorts$cohortGroupID))){
-    missingCohorts <- cohorts[is.na(cohortGroupID), ]
+  if(any(is.na(cohorts$gcids))){
+    missingCohorts <- cohorts[is.na(gcids), ]
     # Check that the DOM cohorts have live pools close to 0
     if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other")] > 10^-6)) {
       stop("Some cohorts with positive above ground biomasses are missing.")
     }
     missingCohorts[, gcids := 0]
     missingCohorts[, age := 0]
-    missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
-    cohorts[is.na(cohortGroupID), ] <- missingCohorts
+    cohorts[is.na(gcids), ] <- missingCohorts
   }
   
   # Update cohortGroupKeep
