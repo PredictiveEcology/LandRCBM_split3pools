@@ -274,7 +274,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # 3. Update below ground live pools.
       rootsC <- CBMutils::calcRootC(spinupOut$output$pools, spinupOut$output$state$sw_hw)
       spinupOut$output$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
-      
+
       # 4. Update cohortGroupID
       spinupOut <- updateSpinupCohortGroups(spinupOut)
       
@@ -708,18 +708,20 @@ UpdateCohortGroups <- function(sim){
   cohorts <- merge(unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)]),
                    sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
                    by.x = "cohortGroupPrev",
-                   by.y = "row_idx")
+                   by.y = "row_idx",
+                   sort = FALSE)
   
   # Match the cohort pools to this timestep cohorts based on pixel, age, and species.
   cohorts <- merge(
     cohorts[, age := age + 1],
     merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)]),
     by = c("pixelIndex", "age", "species_id"),
-    allow.cartesian = TRUE
+    allow.cartesian = TRUE,
+    sort = FALSE
   )
   
   # Add spatial unit
-  cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
+  cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex", sort = FALSE)
   # Cohort groups have the same increments and the same group in the previous timestep
   cohorts[, cohortGroupID := .GRP, by = c("cohortGroupPrev", "gcids")]
   
@@ -740,7 +742,8 @@ UpdateCohortGroups <- function(sim){
     sim$cohortGroupKeep[, cohortGroupID := NULL],
     cohorts[, .(pixelIndex, cohortGroupPrev, cohortGroupID)],
     by = c("pixelIndex", "cohortGroupPrev"),
-    all.y = TRUE
+    all.y = TRUE,
+    sort = FALSE
   )
   setkey(sim$cohortGroupKeep, cohortID)
   
