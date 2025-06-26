@@ -716,6 +716,7 @@ UpdateCohortGroups <- function(sim){
     cohorts[, age := age + 1],
     merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)]),
     by = c("pixelIndex", "age", "species_id"),
+    all = TRUE,
     allow.cartesian = TRUE,
     sort = FALSE
   )
@@ -723,7 +724,8 @@ UpdateCohortGroups <- function(sim){
   # Add spatial unit
   cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex", sort = FALSE)
   # Cohort groups have the same increments and the same group in the previous timestep
-  cohorts[, cohortGroupID := .GRP, by = c("cohortGroupPrev", "gcids")]
+  cohorts[, cohortGroupID := NA_integer_]
+  cohorts[!is.na(gcids), cohortGroupID := .GRP, by = .(cohortGroupPrev, gcids)]
   
   # Handle DOM cohorts
   if(any(is.na(cohorts$gcids))){
@@ -734,6 +736,7 @@ UpdateCohortGroups <- function(sim){
     }
     missingCohorts[, gcids := 0]
     missingCohorts[, age := 0]
+    missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
     cohorts[is.na(gcids), ] <- missingCohorts
   }
   
@@ -765,7 +768,8 @@ PrepareCBMvars <- function(sim){
                          sim$cbm_vars$pools,
                          by.x = "cohortGroupPrev",
                          by.y = "row_idx",
-                         all.x = TRUE)
+                         all.x = TRUE,
+                         sort = FALSE)
   new_cbm_pools[, cohortGroupPrev := NULL]
   setnames(new_cbm_pools, old = "cohortGroupID", new = "row_idx")
   
@@ -792,7 +796,8 @@ PrepareCBMvars <- function(sim){
                         sim$cbm_vars$flux,
                         by.x = "cohortGroupPrev",
                         by.y = "row_idx",
-                        all.x = TRUE)
+                        all.x = TRUE,
+                        sort = FALSE)
   new_cbm_flux[, cohortGroupPrev := NULL]
   setnames(new_cbm_flux, old = "cohortGroupID", new = "row_idx")
   
@@ -815,7 +820,8 @@ PrepareCBMvars <- function(sim){
                               sim$spinupSQL[, .(id, mean_annual_temperature)],
                               by.x = "spatial_unit_id",
                               by.y = "id",
-                              all.x = TRUE)
+                              all.x = TRUE,
+                              sort = FALSE)
   
   # Set no disturbance by default (will be changed later for disturbed cohorts)
   new_cbm_parameters[, disturbance_type := 0]
@@ -824,7 +830,8 @@ PrepareCBMvars <- function(sim){
   new_cbm_parameters <- merge(new_cbm_parameters,
                               sim$growth_increments,
                               by = c("gcids", "age"),
-                              all.x = TRUE)
+                              all.x = TRUE,
+                              sort = FALSE)
   
   # For the DOM cohorts (gcids = 0) set increments to 0
   setnafill(new_cbm_parameters, fill = 0L, cols = c("merch_inc", "foliage_inc", "other_inc"))
@@ -847,7 +854,8 @@ PrepareCBMvars <- function(sim){
     distCohorts <- merge(
       sim$cohortGroupKeep[, .(cohortID, pixelIndex, cohortGroupPrev, cohortGroupID)],
       distStands,
-      by = "pixelIndex")
+      by = "pixelIndex",
+      sort = FALSE)
     # Remove new cohorts
     distCohorts <- distCohorts[!is.na(cohortGroupPrev)]
     
@@ -864,7 +872,8 @@ PrepareCBMvars <- function(sim){
                           sim$cbm_vars$state,
                           by.x = "cohortGroupPrev",
                           by.y = "row_idx",
-                          all.x = TRUE)
+                          all.x = TRUE,
+                          sort = FALSE)
   new_cbm_state[, cohortGroupPrev := NULL]
   setnames(new_cbm_state, old = "cohortGroupID", new = "row_idx")
   
