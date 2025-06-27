@@ -261,9 +261,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- PlotYieldTablesPools(sim)
     },
     postSpinupAdjustBiomass = {
-
       spinupOut <- sim$spinupResult
-      
+
       # 1. Expand spinup output to have 1 row per cohort
       spinupOut$output <- lapply(spinupOut$output, function(tbl) {
         tbl <- tbl[spinupOut$key$cohortGroupID, ]
@@ -275,9 +274,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # 3. Update below ground live pools.
       rootsC <- CBMutils::calcRootC(spinupOut$output$pools, spinupOut$output$state$sw_hw)
       spinupOut$output$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
-      
+
       # 4. Update cohortGroupID
-      spinupOut$key$cohortGroupID <- spinupOut$key$cohortID
+      spinupOut <- updateSpinupCohortGroups(spinupOut)
       
       sim$spinupResult <- spinupOut
       
@@ -705,30 +704,32 @@ AnnualIncrements <- function(sim){
 # Update cohort groups for CBM annual event
 UpdateCohortGroups <- function(sim){
   sim$cohortGroupKeep[, cohortGroupPrev := cohortGroupID]
-  
   # Get the pools for the cohorts of the previous timestep
   cohorts <- merge(unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)]),
                    sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
                    by.x = "cohortGroupPrev",
-                   by.y = "row_idx")
+                   by.y = "row_idx",
+                   sort = FALSE)
   
   # Match the cohort pools to this timestep cohorts based on pixel, age, and species.
   cohorts <- merge(
     cohorts[, age := age + 1],
     merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)]),
     by = c("pixelIndex", "age", "species_id"),
-    allow.cartesian = TRUE
+    all = TRUE,
+    allow.cartesian = TRUE,
+    sort = FALSE
   )
   
   # Add spatial unit
-  cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex")
-  cohorts <- merge(cohorts, sim$cbm_vars$pools, by.x = "cohortGroupPrev", by.y = "row_idx")
-  cohortGroupsIdentifiers <- c("gcids", setdiff(colnames(sim$cbm_vars$pools), "row_idx"))
-  cohorts[, cohortGroupID := .GRP, by = cohortGroupsIdentifiers]
+  cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex", sort = FALSE)
+  # Cohort groups have the same increments and the same group in the previous timestep
+  cohorts[, cohortGroupID := NA_integer_]
+  cohorts[!is.na(gcids), cohortGroupID := .GRP, by = .(cohortGroupPrev, gcids)]
   
   # Handle DOM cohorts
-  if(any(is.na(cohorts$cohortGroupID))){
-    missingCohorts <- cohorts[is.na(cohortGroupID), ]
+  if(any(is.na(cohorts$gcids))){
+    missingCohorts <- cohorts[is.na(gcids), ]
     # Check that the DOM cohorts have live pools close to 0
     if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other")] > 10^-6)) {
       stop("Some cohorts with positive above ground biomasses are missing.")
@@ -736,7 +737,7 @@ UpdateCohortGroups <- function(sim){
     missingCohorts[, gcids := 0]
     missingCohorts[, age := 0]
     missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
-    cohorts[is.na(cohortGroupID), ] <- missingCohorts
+    cohorts[is.na(gcids), ] <- missingCohorts
   }
   
   # Update cohortGroupKeep
@@ -744,7 +745,8 @@ UpdateCohortGroups <- function(sim){
     sim$cohortGroupKeep[, cohortGroupID := NULL],
     cohorts[, .(pixelIndex, cohortGroupPrev, cohortGroupID)],
     by = c("pixelIndex", "cohortGroupPrev"),
-    all.y = TRUE
+    all.y = TRUE,
+    sort = FALSE
   )
   setkey(sim$cohortGroupKeep, cohortID)
   
@@ -766,7 +768,8 @@ PrepareCBMvars <- function(sim){
                          sim$cbm_vars$pools,
                          by.x = "cohortGroupPrev",
                          by.y = "row_idx",
-                         all.x = TRUE)
+                         all.x = TRUE,
+                         sort = FALSE)
   new_cbm_pools[, cohortGroupPrev := NULL]
   setnames(new_cbm_pools, old = "cohortGroupID", new = "row_idx")
   
@@ -793,7 +796,8 @@ PrepareCBMvars <- function(sim){
                         sim$cbm_vars$flux,
                         by.x = "cohortGroupPrev",
                         by.y = "row_idx",
-                        all.x = TRUE)
+                        all.x = TRUE,
+                        sort = FALSE)
   new_cbm_flux[, cohortGroupPrev := NULL]
   setnames(new_cbm_flux, old = "cohortGroupID", new = "row_idx")
   
@@ -816,7 +820,8 @@ PrepareCBMvars <- function(sim){
                               sim$spinupSQL[, .(id, mean_annual_temperature)],
                               by.x = "spatial_unit_id",
                               by.y = "id",
-                              all.x = TRUE)
+                              all.x = TRUE,
+                              sort = FALSE)
   
   # Set no disturbance by default (will be changed later for disturbed cohorts)
   new_cbm_parameters[, disturbance_type := 0]
@@ -825,7 +830,8 @@ PrepareCBMvars <- function(sim){
   new_cbm_parameters <- merge(new_cbm_parameters,
                               sim$growth_increments,
                               by = c("gcids", "age"),
-                              all.x = TRUE)
+                              all.x = TRUE,
+                              sort = FALSE)
   
   # For the DOM cohorts (gcids = 0) set increments to 0
   setnafill(new_cbm_parameters, fill = 0L, cols = c("merch_inc", "foliage_inc", "other_inc"))
@@ -848,7 +854,8 @@ PrepareCBMvars <- function(sim){
     distCohorts <- merge(
       sim$cohortGroupKeep[, .(cohortID, pixelIndex, cohortGroupPrev, cohortGroupID)],
       distStands,
-      by = "pixelIndex")
+      by = "pixelIndex",
+      sort = FALSE)
     # Remove new cohorts
     distCohorts <- distCohorts[!is.na(cohortGroupPrev)]
     
@@ -865,7 +872,8 @@ PrepareCBMvars <- function(sim){
                           sim$cbm_vars$state,
                           by.x = "cohortGroupPrev",
                           by.y = "row_idx",
-                          all.x = TRUE)
+                          all.x = TRUE,
+                          sort = FALSE)
   new_cbm_state[, cohortGroupPrev := NULL]
   setnames(new_cbm_state, old = "cohortGroupID", new = "row_idx")
   

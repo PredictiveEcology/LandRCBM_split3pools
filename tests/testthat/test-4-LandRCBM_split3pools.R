@@ -147,7 +147,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   )
   # Run tests
   expect_s4_class(simTest, "simList")
-  
+
   # check all outputs are there
   expect_true(all(
     c("aboveGroundBiomass", "cbm_vars", "cohortDT", "cohortGroupKeep", "cohortGroups", "growth_increments", 
