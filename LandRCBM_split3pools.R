@@ -883,6 +883,7 @@ PrepareCBMvars <- function(sim){
     new_cbm_state[row_idx %in% DOMcohorts, age := 0]
     new_cbm_state[row_idx %in% DOMcohorts, species := 0]
     new_cbm_state[row_idx %in% DOMcohorts, sw_hw := 0]
+    new_cbm_state[row_idx %in% DOMcohorts, regen := 0]
     new_cbm_state[row_idx %in% DOMcohorts, time_since_last_disturbance := 0]
     new_cbm_state[row_idx %in% DOMcohorts, time_since_land_use_change  := -1]
     new_cbm_state[row_idx %in% DOMcohorts, last_disturbance_type := -1]
@@ -894,6 +895,7 @@ PrepareCBMvars <- function(sim){
     newCohorts_cbm_state <- new_cbm_state[is.na(area), ]
     setnafill(newCohorts_cbm_state, fill = 1L, cols = c("area", "last_disturbance_type", "enabled"))
     setnafill(newCohorts_cbm_state, fill = -1L, cols = c("land_class_id", "time_since_land_use_change")) 
+    setnafill(newCohorts_cbm_state, fill = 0L, cols = "regen") 
     
     # Get growth curve information
     newCohorts_cbm_state[sim$cohortGroups, on = c("row_idx" = "cohortGroupID"), `:=`(
