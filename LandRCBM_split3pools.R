@@ -883,7 +883,6 @@ PrepareCBMvars <- function(sim){
     new_cbm_state[row_idx %in% DOMcohorts, age := 0]
     new_cbm_state[row_idx %in% DOMcohorts, species := 0]
     new_cbm_state[row_idx %in% DOMcohorts, sw_hw := 0]
-    new_cbm_state[row_idx %in% DOMcohorts, delay := 0]
     new_cbm_state[row_idx %in% DOMcohorts, time_since_last_disturbance := 0]
     new_cbm_state[row_idx %in% DOMcohorts, time_since_land_use_change  := -1]
     new_cbm_state[row_idx %in% DOMcohorts, last_disturbance_type := -1]
