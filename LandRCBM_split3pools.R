@@ -725,7 +725,7 @@ UpdateCohortGroups <- function(sim){
   cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex", sort = FALSE)
   # Cohort groups have the same increments and the same group in the previous timestep
   cohorts[, cohortGroupID := NA_integer_]
-  cohorts[!is.na(gcids), cohortGroupID := .GRP, by = .(cohortGroupPrev, gcids)]
+  cohorts[!is.na(gcids), cohortGroupID := .GRP, by = .(cohortGroupPrev, gcids, spatial_unit_id)]
   
   # Handle DOM cohorts
   if(any(is.na(cohorts$gcids))){
