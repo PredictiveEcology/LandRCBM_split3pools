@@ -736,7 +736,8 @@ UpdateCohortGroups <- function(sim){
     }
     missingCohorts[, gcids := 0]
     missingCohorts[, age := 0]
-    missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
+    maxCohortGroupID <- max(cohorts$cohortGroupID, na.rm = TRUE)
+    missingCohorts[, cohortGroupID := .GRP + maxCohortGroupID, by = pixelIndex]
     cohorts[is.na(gcids), ] <- missingCohorts
   }
   
