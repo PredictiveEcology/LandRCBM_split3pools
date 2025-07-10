@@ -587,7 +587,7 @@ SplitYieldTables <- function(sim) {
                   by = c("yieldTableIndex", "speciesCode")]
   
   # 3.3. Link increments back to growth curve IDs (`gcids`).
-  map_gcid_yield <- unique(cohortDT, by = "yieldTableIndex")[, .(yieldTableIndex, speciesCode, gcids)]
+  map_gcid_yield <- unique(cohortDT, by = "gcids")[, .(yieldTableIndex, speciesCode, gcids)]
   sim$growth_increments <-  yieldIncrements[map_gcid_yield, 
                                             on = .(yieldTableIndex, speciesCode)]
   
