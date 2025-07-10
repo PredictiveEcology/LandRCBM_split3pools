@@ -792,8 +792,8 @@ PrepareCBMvars <- function(sim){
     # Set live pools to 0 for DOM cohorts.
     new_cbm_pools[row_idx %in% sim$cohortGroups[gcids == 0, cohortGroupID], c("Merch", "Foliage", "Other", "CoarseRoots", "FineRoots") := 0L]
   }
-  new_cbm_pools <- unique(new_cbm_pools)
   setkey(new_cbm_pools, row_idx)
+  new_cbm_pools <- unique(new_cbm_pools, by = "row_idx")
   
   # 2. Prepare cbm flux
   # Get the flux of the cohorts of the previous timestep
@@ -816,8 +816,8 @@ PrepareCBMvars <- function(sim){
     flux_columns <- setdiff(colnames(new_cbm_flux), "row_idx")
     new_cbm_flux <- new_cbm_flux[, lapply(.SD, sum), by = row_idx, .SDcols = flux_columns]
   }
-  new_cbm_flux <- unique(new_cbm_flux)
   setkey(new_cbm_flux, row_idx)
+  new_cbm_flux <- unique(new_cbm_flux, by = "row_idx")
   
   # 3. Prepare cbm parameters
   # Get the mean annual temperature based on spatial unit.
@@ -891,7 +891,7 @@ PrepareCBMvars <- function(sim){
     new_cbm_state[row_idx %in% DOMcohorts, time_since_last_disturbance := 0]
     new_cbm_state[row_idx %in% DOMcohorts, time_since_land_use_change  := -1]
     new_cbm_state[row_idx %in% DOMcohorts, last_disturbance_type := -1]
-    new_cbm_state <- unique(new_cbm_state)
+    new_cbm_state <- unique(new_cbm_state, by = "row_idx")
   }
   
   # Set the state of the new cohorts
@@ -918,8 +918,8 @@ PrepareCBMvars <- function(sim){
       newCohorts_cbm_state
     )
   }
-  new_cbm_state <- unique(new_cbm_state)
   setkey(new_cbm_state, row_idx)
+  new_cbm_state <- unique(new_cbm_state, by = "row_idx")
   
   # 5. Put in cbm_vars
   cbm_vars <- list(

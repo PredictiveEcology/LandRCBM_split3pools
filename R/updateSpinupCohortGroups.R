@@ -17,7 +17,7 @@ updateSpinupCohortGroups <- function(spinupOut){
   spinupOut$output <- lapply(spinupOutputs, function(tbl){
     tbl <- as.data.table(tbl)
     tbl[, row_idx := combinedOutputs$cohortGroupID]
-    tbl <- unique(tbl)
+    tbl <- unique(tbl, by = "row_idx")
     tbl[, row_idx := NULL]
     as.data.frame(tbl)
   })
