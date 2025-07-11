@@ -706,18 +706,23 @@ AnnualIncrements <- function(sim){
 # Update cohort groups for CBM annual event
 UpdateCohortGroups <- function(sim){
   sim$cohortGroupKeep[, cohortGroupPrev := cohortGroupID]
-  # Get the pools for the cohorts of the previous timestep
-  cohorts <- unique(sim$cohortGroupKeep, by = c("pixelIndex", "cohortGroupPrev"))[, .(pixelIndex, cohortGroupPrev)]
-  cohorts <- merge(cohorts,
-                   sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
-                   by.x = "cohortGroupPrev",
-                   by.y = "row_idx",
-                   sort = FALSE)
+  # Get the pools for the cohort groups of the previous timestep
+  cohortsPrev <- unique(sim$cohortGroupKeep, by = c("pixelIndex", "cohortGroupPrev"))[, .(pixelIndex, cohortGroupPrev)]
+  cohortsPrev <- merge(cohortsPrev,
+                       sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
+                       by.x = "cohortGroupPrev",
+                       by.y = "row_idx",
+                       sort = FALSE)
+  # Add 1 to age for the match with the current timestep
+  cohortsPrev[, age := age + 1]
   
-  # Match the cohort pools to this timestep cohorts based on pixel, age, and species.
+  # Get information for the cohorts of the current timestep
+  cohortsT <- merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)])
+  
+  # Match the cohorts based on pixel, age, and species.
   cohorts <- merge(
-    cohorts[, age := age + 1],
-    merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)]),
+    cohortsPrev,
+    cohortsT,
     by = c("pixelIndex", "age", "species_id"),
     all = TRUE,
     allow.cartesian = TRUE,
@@ -762,7 +767,6 @@ UpdateCohortGroups <- function(sim){
   sim$cohortGroupKeep[[as.character(time(sim))]] <- sim$cohortGroupKeep$cohortGroupID
   
   return(invisible(sim))
-
 }
   
 PrepareCBMvars <- function(sim){
