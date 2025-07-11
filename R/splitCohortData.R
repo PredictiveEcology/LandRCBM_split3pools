@@ -11,7 +11,7 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7){
   # New pixel group for unique combination of pixelGroup and CBM spatial units
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, spatial_unit_id)]
   # Add spatial information to cohortData
-  spatialUnits <- unique(spatialDT[, !("pixelIndex")])
+  spatialUnits <- unique(spatialDT, by = "newPixelGroup")[, !("pixelIndex")]
   allInfoCohortData <- addSpatialUnits(
     cohortData = cohortData,
     spatialUnits = spatialUnits

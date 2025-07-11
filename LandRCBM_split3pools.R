@@ -509,11 +509,11 @@ SplitYieldTables <- function(sim) {
   
   # 1.6. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcids to species information.
-  sim$gcMeta <- unique(cohortDT[, .(gcids, species_id, speciesCode, sw_hw)])
+  sim$gcMeta <- unique(cohortDT, by = "gcids")[, .(gcids, species_id, speciesCode, sw_hw)]
   
   # 1.8. Prepare yield table data (`sim$yieldTablesCumulative`) for biomass pool splitting.
   #      Get unique combinations of original yieldTableIndex and spatial units.
-  spatialUnits <- unique(spatialDT[, .(yieldTableIndex, newytid, spatial_unit_id)])
+  spatialUnits <- unique(spatialDT, by = c("yieldTableIndex", "newytid", "spatial_unit_id"))[, .(yieldTableIndex, newytid, spatial_unit_id)]
   # Add these unique spatial units to the raw yield curves.
   allInfoYieldTables <- addSpatialUnits(
     cohortData = sim$yieldTablesCumulative,
@@ -535,7 +535,9 @@ SplitYieldTables <- function(sim) {
   setnames(allInfoYieldTables, c("biomass"), c("B"))
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoYieldTables[, B := B / 100]
-  allInfoYieldTables <- merge(allInfoYieldTables, unique(sim$standDT[,.(spatial_unit_id, ecozone, juris_id = admin_abbrev)]))
+  allInfoYieldTables <- merge(allInfoYieldTables, 
+                              unique(sim$standDT, by = "spatial_unit_id")[,.(spatial_unit_id, ecozone, juris_id = admin_abbrev)]
+  )
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
   #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
   #      ground biomass as input, implemented in CBMutils.
@@ -585,7 +587,7 @@ SplitYieldTables <- function(sim) {
                   by = c("yieldTableIndex", "speciesCode")]
   
   # 3.3. Link increments back to growth curve IDs (`gcids`).
-  map_gcid_yield <- unique(cohortDT[, .(yieldTableIndex, speciesCode, gcids)])
+  map_gcid_yield <- unique(cohortDT, by = "gcids")[, .(yieldTableIndex, speciesCode, gcids)]
   sim$growth_increments <-  yieldIncrements[map_gcid_yield, 
                                             on = .(yieldTableIndex, speciesCode)]
   
@@ -692,10 +694,10 @@ AnnualIncrements <- function(sim){
   incrementsDT <- addForestType(incrementsDT)
   # Create data.table with cohort-level information
   sim$cohortDT <- incrementsDT[, .(cohortID, pixelIndex, age, gcids)]
-  # Creta data.table with growth curve-level information
-  sim$gcMeta <- unique(incrementsDT[, .(gcids, species_id = newCode, speciesCode, sw_hw)])
+  # Create data.table with growth curve-level information
+  sim$gcMeta <- unique(incrementsDT, by = "gcids")[, .(gcids, species_id = newCode, speciesCode, sw_hw)]
   # Create final growth increment data.table
-  sim$growth_increments <- unique(incrementsDT[, .(gcids, age, merch_inc, foliage_inc, other_inc)])
+  sim$growth_increments <- unique(incrementsDT, by = "gcids")[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
   setkey(sim$growth_increments, gcids)
   
   return(invisible(sim))
@@ -704,17 +706,23 @@ AnnualIncrements <- function(sim){
 # Update cohort groups for CBM annual event
 UpdateCohortGroups <- function(sim){
   sim$cohortGroupKeep[, cohortGroupPrev := cohortGroupID]
-  # Get the pools for the cohorts of the previous timestep
-  cohorts <- merge(unique(sim$cohortGroupKeep[, .(pixelIndex, cohortGroupPrev)]),
-                   sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
-                   by.x = "cohortGroupPrev",
-                   by.y = "row_idx",
-                   sort = FALSE)
+  # Get the pools for the cohort groups of the previous timestep
+  cohortsPrev <- unique(sim$cohortGroupKeep, by = c("pixelIndex", "cohortGroupPrev"))[, .(pixelIndex, cohortGroupPrev)]
+  cohortsPrev <- merge(cohortsPrev,
+                       sim$cbm_vars$state[, .(row_idx, age, species_id = species)],
+                       by.x = "cohortGroupPrev",
+                       by.y = "row_idx",
+                       sort = FALSE)
+  # Add 1 to age for the match with the current timestep
+  cohortsPrev[, age := age + 1]
   
-  # Match the cohort pools to this timestep cohorts based on pixel, age, and species.
+  # Get information for the cohorts of the current timestep
+  cohortsT <- merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)])
+  
+  # Match the cohorts based on pixel, age, and species.
   cohorts <- merge(
-    cohorts[, age := age + 1],
-    merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)]),
+    cohortsPrev,
+    cohortsT,
     by = c("pixelIndex", "age", "species_id"),
     all = TRUE,
     allow.cartesian = TRUE,
@@ -736,7 +744,8 @@ UpdateCohortGroups <- function(sim){
     }
     missingCohorts[, gcids := 0]
     missingCohorts[, age := 0]
-    missingCohorts[, cohortGroupID := .GRP + max(cohorts$cohortGroupID, na.rm = TRUE), by = pixelIndex]
+    maxCohortGroupID <- max(cohorts$cohortGroupID, na.rm = TRUE)
+    missingCohorts[, cohortGroupID := .GRP + maxCohortGroupID, by = pixelIndex]
     cohorts[is.na(gcids), ] <- missingCohorts
   }
   
@@ -751,20 +760,20 @@ UpdateCohortGroups <- function(sim){
   setkey(sim$cohortGroupKeep, cohortID)
   
   # Update cohortGroups
-  sim$cohortGroups <- unique(cohorts[, .(cohortGroupID, spatial_unit_id, age, gcids)])
+  sim$cohortGroups <- unique(cohorts, by = "cohortGroupID")[, .(cohortGroupID, spatial_unit_id, age, gcids)]
   setkey(sim$cohortGroups, cohortGroupID)
   
   # Set cohort groups for the year
   sim$cohortGroupKeep[[as.character(time(sim))]] <- sim$cohortGroupKeep$cohortGroupID
   
   return(invisible(sim))
-
 }
   
 PrepareCBMvars <- function(sim){
   # 1. Prepare cbm pools
+  cohortGroupsKeep <- unique(sim$cohortGroupKeep, by = c("cohortGroupID", "cohortGroupPrev"))[, .(cohortGroupID, cohortGroupPrev)]
   # Get the pools of cohorts of the previous timestep
-  new_cbm_pools <- merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
+  new_cbm_pools <- merge(cohortGroupsKeep,
                          sim$cbm_vars$pools,
                          by.x = "cohortGroupPrev",
                          by.y = "row_idx",
@@ -787,12 +796,12 @@ PrepareCBMvars <- function(sim){
     # Set live pools to 0 for DOM cohorts.
     new_cbm_pools[row_idx %in% sim$cohortGroups[gcids == 0, cohortGroupID], c("Merch", "Foliage", "Other", "CoarseRoots", "FineRoots") := 0L]
   }
-  new_cbm_pools <- unique(new_cbm_pools)
   setkey(new_cbm_pools, row_idx)
+  new_cbm_pools <- unique(new_cbm_pools, by = "row_idx")
   
   # 2. Prepare cbm flux
   # Get the flux of the cohorts of the previous timestep
-  new_cbm_flux <- merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
+  new_cbm_flux <- merge(cohortGroupsKeep,
                         sim$cbm_vars$flux,
                         by.x = "cohortGroupPrev",
                         by.y = "row_idx",
@@ -811,8 +820,8 @@ PrepareCBMvars <- function(sim){
     flux_columns <- setdiff(colnames(new_cbm_flux), "row_idx")
     new_cbm_flux <- new_cbm_flux[, lapply(.SD, sum), by = row_idx, .SDcols = flux_columns]
   }
-  new_cbm_flux <- unique(new_cbm_flux)
   setkey(new_cbm_flux, row_idx)
+  new_cbm_flux <- unique(new_cbm_flux, by = "row_idx")
   
   # 3. Prepare cbm parameters
   # Get the mean annual temperature based on spatial unit.
@@ -858,17 +867,17 @@ PrepareCBMvars <- function(sim){
       sort = FALSE)
     # Remove new cohorts
     distCohorts <- distCohorts[!is.na(cohortGroupPrev)]
-    
-    new_cbm_parameters[unique(distCohorts$cohortGroupID), "disturbance_type"] <- distCohorts$disturbance_type_id
+    distCohortGroupID <- unique(distCohorts$cohortGroupID)
+    new_cbm_parameters[distCohortGroupID, "disturbance_type"] <- distCohorts$disturbance_type_id
     # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
-    new_cbm_parameters[unique(distCohorts$cohortGroupID), merch_inc := 0L]
-    new_cbm_parameters[unique(distCohorts$cohortGroupID), foliage_inc := 0L]
-    new_cbm_parameters[unique(distCohorts$cohortGroupID), other_inc := 0L]
+    new_cbm_parameters[distCohortGroupID, merch_inc := 0L]
+    new_cbm_parameters[distCohortGroupID, foliage_inc := 0L]
+    new_cbm_parameters[distCohortGroupID, other_inc := 0L]
   }
   
   # 4. Prepare cbm state
   # Get the state of the cohorts of the previous timestep
-  new_cbm_state <-  merge(unique(sim$cohortGroupKeep[, .(cohortGroupID, cohortGroupPrev)]),
+  new_cbm_state <-  merge(cohortGroupsKeep,
                           sim$cbm_vars$state,
                           by.x = "cohortGroupPrev",
                           by.y = "row_idx",
@@ -886,7 +895,7 @@ PrepareCBMvars <- function(sim){
     new_cbm_state[row_idx %in% DOMcohorts, time_since_last_disturbance := 0]
     new_cbm_state[row_idx %in% DOMcohorts, time_since_land_use_change  := -1]
     new_cbm_state[row_idx %in% DOMcohorts, last_disturbance_type := -1]
-    new_cbm_state <- unique(new_cbm_state)
+    new_cbm_state <- unique(new_cbm_state, by = "row_idx")
   }
   
   # Set the state of the new cohorts
@@ -913,8 +922,8 @@ PrepareCBMvars <- function(sim){
       newCohorts_cbm_state
     )
   }
-  new_cbm_state <- unique(new_cbm_state)
   setkey(new_cbm_state, row_idx)
+  new_cbm_state <- unique(new_cbm_state, by = "row_idx")
   
   # 5. Put in cbm_vars
   cbm_vars <- list(
