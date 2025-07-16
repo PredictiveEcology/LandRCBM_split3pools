@@ -37,7 +37,7 @@ defineModule(sim, list(
                     "area obtained using `reproducible::studyAreaName()`"),
     defineParameter(".seed", "list", list(), NA, NA,
                     "Named list of seeds to use for each event (names)."),
-    defineParameter(".useCache", "logical", FALSE, NA, NA,
+    defineParameter(".useCache", "character", "postSpinupAdjustBiomass", NA, NA,
                     "Should caching of events or module be used?")
   ),
   inputObjects = bindrows(
@@ -547,7 +547,7 @@ SplitYieldTables <- function(sim) {
                                           pixGroupCol = "yieldTableIndex")
   
   # 2.3. Ensure annual resolution by filling missing ages (especially age 0).
-  minAgeDT <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("yieldTableIndex", "speciesCode")]
+  minAgeDT <- cumPools[,.(minAge = max(0L, min(age) - 1L)), by = c("yieldTableIndex", "speciesCode")]
   # Create sequences from 0 up to (but not including) the minimum age found.
   # Filter out cases where minAge is already 0.
   fillAgesDT <-  minAgeDT[,.(age = seq(from = 0, to = minAge, by = 1)), 
@@ -647,7 +647,7 @@ AnnualIncrements <- function(sim){
   # Step 1: Store the above ground biomass of the previous time step.-----------
   biomassTminus1 <- copy(sim$aboveGroundBiomass)
   # Increment age to match the *current* age for joining later
-  biomassTminus1[, age := age + 1]
+  biomassTminus1[, age := age + 1L]
   # Rename cols to indicate they are from the previous timestep
   setnames(biomassTminus1, old = c("merch", "foliage", "other"), 
            new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
@@ -714,7 +714,7 @@ UpdateCohortGroups <- function(sim){
                        by.y = "row_idx",
                        sort = FALSE)
   # Add 1 to age for the match with the current timestep
-  cohortsPrev[, age := age + 1]
+  cohortsPrev[, age := age + 1L]
   
   # Get information for the cohorts of the current timestep
   cohortsT <- merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)])
@@ -742,8 +742,8 @@ UpdateCohortGroups <- function(sim){
     if(any(sim$cbm_vars$pools[missingCohorts$cohortGroupPrev, c("Merch", "Foliage", "Other")] > 10^-6)) {
       stop("Some cohorts with positive above ground biomasses are missing.")
     }
-    missingCohorts[, gcids := 0]
-    missingCohorts[, age := 0]
+    missingCohorts[, gcids := 0L]
+    missingCohorts[, age := 0L]
     maxCohortGroupID <- max(cohorts$cohortGroupID, na.rm = TRUE)
     missingCohorts[, cohortGroupID := .GRP + maxCohortGroupID, by = pixelIndex]
     cohorts[is.na(gcids), ] <- missingCohorts
@@ -764,7 +764,9 @@ UpdateCohortGroups <- function(sim){
   setkey(sim$cohortGroups, cohortGroupID)
   
   # Set cohort groups for the year
-  sim$cohortGroupKeep[[as.character(time(sim))]] <- sim$cohortGroupKeep$cohortGroupID
+  if(time(sim) %in% c(end(sim), start(sim))){
+    sim$cohortGroupKeep[[as.character(time(sim))]] <- sim$cohortGroupKeep$cohortGroupID
+  }
   
   return(invisible(sim))
 }
@@ -889,12 +891,12 @@ PrepareCBMvars <- function(sim){
   # Change the state of DOM cohorts
   if(any(sim$cohortGroups$gcids == 0)){
     DOMcohorts <- sim$cohortGroups[gcids == 0, cohortGroupID]
-    new_cbm_state[row_idx %in% DOMcohorts, age := 0]
-    new_cbm_state[row_idx %in% DOMcohorts, species := 0]
-    new_cbm_state[row_idx %in% DOMcohorts, sw_hw := 0]
-    new_cbm_state[row_idx %in% DOMcohorts, time_since_last_disturbance := 0]
-    new_cbm_state[row_idx %in% DOMcohorts, time_since_land_use_change  := -1]
-    new_cbm_state[row_idx %in% DOMcohorts, last_disturbance_type := -1]
+    new_cbm_state[row_idx %in% DOMcohorts, age := 0L]
+    new_cbm_state[row_idx %in% DOMcohorts, species := 0L]
+    new_cbm_state[row_idx %in% DOMcohorts, sw_hw := 0L]
+    new_cbm_state[row_idx %in% DOMcohorts, time_since_last_disturbance := 0L]
+    new_cbm_state[row_idx %in% DOMcohorts, time_since_land_use_change  := -1L]
+    new_cbm_state[row_idx %in% DOMcohorts, last_disturbance_type := -1L]
     new_cbm_state <- unique(new_cbm_state, by = "row_idx")
   }
   
@@ -908,7 +910,7 @@ PrepareCBMvars <- function(sim){
     # Get growth curve information
     newCohorts_cbm_state[sim$cohortGroups, on = c("row_idx" = "cohortGroupID"), `:=`(
       spatial_unit_id = fifelse(is.na(spatial_unit_id), i.spatial_unit_id, spatial_unit_id),
-      age  = fifelse(is.na(age),  i.age - 1,  age) # age minus 1 because we added 1 in cohortGroups
+      age  = fifelse(is.na(age),  i.age - 1L,  age) # age minus 1 because we added 1 in cohortGroups
     )]
     newCohort_gcids <- sim$cohortGroups[newCohorts_cbm_state$row_idx, gcids]
     newCohorts_gcMeta <- sim$gcMeta[match(newCohort_gcids, sim$gcMeta$gcids)]
