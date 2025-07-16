@@ -547,7 +547,7 @@ SplitYieldTables <- function(sim) {
                                           pixGroupCol = "yieldTableIndex")
   
   # 2.3. Ensure annual resolution by filling missing ages (especially age 0).
-  minAgeDT <- cumPools[,.(minAge = max(0, min(age) - 1)), by = c("yieldTableIndex", "speciesCode")]
+  minAgeDT <- cumPools[,.(minAge = max(0L, min(age) - 1L)), by = c("yieldTableIndex", "speciesCode")]
   # Create sequences from 0 up to (but not including) the minimum age found.
   # Filter out cases where minAge is already 0.
   fillAgesDT <-  minAgeDT[,.(age = seq(from = 0, to = minAge, by = 1)), 
@@ -764,7 +764,9 @@ UpdateCohortGroups <- function(sim){
   setkey(sim$cohortGroups, cohortGroupID)
   
   # Set cohort groups for the year
-  sim$cohortGroupKeep[[as.character(time(sim))]] <- sim$cohortGroupKeep$cohortGroupID
+  if(time(sim) %in% c(end(sim), start(sim))){
+    sim$cohortGroupKeep[[as.character(time(sim))]] <- sim$cohortGroupKeep$cohortGroupID
+  }
   
   return(invisible(sim))
 }
