@@ -1,26 +1,24 @@
-updateSpinupCohortGroups <- function(spinupOut){
-  spinupOutputs <- spinupOut$output
+updateSpinupCohortGroups <- function(spinupOut, key){
   # Step 1: Combine pools and state columns into a single data.table
-  # Round pools to mg/g
   combinedOutputs <- cbind(
-    spinupOutputs$pools,
-    spinupOutputs$state[, c("spatial_unit_id", "age", "species")]
+    spinupOut$pools,
+    spinupOut$state[, c("spatial_unit_id", "age", "species")]
   ) |> as.data.table()
   
   # Step 2: Create a unique cohort group ID for identical rows
   combinedOutputs[, cohortGroupID := .GRP, by = names(combinedOutputs)]
   
   # Step 3: Update the cohortGroupID in the key table
-  spinupOut$key$cohortGroupID <- combinedOutputs$cohortGroupID
+  key$row_idx <- combinedOutputs$cohortGroupID
   
   # Step 4: Update spinup outputs
-  spinupOut$output <- lapply(spinupOutputs, function(tbl){
+  spinupOut <- lapply(spinupOut, function(tbl){
     tbl <- as.data.table(tbl)
     tbl[, row_idx := combinedOutputs$cohortGroupID]
     tbl <- unique(tbl, by = "row_idx")
-    tbl[, row_idx := NULL]
-    as.data.frame(tbl)
+    data.table::setkey(tbl, row_idx)
+    tbl
   })
   
-  return(spinupOut)
+  return(c(spinupOut, list(key = key)))
 }
