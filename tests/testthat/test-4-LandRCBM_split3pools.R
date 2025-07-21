@@ -150,8 +150,8 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
 
   # check all outputs are there
   expect_true(all(
-    c("aboveGroundBiomass", "cbm_vars", "cohortDT", "cohortGroupKeep", "cohortGroups", "growth_increments", 
-      "gcMeta", "masterRaster", "spinupResult", "summaryAGB", "yieldTablesCumulative", "yieldTablesId") %in%
+    c("aboveGroundBiomass", "cbm_vars", "cohortDT", "growth_increments", "gcMeta", 
+      "masterRaster", "summaryAGB", "yieldTablesCumulative", "yieldTablesId") %in%
       names(simTest)
   ))
   
@@ -168,26 +168,22 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   
   # check cbm_vars
   expect_is(simTest$cbm_vars, "list")
-  expect_named(simTest$cbm_vars, c("pools", "flux", "parameters", "state"))
-  expect_equal(nrow(simTest$cbm_vars$pools), nrow(simTest$cohortGroups))
+  expect_named(simTest$cbm_vars, c("key", "pools", "flux", "parameters", "state"))
+  NcohortGroups <- length(unique(simTest$cbm_vars$key$row_idx))
+  expect_equal(nrow(simTest$cbm_vars$pools), NcohortGroups)
   expect_equal(simTest$cbm_vars$pools$Merch, simTest$aboveGroundBiomass$merch)
   expect_equal(simTest$cbm_vars$pools$Foliage, simTest$aboveGroundBiomass$foliage)
   expect_equal(simTest$cbm_vars$pools$Other, simTest$aboveGroundBiomass$other)
-  expect_equal(nrow(simTest$cbm_vars$flux), nrow(simTest$cohortGroups))
-  expect_equal(nrow(simTest$cbm_vars$parameters), nrow(simTest$cohortGroups))
+  expect_equal(nrow(simTest$cbm_vars$flux), NcohortGroups)
+  expect_equal(nrow(simTest$cbm_vars$parameters), NcohortGroups)
   expect_equal(simTest$cbm_vars$parameters$merch_inc, simTest$growth_increments$merch_inc)
   expect_equal(simTest$cbm_vars$parameters$foliage_inc, simTest$growth_increments$foliage_inc)
   expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$growth_increments$other_inc)
-  expect_equal(nrow(simTest$cbm_vars$state), nrow(simTest$cohortGroups))
-  expect_equal(simTest$cbm_vars$state$age, simTest$cohortGroups$age)
-  
-  # check cohortGroupKeep
-  expect_is(simTest$cohortGroupKeep, "data.table")
-  expect_named(simTest$cohortGroupKeep, c("pixelIndex", "cohortGroupPrev", "cohortID", "spinup", "2000", "2001", "cohortGroupID", "2002"), ignore.order = TRUE)
-  
-  # check cohortGroups
-  expect_is(simTest$cohortGroups, "data.table")
-  expect_named(simTest$cohortGroups, c("cohortGroupID", "spatial_unit_id", "age", "ages", "gcids"), ignore.order = TRUE)
+  expect_equal(nrow(simTest$cbm_vars$state), NcohortGroups)
+
+  # check cbm_vars key
+  expect_is(simTest$cbm_vars$key, "data.table")
+  expect_named(simTest$cbm_vars$key, c("pixelIndex", "row_idx_prev", "cohortID", "row_idx_spinup", "2000", "row_idx", "2002", "disturbance_type_id"), ignore.order = TRUE)
   
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
