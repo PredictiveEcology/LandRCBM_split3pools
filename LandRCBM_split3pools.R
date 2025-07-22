@@ -693,7 +693,7 @@ UpdateCohortGroups <- function(sim){
     cohorts[is.na(gcids), ] <- missingCohorts
   }
   
-  # Update cohortGroupKeep
+  # Update cbm_vars key
   sim$cbm_vars$key <- merge(
     sim$cbm_vars$key[, row_idx := NULL],
     cohorts[, .(pixelIndex, row_idx_prev, row_idx)],
@@ -706,7 +706,7 @@ UpdateCohortGroups <- function(sim){
   # Update cbm_vars state.
   sim$cbm_vars$state <- merge(
     cohorts[, .(row_idx, gcids, species = species_id, spatial_unit_id, age, row_idx_prev)],
-    sim$cbm_vars$state[, .(row_idx, time_since_last_disturbance, time_since_land_use_change, last_disturbance_type, enabled, delay, sw_hw, land_class_id)],
+    sim$cbm_vars$state[, .(row_idx, area, time_since_last_disturbance, time_since_land_use_change, last_disturbance_type, enabled, delay, sw_hw, land_class_id)],
     by.x = "row_idx_prev",
     by.y = "row_idx",
     all.x = TRUE
