@@ -816,12 +816,12 @@ PrepareCBMvars <- function(sim){
     distCohorts <- sim$cbm_vars$key[!is.na(disturbance_type_id), .(cohortID, row_idx, row_idx_prev, disturbance_type_id)]
     # Remove new cohorts
     distCohorts <- distCohorts[!is.na(row_idx_prev)]
-    distCohortGroupID <- unique(distCohorts$row_idx)
-    new_cbm_parameters[distCohortGroupID, "disturbance_type"] <- distCohorts$disturbance_type_id
+    distCohortGroup <- unique(distCohorts[,.(row_idx, disturbance_type_id)], by = "row_idx")
+    new_cbm_parameters[distCohortGroup$row_idx, "disturbance_type"] <- distCohortGroup$disturbance_type_id
     # DC 29-04-2025: Not sure what should be the increments for disturbed cohorts.
-    new_cbm_parameters[distCohortGroupID, merch_inc := 0L]
-    new_cbm_parameters[distCohortGroupID, foliage_inc := 0L]
-    new_cbm_parameters[distCohortGroupID, other_inc := 0L]
+    new_cbm_parameters[distCohortGroup$row_idx, merch_inc := 0L]
+    new_cbm_parameters[distCohortGroup$row_idx, foliage_inc := 0L]
+    new_cbm_parameters[distCohortGroup$row_idx, other_inc := 0L]
   }
   
   # 4. Prepare cbm state
