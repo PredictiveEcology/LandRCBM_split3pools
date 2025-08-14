@@ -701,7 +701,7 @@ UpdateCohortGroups <- function(sim){
     by = c("pixelIndex", "row_idx_prev"),
     all.y = TRUE,
     sort = FALSE
-  )
+  ) |> unique()
   setkey(sim$cbm_vars$key, row_idx)
   
   # Update cbm_vars state.
