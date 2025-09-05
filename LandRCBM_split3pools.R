@@ -157,11 +157,6 @@ defineModule(sim, list(
                    "Columns are `gcids`, `species_id`, `speciesCode`, and `sw_hw`")
     ),  
     createsOutput(
-      objectName = "masterRaster",
-      objectClass = "SpatRaster",
-      desc = paste("The template raster for the CBM simulation. Is equivalent to rasterToMatch.")
-    ),
-    createsOutput(
       objectName = "standDT",
       objectClass = "data.table",
       desc = paste("A data table with spatial information for the CBM spinup.",
@@ -192,9 +187,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-      
-      # Create masterRaster. Identical to rasterToMatch.
-      sim$masterRaster <- sim$rasterToMatch
 
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
@@ -244,7 +236,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 
       # 1. Expand spinup output to have 1 row per cohort
       spinupOut <- lapply(spinupOut, function(tbl) {
-        tbl <- tbl[sim$cbm_vars$key$row_idx_spinup, ]
+        tbl <- tbl[sim$cbm_vars$key$row_idx, ]
       })
       
       # 2. Replace above ground pools with the LandR biomass.
@@ -716,11 +708,6 @@ UpdateCohortGroups <- function(sim){
   sim$cbm_vars$state[, age := age - 1L]
   sim$cbm_vars$state <- unique(sim$cbm_vars$state, by = "row_idx")
   setkey(sim$cbm_vars$state, row_idx)
-  
-  # Set cohort groups for the year
-  if(time(sim) %in% c(end(sim), start(sim))){
-    sim$cbm_vars$key[[as.character(time(sim))]] <- sim$cbm_vars$key$row_idx
-  }
   
   return(invisible(sim))
 }
