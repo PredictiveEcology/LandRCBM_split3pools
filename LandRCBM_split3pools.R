@@ -244,7 +244,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 
       # 1. Expand spinup output to have 1 row per cohort
       spinupOut <- lapply(spinupOut, function(tbl) {
-        tbl <- tbl[sim$cbm_vars$key$row_idx_spinup, ]
+        tbl <- tbl[sim$cbm_vars$key$row_idx, ]
       })
       
       # 2. Replace above ground pools with the LandR biomass.
@@ -716,11 +716,6 @@ UpdateCohortGroups <- function(sim){
   sim$cbm_vars$state[, age := age - 1L]
   sim$cbm_vars$state <- unique(sim$cbm_vars$state, by = "row_idx")
   setkey(sim$cbm_vars$state, row_idx)
-  
-  # Set cohort groups for the year
-  if(time(sim) %in% c(end(sim), start(sim))){
-    sim$cbm_vars$key[[as.character(time(sim))]] <- sim$cbm_vars$key$row_idx
-  }
   
   return(invisible(sim))
 }
