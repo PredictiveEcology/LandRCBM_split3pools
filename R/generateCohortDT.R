@@ -52,9 +52,7 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
     # Keep final columns in desired order
     cohortDT <- cohortDT[, .(cohortID, pixelIndex, speciesCode, species_id = newCode, age, gcids, yieldTableIndex, sw_hw)]
   } else {
-    # add the growth curve index: 1 per species x age x pixel index
-    cohortDT[, gcids := .GRP, by = .(pixelIndex, speciesCode, age)]
-    cohortDT <- cohortDT[,.(cohortID, pixelIndex, speciesCode, species_id = newCode, age, gcids, sw_hw)]
+    stop("yieldTablesId needs to cannot be NULL")
   }
   
   setkey(cohortDT, cohortID)

@@ -19,7 +19,6 @@ test_that("function generateDt works", {
   
   # Run function
   result <- generateCohortDT(cohortData, pixelGroupMap, yieldTablesId)
-  
   # Tests
   expect_is(result, "data.table")
   expect_equal(nrow(result), 5)
@@ -39,22 +38,8 @@ test_that("function generateDt works", {
   # gcid for Abie_las and Pinu_con should be different and vice-versa
   expect_false(gcid_pinu[1] %in% gcid_abie)
   expect_false(any(gcid_abie %in% gcid_pinu))
-  
-  ## Runs without yieldTablesId
 
   # Run function
-  result <- generateCohortDT(cohortData, pixelGroupMap, yieldTablesId = NULL)
-  
-  # Tests
-  expect_is(result, "data.table")
-  expect_equal(nrow(result), 5)
-  expected_cols <- c("cohortID", "pixelIndex", "speciesCode", "species_id",
-                          "age", "gcids", "sw_hw")
-  expect_named(result, expected_cols, ignore.order = TRUE)
-  expect_false("yieldTableIndex" %in% names(result))
-  expect_equal(key(result), "cohortID")
-  
-  # All cohort should have different gcids
-  expect_equal(result$gcids, c(1:5))
-  
+  expect_error(generateCohortDT(cohortData, pixelGroupMap, yieldTablesId = NULL))
+
 })
