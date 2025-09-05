@@ -157,11 +157,6 @@ defineModule(sim, list(
                    "Columns are `gcids`, `species_id`, `speciesCode`, and `sw_hw`")
     ),  
     createsOutput(
-      objectName = "masterRaster",
-      objectClass = "SpatRaster",
-      desc = paste("The template raster for the CBM simulation. Is equivalent to rasterToMatch.")
-    ),
-    createsOutput(
       objectName = "standDT",
       objectClass = "data.table",
       desc = paste("A data table with spatial information for the CBM spinup.",
@@ -192,9 +187,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-      
-      # Create masterRaster. Identical to rasterToMatch.
-      sim$masterRaster <- sim$rasterToMatch
 
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
