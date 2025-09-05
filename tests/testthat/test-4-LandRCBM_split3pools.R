@@ -118,6 +118,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
       minRelativeB = file.path(spadesTestPaths$testdata, "LandR", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
       pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
       rasterToMatch         = file.path(spadesTestPaths$testdata, "rasterToMatch.tif") |> terra::rast(),
+      masterRaster = rasterToMatch,
       species = file.path(spadesTestPaths$testdata, "LandR", "species.csv") |> data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
       speciesEcoregion = file.path(spadesTestPaths$testdata, "LandR", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
       speciesLayers = file.path(spadesTestPaths$testdata, "LandR", "speciesLayers.tif") |> terra::rast(),
@@ -183,7 +184,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
 
   # check cbm_vars key
   expect_is(simTest$cbm_vars$key, "data.table")
-  expect_named(simTest$cbm_vars$key, c("pixelIndex", "row_idx_prev", "cohortID", "row_idx_spinup", "2000", "row_idx", "2002", "disturbance_type_id"), ignore.order = TRUE)
+  expect_named(simTest$cbm_vars$key, c("pixelIndex", "row_idx_prev", "cohortID", "row_idx", "disturbance_type_id"), ignore.order = TRUE)
   
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
@@ -253,7 +254,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     "prepareCBMvars",
     "annual_carbonDynamics",
     "summarizeAGBPools",
-    "accumulateResults",
     "plotSummaries"
   )
   realizedEventOrder <- completedEvents[eventTime == end(simTest) & eventType %in% eventsToCheck]
