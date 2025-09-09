@@ -839,7 +839,7 @@ PrepareCBMvars <- function(sim){
     newCohort_gcids <- newCohorts_cbm_state$gcids
     newCohorts_gcMeta <- sim$gcMeta[match(newCohort_gcids, sim$gcMeta$gcids)]
     newCohorts_cbm_state[, species := newCohorts_gcMeta$species_id]
-    newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "sw")]
+    newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "hw")]
     newCohorts_cbm_state[, time_since_last_disturbance := age]
     
     # Combine with cohorts that were present before
