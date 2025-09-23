@@ -20,6 +20,8 @@ defineModule(sim, list(
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
+    defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
+                    "Minimum age for which a cohort can have wood considered merchantable."),
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
@@ -100,6 +102,13 @@ defineModule(sim, list(
                    "but recalculated using total biomass (metric tonnes of tree biomass/ha)",
                    "instead of vol/ha."),
       sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv"
+    ),
+    expectsInput(
+      objectName = "tableMerchantability", objectClass = "data.table",
+      desc = paste("Parameters to estimate the proportion of stemwood that is merchantable,",
+                   "Estimated by approximating the relationship between stemwood biomass and",
+                   "nonmerchfactor predicted by equation 2 of Boudewyn et al., 2007."),
+      sourceURL = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "yieldTablesCumulative", objectClass = "data.table",
@@ -882,6 +891,14 @@ PrepareCBMvars <- function(sim){
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv",
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
+  }
+  
+  if (!suppliedElsewhere("tableMerchantability", sim)) {
+    sim$table7 <- prepInputs(url = extractURL("tableMerchantability"),
+                             fun = "data.table::fread",
+                             destinationPath = inputPath(sim),
+                             filename2 = "merchantabilityParams.csv",
+                             overwrite = TRUE) |> Cache(userTags = "prepInputsTableMerch")
   }
   
   return(invisible(sim))
