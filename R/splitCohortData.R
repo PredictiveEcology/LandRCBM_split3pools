@@ -31,6 +31,7 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7){
   cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
                                              table6 = table6,
                                              table7 = table7,
+                                             tableMerchantability = sim$tableMerchantability,
                                              "pixelGroup")
   
   # Get pixel-level biomass data.-----------------------------------------------

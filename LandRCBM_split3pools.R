@@ -15,7 +15,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
-                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development", "PredictiveEcology/LandR@development"),
+                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.1.2.0002)", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
@@ -203,7 +203,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         pixelGroupMap = sim$pixelGroupMap,
         standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone, spatial_unit_id)],
         table6 = sim$table6,
-        table7 = sim$table7
+        table7 = sim$table7,
+        tableMerchantability = sim$tableMerchantability
       )
       
       # split yield tables into AGB pools
@@ -489,6 +490,7 @@ SplitYieldTables <- function(sim) {
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
                                           table6 = sim$table6,
                                           table7 = sim$table7,
+                                          tableMerchantability = sim$tableMerchantability,
                                           pixGroupCol = "yieldTableIndex")
   
   # 2.3. Ensure annual resolution by filling missing ages (especially age 0).
@@ -607,7 +609,8 @@ AnnualIncrements <- function(sim){
     pixelGroupMap = sim$pixelGroupMap,
     standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone, spatial_unit_id)],
     table6 = sim$table6,
-    table7 = sim$table7
+    table7 = sim$table7,
+    tableMerchantability = sim$tableMerchantability
   )
   
   # Step 3: Calculate this year's increments.-----------------------------------
@@ -894,11 +897,12 @@ PrepareCBMvars <- function(sim){
   }
   
   if (!suppliedElsewhere("tableMerchantability", sim)) {
-    sim$table7 <- prepInputs(url = extractURL("tableMerchantability"),
+    sim$tableMerchantability <- prepInputs(url = extractURL("tableMerchantability"),
                              fun = "data.table::fread",
                              destinationPath = inputPath(sim),
                              filename2 = "merchantabilityParams.csv",
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTableMerch")
+    sim$tableMerchantability <- cbind(sim$tableMerchantability, minAge = P(sim)minMerchantableAge)
   }
   
   return(invisible(sim))
