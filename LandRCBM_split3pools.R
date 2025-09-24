@@ -902,7 +902,7 @@ PrepareCBMvars <- function(sim){
                              destinationPath = inputPath(sim),
                              filename2 = "merchantabilityParams.csv",
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTableMerch")
-    sim$tableMerchantability <- cbind(sim$tableMerchantability, minAge = P(sim)minMerchantableAge)
+    sim$tableMerchantability <- cbind(sim$tableMerchantability, minAge = P(sim)$minMerchantableAge)
   }
   
   return(invisible(sim))
