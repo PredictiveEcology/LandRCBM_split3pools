@@ -101,6 +101,9 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
         CBM_core = list(
           skipCohortGroupHandling = TRUE,
           skipPrepareCBMvars = TRUE
+        ),
+        Biomass_core = list(
+          .plots = NA
         )
       ),
       paths   = list(

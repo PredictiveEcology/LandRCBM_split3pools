@@ -15,11 +15,13 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
-                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development", "PredictiveEcology/LandR@development"),
+                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.1.2.0002)", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
                     "When plotting the yield curves, this is how many unique pixel groups will ",
                     "be randomly selected and plotted."),
+    defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
+                    "Minimum age for which a cohort can have wood considered merchantable."),
     defineParameter(".plots", "character", "screen", NA, NA,
                     "Used by Plots function, which can be optionally used here"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
@@ -100,6 +102,13 @@ defineModule(sim, list(
                    "but recalculated using total biomass (metric tonnes of tree biomass/ha)",
                    "instead of vol/ha."),
       sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv"
+    ),
+    expectsInput(
+      objectName = "tableMerchantability", objectClass = "data.table",
+      desc = paste("Parameters to estimate the proportion of stemwood that is merchantable,",
+                   "Estimated by approximating the relationship between stemwood biomass and",
+                   "nonmerchfactor predicted by equation 2 of Boudewyn et al., 2007."),
+      sourceURL = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC/view?usp=drive_link"
     ),
     expectsInput(
       objectName = "yieldTablesCumulative", objectClass = "data.table",
@@ -194,7 +203,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         pixelGroupMap = sim$pixelGroupMap,
         standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone, spatial_unit_id)],
         table6 = sim$table6,
-        table7 = sim$table7
+        table7 = sim$table7,
+        tableMerchantability = sim$tableMerchantability
       )
       
       # split yield tables into AGB pools
@@ -480,6 +490,7 @@ SplitYieldTables <- function(sim) {
   cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
                                           table6 = sim$table6,
                                           table7 = sim$table7,
+                                          tableMerchantability = sim$tableMerchantability,
                                           pixGroupCol = "yieldTableIndex")
   
   # 2.3. Ensure annual resolution by filling missing ages (especially age 0).
@@ -598,7 +609,8 @@ AnnualIncrements <- function(sim){
     pixelGroupMap = sim$pixelGroupMap,
     standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone, spatial_unit_id)],
     table6 = sim$table6,
-    table7 = sim$table7
+    table7 = sim$table7,
+    tableMerchantability = sim$tableMerchantability
   )
   
   # Step 3: Calculate this year's increments.-----------------------------------
@@ -882,6 +894,15 @@ PrepareCBMvars <- function(sim){
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv",
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
+  }
+  
+  if (!suppliedElsewhere("tableMerchantability", sim)) {
+    sim$tableMerchantability <- prepInputs(url = extractURL("tableMerchantability"),
+                             fun = "data.table::fread",
+                             destinationPath = inputPath(sim),
+                             filename2 = "merchantabilityParams.csv",
+                             overwrite = TRUE) |> Cache(userTags = "prepInputsTableMerch")
+    sim$tableMerchantability <- cbind(sim$tableMerchantability, minAge = P(sim)$minMerchantableAge)
   }
   
   return(invisible(sim))
