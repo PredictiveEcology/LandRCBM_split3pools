@@ -22,7 +22,6 @@ test_that("module runs as a standAlone when not dynamic", {
       )
     )
   )
-  
   # Run tests
   expect_s4_class(simInitTest, "simList")
   
@@ -30,7 +29,7 @@ test_that("module runs as a standAlone when not dynamic", {
   #  splits the cohort data and the yield tables
   simTest <- SpaDEStestMuffleOutput(
     spades(simInitTest,
-           events = list("LandRCBM_split3pools" = "init")
+           events = list("LandRCBM_split3pools" = c("init", "splitInit"))
     )
   )
   
@@ -77,7 +76,6 @@ test_that("module runs as a standAlone when not dynamic", {
 })
 
 test_that("module runs with Biomass_core and CBM_core when dynamic", {
-
   # Set times
   times <- list(start = 2000, end = 2002)
   
