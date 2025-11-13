@@ -197,18 +197,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     eventType,
     init = {
 
-      # split initial above ground biomass
-      sim$aboveGroundBiomass <- splitCohortData(
-        cohortData = sim$cohortData,
-        pixelGroupMap = sim$pixelGroupMap,
-        standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone, spatial_unit_id)],
-        table6 = sim$table6,
-        table7 = sim$table7,
-        tableMerchantability = sim$tableMerchantability
-      )
-      
-      # split yield tables into AGB pools
-      sim <- SplitYieldTables(sim)
+      # split initial cohortData and yield tables
+      sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "splitInit", eventPriority = 3)
       
       # adjust that the live biomass post-CBM spinup with the biomass in LandR
       sim <- scheduleEvent(sim, start(sim), "LandRCBM_split3pools", "postSpinupAdjustBiomass", eventPriority = 5.5)
@@ -232,6 +222,20 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         sim <- scheduleEvent(sim, end(sim),
                              "LandRCBM_split3pools", "plotSummaries", eventPriority = 12)
       }
+    },
+    splitInit = {
+      # split initial above ground biomass
+      sim$aboveGroundBiomass <- splitCohortData(
+        cohortData = sim$cohortData,
+        pixelGroupMap = sim$pixelGroupMap,
+        standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone, spatial_unit_id)],
+        table6 = sim$table6,
+        table7 = sim$table7,
+        tableMerchantability = sim$tableMerchantability
+      )
+      
+      # split yield tables into AGB pools
+      sim <- SplitYieldTables(sim)
     },
     plotYC = {
       
