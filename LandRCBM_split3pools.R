@@ -705,7 +705,7 @@ UpdateCohortGroups <- function(sim){
   
   # Update cbm_vars key
   sim$cbm_vars$key <- merge(
-    sim$cbm_vars$key[, .(pixelIndex, row_idx_prev, disturbance_type_id)],
+    sim$cbm_vars$key[, `:=`(row_idx = NULL, cohortID = NULL)],
     cohorts[, .(pixelIndex, row_idx_prev, row_idx, cohortID)],
     by = c("pixelIndex", "row_idx_prev"),
     all.y = TRUE,
