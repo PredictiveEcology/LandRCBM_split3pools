@@ -669,7 +669,7 @@ UpdateCohortGroups <- function(sim){
   cohortsPrev[, age := age + 1L]
   
   # Get information for the cohorts of the current timestep
-  cohortsT <- merge(sim$cohortDT[, .(pixelIndex, age, gcids)], sim$gcMeta[, .(gcids, species_id)])
+  cohortsT <- merge(sim$cohortDT[, .(pixelIndex, age, gcids, cohortID)], sim$gcMeta[, .(gcids, species_id)])
   
   # Match the cohorts based on pixel, age, and species.
   cohorts <- merge(
@@ -695,6 +695,7 @@ UpdateCohortGroups <- function(sim){
       stop("Some cohorts with positive above ground biomasses are missing.")
     }
     missingCohorts[, gcids := 0L]
+    missingCohorts[, cohortID := 0L]
     missingCohorts[, age := 0L]
     missingCohorts[, species_id := 0L]
     maxCohortGroupID <- max(cohorts$row_idx, na.rm = TRUE)
@@ -704,8 +705,8 @@ UpdateCohortGroups <- function(sim){
   
   # Update cbm_vars key
   sim$cbm_vars$key <- merge(
-    sim$cbm_vars$key[, row_idx := NULL],
-    cohorts[, .(pixelIndex, row_idx_prev, row_idx)],
+    sim$cbm_vars$key[, `:=`(row_idx = NULL, cohortID = NULL)],
+    cohorts[, .(pixelIndex, row_idx_prev, row_idx, cohortID)],
     by = c("pixelIndex", "row_idx_prev"),
     all.y = TRUE,
     sort = FALSE
@@ -817,7 +818,7 @@ PrepareCBMvars <- function(sim){
   if ("disturbance_type_id" %in% names(sim$cbm_vars$key)) {
     
     # Get attributes for disturbed cohorts
-    distCohorts <- sim$cbm_vars$key[!is.na(disturbance_type_id), .(cohortID, row_idx, row_idx_prev, disturbance_type_id)]
+    distCohorts <- sim$cbm_vars$key[!is.na(disturbance_type_id), .(row_idx, row_idx_prev, disturbance_type_id)]
     # Remove new cohorts
     distCohorts <- distCohorts[!is.na(row_idx_prev)]
     distCohortGroup <- unique(distCohorts[,.(row_idx, disturbance_type_id)], by = "row_idx")
