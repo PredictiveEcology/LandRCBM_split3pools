@@ -77,7 +77,7 @@ test_that("module runs as a standAlone when not dynamic", {
 
 test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # Set times
-  times <- list(start = 2000, end = 2010)
+  times <- list(start = 2000, end = 2002)
   
   # Set project path
   projectPath <- file.path(spadesTestPaths$temp$projects, "integration_LandRCBM")
