@@ -870,7 +870,7 @@ PrepareCBMvars <- function(sim){
 
   # 5. Put in cbm_vars
   sim$cbm_vars <- list(
-    key = sim$cbm_vars$key,
+    key = sim$cbm_vars$key |> unique(by = c("row_idx", "cohortID")),
     pools = new_cbm_pools[!is.na(row_idx)],
     flux = new_cbm_flux[!is.na(row_idx)],
     parameters = new_cbm_parameters[!is.na(row_idx)],
