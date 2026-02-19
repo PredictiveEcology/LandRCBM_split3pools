@@ -130,9 +130,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
         },
       studyArea             = file.path(spadesTestPaths$testdata, "studyArea.shp") |> sf::st_read(),
       yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
-      pooldef               = file.path(spadesTestPaths$testdata, "CBM", "pooldef.txt") |> readLines(),
-      spinupSQL             = file.path(spadesTestPaths$testdata, "CBM", "spinupSQL.csv") |> data.table::fread()
+      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
       
     )
   )

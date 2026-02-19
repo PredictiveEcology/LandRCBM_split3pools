@@ -83,10 +83,6 @@ defineModule(sim, list(
       )
     ),
     expectsInput(
-      objectName = "spinupSQL", objectClass =  "dataset",
-      desc = paste0("Table containing many necesary spinup parameters used in CBM_core")
-    ),
-    expectsInput(
       objectName = "studyArea", objectClass =  "sfc",
       desc = "Polygon to use as the study area; default is the RIA study area."
     ),
@@ -783,13 +779,7 @@ PrepareCBMvars <- function(sim){
   new_cbm_flux <- unique(new_cbm_flux, by = "row_idx")
   
   # 3. Prepare cbm parameters
-  # Get the mean annual temperature based on spatial unit.
-  new_cbm_parameters <- merge(sim$cbm_vars$state[, .(row_idx, spatial_unit_id, gcids)],
-                              sim$spinupSQL[, .(id, mean_annual_temperature)],
-                              by.x = "spatial_unit_id",
-                              by.y = "id",
-                              all.x = TRUE,
-                              sort = FALSE)
+  new_cbm_parameters <- sim$cbm_vars$state[, .(row_idx, spatial_unit_id, gcids)]
   
   # Set no disturbance by default (will be changed later for disturbed cohorts)
   new_cbm_parameters[, disturbance_type := 0]
@@ -805,8 +795,7 @@ PrepareCBMvars <- function(sim){
   setnafill(new_cbm_parameters, fill = 0L, cols = c("merch_inc", "foliage_inc", "other_inc"))
   
   new_cbm_parameters <- new_cbm_parameters[, .(
-    row_idx = row_idx,
-    mean_annual_temperature,
+    row_idx,
     disturbance_type,
     merch_inc,
     foliage_inc,
