@@ -55,11 +55,11 @@ test_that("module runs as a standAlone when not dynamic", {
   expect_named(simTest$gcMeta, c("gcids", "species_id", "speciesCode", "sw_hw"))
   expect_true(all(simTest$cohortDT$gcids %in% simTest$gcMeta$gcids))
   
-  # check growth_increments
-  expect_is(simTest$growth_increments, "data.table")
-  expect_named(simTest$growth_increments, c("gcids", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc"))
-  expect_true(all(simTest$growth_increments$gcids %in% simTest$gcMeta$gcids))
-  expect_true(all(simTest$growth_increments$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
+  # check gcIncrements
+  expect_is(simTest$gcIncrements, "data.table")
+  expect_named(simTest$gcIncrements, c("gcids", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc"))
+  expect_true(all(simTest$gcIncrements$gcids %in% simTest$gcMeta$gcids))
+  expect_true(all(simTest$gcIncrements$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
   
   # check yieldTablesCumulative
   expect_is(simTest$yieldTablesCumulative, "data.table")
@@ -152,7 +152,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
 
   # check all outputs are there
   expect_true(all(
-    c("aboveGroundBiomass", "cbm_vars", "cohortDT", "growth_increments", "gcMeta", 
+    c("aboveGroundBiomass", "cbm_vars", "cohortDT", "gcIncrements", "gcMeta", 
       "masterRaster", "summaryAGB", "yieldTablesCumulative", "yieldTablesId") %in%
       names(simTest)
   ))
@@ -178,9 +178,9 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   expect_equal(simTest$cbm_vars$pools$Other, simTest$aboveGroundBiomass$other)
   expect_equal(nrow(simTest$cbm_vars$flux), NcohortGroups)
   expect_equal(nrow(simTest$cbm_vars$parameters), NcohortGroups)
-  expect_equal(simTest$cbm_vars$parameters$merch_inc, simTest$growth_increments$merch_inc)
-  expect_equal(simTest$cbm_vars$parameters$foliage_inc, simTest$growth_increments$foliage_inc)
-  expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$growth_increments$other_inc)
+  expect_equal(simTest$cbm_vars$parameters$merch_inc, simTest$gcIncrements$merch_inc)
+  expect_equal(simTest$cbm_vars$parameters$foliage_inc, simTest$gcIncrements$foliage_inc)
+  expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$gcIncrements$other_inc)
   expect_equal(nrow(simTest$cbm_vars$state), NcohortGroups)
 
   # check cbm_vars key
@@ -194,20 +194,20 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
                ignore.order = TRUE)
   expect_setequal(simTest$cohortDT$gcids, simTest$cohortDT$cohortID)
   
-  # check growth_increments
-  expect_is(simTest$growth_increments, "data.table")
-  expect_named(simTest$growth_increments,
+  # check gcIncrements
+  expect_is(simTest$gcIncrements, "data.table")
+  expect_named(simTest$gcIncrements,
                c("gcids", "age", "merch_inc", "foliage_inc", "other_inc"),
                ignore.order = TRUE)
-  expect_equal(nrow(simTest$growth_increments), nrow(simTest$cohortDT))
-  expect_setequal(simTest$cohortDT$gcids, simTest$growth_increments$gcids)
+  expect_equal(nrow(simTest$gcIncrements), nrow(simTest$cohortDT))
+  expect_setequal(simTest$cohortDT$gcids, simTest$gcIncrements$gcids)
   
   # check gcMeta
   expect_is(simTest$gcMeta, "data.table")
   expect_named(simTest$gcMeta, 
                c("gcids", "species_id", "speciesCode", "sw_hw"))
-  expect_equal(nrow(simTest$gcMeta), nrow(simTest$growth_increments))
-  expect_setequal(simTest$gcMeta$gcids, simTest$growth_increments$gcids)
+  expect_equal(nrow(simTest$gcMeta), nrow(simTest$gcIncrements))
+  expect_setequal(simTest$gcMeta$gcids, simTest$gcIncrements$gcids)
   
   # check summaryAGB
   expect_is(simTest$summaryAGB, "data.table")
