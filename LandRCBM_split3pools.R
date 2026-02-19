@@ -153,7 +153,7 @@ defineModule(sim, list(
                    "Columns are `cohortID`, `pixelIndex`, `age`, and `gcids`.")
     ),
     createsOutput(
-      objectName = "growth_increments",
+      objectName = "gcIncrements",
       objectClass = "data.table",
       desc = paste("Increments (metric tonnes of carbon/ha) in each pool",
                    "for each pixel and cohort. Gets updated at each timestep.",
@@ -332,7 +332,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       
       # map increments
       if (time(sim) != start(sim)){
-        increments <- sim$cohortDT[sim$growth_increments, on = c("gcids", "age")]
+        increments <- sim$cohortDT[sim$gcIncrements, on = c("gcids", "age")]
         incrementSum  <- increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
         # rasterize
         merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
@@ -539,11 +539,11 @@ SplitYieldTables <- function(sim) {
   
   # 3.3. Link increments back to growth curve IDs (`gcids`).
   map_gcid_yield <- unique(cohortDT, by = "gcids")[, .(yieldTableIndex, speciesCode, gcids)]
-  sim$growth_increments <-  yieldIncrements[map_gcid_yield, 
+  sim$gcIncrements <-  yieldIncrements[map_gcid_yield, 
                                             on = .(yieldTableIndex, speciesCode)]
   
-  # 3.4. Final selection and ordering of columns for `sim$growth_increments`.
-  sim$growth_increments <- sim$growth_increments[,.(gcids, yieldTableIndex, age, merch_inc, foliage_inc, other_inc)]
+  # 3.4. Final selection and ordering of columns for `sim$gcIncrements`.
+  sim$gcIncrements <- sim$gcIncrements[,.(gcids, yieldTableIndex, age, merch_inc, foliage_inc, other_inc)]
 
   return(invisible(sim))
 }
@@ -571,7 +571,7 @@ PlotYieldTablesPools <- function(sim){
   )
   
   # plot increments
-  plot_dt <- sim$growth_increments[yieldTableIndex %in% pixGroupToPlot]
+  plot_dt <- sim$gcIncrements[yieldTableIndex %in% pixGroupToPlot]
   plot_dt <- melt(
     plot_dt, 
     id.vars = c("yieldTableIndex", "age", "gcids"),
@@ -649,8 +649,8 @@ AnnualIncrements <- function(sim){
   # Create data.table with growth curve-level information
   sim$gcMeta <- unique(incrementsDT, by = "gcids")[, .(gcids, species_id = newCode, speciesCode, sw_hw)]
   # Create final growth increment data.table
-  sim$growth_increments <- unique(incrementsDT, by = "gcids")[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
-  setkey(sim$growth_increments, gcids)
+  sim$gcIncrements <- unique(incrementsDT, by = "gcids")[, .(gcids, age, merch_inc, foliage_inc, other_inc)]
+  setkey(sim$gcIncrements, gcids)
   
   return(invisible(sim))
 }
@@ -796,7 +796,7 @@ PrepareCBMvars <- function(sim){
   
   # Get the increments
   new_cbm_parameters <- merge(new_cbm_parameters,
-                              sim$growth_increments,
+                              sim$gcIncrements,
                               by = "gcids",
                               all.x = TRUE,
                               sort = FALSE)
