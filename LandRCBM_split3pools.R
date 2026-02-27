@@ -224,7 +224,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim$aboveGroundBiomass <- splitCohortData(
         cohortData = sim$cohortData,
         pixelGroupMap = sim$pixelGroupMap,
-        standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, eco_id, spatial_unit_id)],
+        standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id, spatial_unit_id)],
         table6 = sim$table6,
         table7 = sim$table7,
         tableMerchantability = sim$tableMerchantability
@@ -482,7 +482,7 @@ SplitYieldTables <- function(sim) {
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoYieldTables[, B := B / 100]
   allInfoYieldTables <- merge(allInfoYieldTables, 
-                              unique(sim$standDT, by = "spatial_unit_id")[,.(spatial_unit_id, eco_id, juris_id = admin_abbrev)]
+                              unique(sim$standDT, by = "spatial_unit_id")[,.(spatial_unit_id, ecozone = eco_id, juris_id = admin_abbrev)]
   )
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
   #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
@@ -607,7 +607,7 @@ AnnualIncrements <- function(sim){
   sim$aboveGroundBiomass <- splitCohortData(
     cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
-    standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, eco_id, spatial_unit_id)],
+    standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id, spatial_unit_id)],
     table6 = sim$table6,
     table7 = sim$table7,
     tableMerchantability = sim$tableMerchantability
