@@ -47,18 +47,18 @@ test_that("module runs as a standAlone when not dynamic", {
   
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
-  expect_named(simTest$cohortDT, c("cohortID", "pixelIndex", "age", "gcids"))
+  expect_named(simTest$cohortDT, c("cohortID", "pixelIndex", "age", "gcID"))
   expect_true(all(simTest$cohortDT$age %in% simTest$cohortData$age))
   
   # check gcMeta
   expect_is(simTest$gcMeta, "data.table")
-  expect_named(simTest$gcMeta, c("gcids", "species_id", "speciesCode", "sw_hw"))
-  expect_true(all(simTest$cohortDT$gcids %in% simTest$gcMeta$gcids))
+  expect_named(simTest$gcMeta, c("gcID", "species_id", "speciesCode", "sw_hw"))
+  expect_true(all(simTest$cohortDT$gcID %in% simTest$gcMeta$gcID))
   
   # check gcIncrements
   expect_is(simTest$gcIncrements, "data.table")
-  expect_named(simTest$gcIncrements, c("gcids", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc"))
-  expect_true(all(simTest$gcIncrements$gcids %in% simTest$gcMeta$gcids))
+  expect_named(simTest$gcIncrements, c("gcID", "yieldTableIndex", "age", "merch_inc", "foliage_inc", "other_inc"))
+  expect_true(all(simTest$gcIncrements$gcID %in% simTest$gcMeta$gcID))
   expect_true(all(simTest$gcIncrements$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
   
   # check yieldTablesCumulative
@@ -188,24 +188,24 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
   expect_named(simTest$cohortDT,
-               c("cohortID", "pixelIndex", "age", "gcids"),
+               c("cohortID", "pixelIndex", "age", "gcID"),
                ignore.order = TRUE)
-  expect_setequal(simTest$cohortDT$gcids, simTest$cohortDT$cohortID)
+  expect_setequal(simTest$cohortDT$gcID, simTest$cohortDT$cohortID)
   
   # check gcIncrements
   expect_is(simTest$gcIncrements, "data.table")
   expect_named(simTest$gcIncrements,
-               c("gcids", "age", "merch_inc", "foliage_inc", "other_inc"),
+               c("gcID", "age", "merch_inc", "foliage_inc", "other_inc"),
                ignore.order = TRUE)
   expect_equal(nrow(simTest$gcIncrements), nrow(simTest$cohortDT))
-  expect_setequal(simTest$cohortDT$gcids, simTest$gcIncrements$gcids)
+  expect_setequal(simTest$cohortDT$gcID, simTest$gcIncrements$gcID)
   
   # check gcMeta
   expect_is(simTest$gcMeta, "data.table")
   expect_named(simTest$gcMeta, 
-               c("gcids", "species_id", "speciesCode", "sw_hw"))
+               c("gcID", "species_id", "speciesCode", "sw_hw"))
   expect_equal(nrow(simTest$gcMeta), nrow(simTest$gcIncrements))
-  expect_setequal(simTest$gcMeta$gcids, simTest$gcIncrements$gcids)
+  expect_setequal(simTest$gcMeta$gcID, simTest$gcIncrements$gcID)
   
   # check summaryAGB
   expect_is(simTest$summaryAGB, "data.table")
