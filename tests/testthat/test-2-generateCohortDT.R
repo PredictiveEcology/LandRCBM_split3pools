@@ -23,16 +23,16 @@ test_that("function generateDt works", {
   expect_is(result, "data.table")
   expect_equal(nrow(result), 5)
   expected_cols <- c("cohortID", "pixelIndex", "speciesCode", "species_id",
-                     "age", "gcids", "yieldTableIndex", "sw_hw")
+                     "age", "gcID", "yieldTableIndex", "sw_hw")
   expect_named(result, expected_cols, ignore.order = TRUE)
   expect_false(0 %in% result$age)
   
-  # Pinu_con should all have the same gcids (both with Abi_las)
-  gcid_pinu <- result[speciesCode == "Pinu_con", gcids]
+  # Pinu_con should all have the same gcID (both with Abi_las)
+  gcid_pinu <- result[speciesCode == "Pinu_con", gcID]
   expect_equal(gcid_pinu[1], gcid_pinu[2])
   
-  # Abie_las should have different gcids (two with Pinu_con, one alone)
-  gcid_abie <- result[speciesCode == "Abie_las", gcids]
+  # Abie_las should have different gcID (two with Pinu_con, one alone)
+  gcid_abie <- result[speciesCode == "Abie_las", gcID]
   expect_false(gcid_abie[1] == gcid_abie[2])
   
   # gcid for Abie_las and Pinu_con should be different and vice-versa

@@ -109,24 +109,24 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
   expect_named(simTest$cohortDT,
-               c("cohortID", "pixelIndex", "age", "gcids"),
+               c("cohortID", "pixelIndex", "age", "gcID"),
                ignore.order = TRUE)
-  expect_setequal(simTest$cohortDT$gcids, simTest$cohortDT$cohortID)
+  expect_setequal(simTest$cohortDT$gcID, simTest$cohortDT$cohortID)
   
   # check gcIncrements
   expect_is(simTest$gcIncrements, "data.table")
   expect_named(simTest$gcIncrements,
-               c("gcids", "age", "merch_inc", "foliage_inc", "other_inc"),
+               c("gcID", "age", "merch_inc", "foliage_inc", "other_inc"),
                ignore.order = TRUE)
   expect_equal(nrow(simTest$gcIncrements), nrow(simTest$cohortDT))
-  expect_setequal(simTest$cohortDT$gcids, simTest$gcIncrements$gcids)
+  expect_setequal(simTest$cohortDT$gcID, simTest$gcIncrements$gcID)
   
   # check gcMeta
   expect_is(simTest$gcMeta, "data.table")
   expect_named(simTest$gcMeta, 
-               c("gcids", "species_id", "speciesCode", "sw_hw"))
+               c("gcID", "species_id", "speciesCode", "sw_hw"))
   expect_equal(nrow(simTest$gcMeta), nrow(simTest$gcIncrements))
-  expect_setequal(simTest$gcMeta$gcids, simTest$gcIncrements$gcids)
+  expect_setequal(simTest$gcMeta$gcID, simTest$gcIncrements$gcID)
   
   # check summaryAGB
   expect_is(simTest$summaryAGB, "data.table")
@@ -266,7 +266,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic: RIA-small", 
   # checks for "active" cohorts
   with(
     list(
-      ActiveCohortGroups  = simTest$cbm_vars$state[gcids != 0, row_idx]
+      ActiveCohortGroups  = simTest$cbm_vars$state[gcID != 0, row_idx]
     ), {
       # "Active" cohorts should match the above ground biomass equal to LandR
       expect_equal(
@@ -282,7 +282,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic: RIA-small", 
   # checks for DOM cohorts
   with(
     list(
-      DOMCohortGroups  = simTest$cbm_vars$state[gcids == 0, row_idx]
+      DOMCohortGroups  = simTest$cbm_vars$state[gcID == 0, row_idx]
     ), {
       # DOM cohort groups have 0 above ground biomass
       expect_true(
