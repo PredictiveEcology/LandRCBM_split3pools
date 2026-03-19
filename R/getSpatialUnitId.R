@@ -12,7 +12,7 @@ getSpatialUnitId <- function(row_idx, cbm_key, standDT){
   newCohortMeta <- merge(data.table(row_idx = row_idx), cbm_key[,.(row_idx, pixelIndex)], by = "row_idx")
   newCohortMeta <- merge(newCohortMeta, standDT, by = "pixelIndex")
   
-  # get the spatial_unit_id
+  # extract the spatial_unit_id for each cohort Groups
   newCohortMeta <- merge(newCohortMeta[,.(row_idx, admin_name, eco_id)], spuMeta[,.(spatial_unit_id, admin_name, eco_id = eco_boundary_id)], by = c("admin_name", "eco_id"))
   newCohortMeta <- unique(newCohortMeta[,.(row_idx, spatial_unit_id)])
   

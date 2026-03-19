@@ -78,8 +78,7 @@ defineModule(sim, list(
         area               = "`masterRaster` cell area in meters",
         admin_abbrev       = "Canada administrative abbreviation extracted from `adminLocator`",
         admin_boundary_id  = "CBM-CFS3 administrative boundary ID",
-        eco_id             = "Canada ecozone ID extracted from `ecoLocator`",
-        spatial_unit_id    = "CBM-CFS3 spatial unit ID"
+        eco_id             = "Canada ecozone ID extracted from `ecoLocator`"
       )
     ),
     expectsInput(
@@ -160,12 +159,6 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Growth curve-level information.",
                    "Columns are `gcID`, `species_id`, `speciesCode`, and `sw_hw`")
-    ),  
-    createsOutput(
-      objectName = "standDT",
-      objectClass = "data.table",
-      desc = paste("A data table with spatial information for the CBM spinup.",
-                   "Columns are `pixelIndex`, `area`, and `spatial_unit_id`.")
     ),
     createsOutput(
       objectName = "summaryAGB",
@@ -848,6 +841,7 @@ PrepareCBMvars <- function(sim){
     newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "hw")]
     newCohorts_cbm_state[, time_since_last_disturbance := age]
     
+    # Get the spatial unit id of the new cohorts
     newCohorts_cbm_state$spatial_unit_id <- getSpatialUnitId(newCohorts_cbm_state$row_idx, sim$cbm_vars$key, sim$standDT)
     
     # Combine with cohorts that were present before
