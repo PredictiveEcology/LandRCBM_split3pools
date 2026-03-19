@@ -78,7 +78,8 @@ defineModule(sim, list(
         area               = "`masterRaster` cell area in meters",
         admin_abbrev       = "Canada administrative abbreviation extracted from `adminLocator`",
         admin_boundary_id  = "CBM-CFS3 administrative boundary ID",
-        eco_id             = "Canada ecozone ID extracted from `ecoLocator`"
+        eco_id             = "Canada ecozone ID extracted from `ecoLocator`",
+        spatial_unit_id    = "CBM-CFS3 spatial unit ID"
       )
     ),
     expectsInput(
@@ -159,6 +160,12 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Growth curve-level information.",
                    "Columns are `gcID`, `species_id`, `speciesCode`, and `sw_hw`")
+    ),  
+    createsOutput(
+      objectName = "standDT",
+      objectClass = "data.table",
+      desc = paste("A data table with spatial information for the CBM spinup.",
+                   "Columns are `pixelIndex`, `area`, and `spatial_unit_id`.")
     ),
     createsOutput(
       objectName = "summaryAGB",
@@ -704,8 +711,8 @@ UpdateCohortGroups <- function(sim){
   
   # Update cbm_vars state.
   sim$cbm_vars$state <- merge(
-    cohorts[, .(row_idx, spatial_unit_id, gcID, species = species_id, age, row_idx_prev)],
-    sim$cbm_vars$state[, .(row_idx, area, time_since_last_disturbance, time_since_land_use_change, last_disturbance_type, enabled, delay, sw_hw, land_class_id)],
+    cohorts[, .(row_idx, gcID, species = species_id, age, row_idx_prev)],
+    sim$cbm_vars$state[, .(row_idx, area, time_since_last_disturbance, time_since_land_use_change, last_disturbance_type, enabled, delay, sw_hw, land_class_id, admin_name, eco_id, spatial_unit_id)],
     by.x = "row_idx_prev",
     by.y = "row_idx",
     all.x = TRUE
@@ -829,6 +836,9 @@ PrepareCBMvars <- function(sim){
   
   # Set the state of the new cohorts
   if(any(is.na(new_cbm_state))) {
+    # remove spatial_unit_id. It will be retrieved by cbm_core
+    new_cbm_state[, spatial_unit_id := NULL]
+    
     newCohorts_cbm_state <- new_cbm_state[is.na(area), ]
     setnafill(newCohorts_cbm_state, fill = 1L, cols = c("area", "last_disturbance_type", "enabled"))
     setnafill(newCohorts_cbm_state, fill = -1L, cols = c("land_class_id", "time_since_land_use_change")) 
@@ -841,8 +851,8 @@ PrepareCBMvars <- function(sim){
     newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "hw")]
     newCohorts_cbm_state[, time_since_last_disturbance := age]
     
-    # Get the spatial unit id of the new cohorts
-    newCohorts_cbm_state$spatial_unit_id <- getSpatialUnitId(newCohorts_cbm_state$row_idx, sim$cbm_vars$key, sim$standDT)
+    # Add eco_id and admin_name
+    newCohorts_cbm_state <- getSpatialInformation(newCohorts_cbm_state, sim$cbm_vars$key, sim$standDT)
     
     # Combine with cohorts that were present before
     new_cbm_state <- rbind(
