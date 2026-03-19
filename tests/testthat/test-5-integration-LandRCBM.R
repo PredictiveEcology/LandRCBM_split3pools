@@ -222,7 +222,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic: RIA-small", 
       studyArea             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp")     |> sf::st_read(quiet = TRUE),
       rasterToMatch         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "rasterToMatch.tif") |> terra::rast(),
       standDT               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2")       |> qs2::qs_read(),
-      standDT               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2")       |> qs2::qs_read(),
       biomassMap            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "biomassMap.tif")    |> terra::rast(),
       cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.qs2")    |> qs2::qs_read(),
       pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
@@ -254,7 +253,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic: RIA-small", 
   simTest <- SpaDEStestMuffleOutput(
     SpaDES.core::spades(simTestInit)
   )
-
   expect_s4_class(simTest, "simList")
   
   # species ID are correct
