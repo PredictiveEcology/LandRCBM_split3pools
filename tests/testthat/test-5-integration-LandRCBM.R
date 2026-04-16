@@ -6,67 +6,60 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   projectName <- "integration_LandRCBM"
   times <- list(start = 2000, end = 2002)
   
-  simInitInput <- SpaDEStestMuffleOutput(
+  simInitInput <- SpaDES.project::setupProject(
     
-    SpaDES.project::setupProject(
-      
-      modules = c(
-        "PredictiveEcology/CBM_core@development",
-        "PredictiveEcology/Biomass_core@development",
-        "LandRCBM_split3pools"
+    modules = c(
+      "PredictiveEcology/CBM_core@development",
+      "PredictiveEcology/Biomass_core@development",
+      "LandRCBM_split3pools"
+    ),
+    times = times,
+    paths = list(
+      projectPath = spadesTestPaths$projectPath,
+      modulePath  = spadesTestPaths$temp$modules,
+      packagePath = spadesTestPaths$packagePath,
+      inputPath   = spadesTestPaths$inputPath,
+      cachePath   = spadesTestPaths$cachePath,
+      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
+      testdata    = spadesTestPaths$testdata
+    ),
+    params = list(
+      CBM_core = list(
+        skipCohortGroupHandling = TRUE,
+        skipPrepareCBMvars = TRUE
       ),
-      times = times,
-      paths = list(
-        projectPath = spadesTestPaths$projectPath,
-        modulePath  = spadesTestPaths$temp$modules,
-        packagePath = spadesTestPaths$packagePath,
-        inputPath   = spadesTestPaths$inputPath,
-        cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
-      ),
-      params = list(
-        CBM_core = list(
-          skipCohortGroupHandling = TRUE,
-          skipPrepareCBMvars = TRUE
-        ),
-        Biomass_core = list(
-          .plots = NA
-        )
-      ),
-      biomassMap    = file.path(spadesTestPaths$testdata, "LandR", "biomassMap.tif") |> terra::rast(),
-      cohortData    = file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-      ecoregion     = file.path(spadesTestPaths$testdata, "LandR", "ecoregion.csv") |> data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
-      ecoregionMap  = file.path(spadesTestPaths$testdata, "LandR", "ecoregionMap.tif") |> terra::rast(),
-      minRelativeB  = file.path(spadesTestPaths$testdata, "LandR", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
-      pixelGroupMap = file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
-      rasterToMatch = file.path(spadesTestPaths$testdata, "rasterToMatch.tif") |> terra::rast(),
-      masterRaster  = rasterToMatch,
-      species       = file.path(spadesTestPaths$testdata, "LandR", "species.csv") |> data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
-      speciesEcoregion = file.path(spadesTestPaths$testdata, "LandR", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
-      speciesLayers = file.path(spadesTestPaths$testdata, "LandR", "speciesLayers.tif") |> terra::rast(),
-      standDT       = {
-        standDT = file.path(spadesTestPaths$testdata, "CBM", "standDT.csv") |> data.table::fread()
-        standDT$disturbance_type_id = 0L
-        standDT
-      },
-      studyArea             = file.path(spadesTestPaths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
-      yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
-      
-    )
-  )
-  # Run simInit
-  simTestInit <- SpaDEStestMuffleOutput(
-    SpaDES.core::simInit2(simInitInput)
+      Biomass_core = list(
+        .plots = NA
+      )
+    ),
+    biomassMap    = file.path(paths$testdata, "LandR", "biomassMap.tif") |> terra::rast(),
+    cohortData    = file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    ecoregion     = file.path(paths$testdata, "LandR", "ecoregion.csv") |> data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
+    ecoregionMap  = file.path(paths$testdata, "LandR", "ecoregionMap.tif") |> terra::rast(),
+    minRelativeB  = file.path(paths$testdata, "LandR", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    pixelGroupMap = file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
+    rasterToMatch = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
+    masterRaster  = rasterToMatch,
+    species       = file.path(paths$testdata, "LandR", "species.csv") |> data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
+    speciesEcoregion = file.path(paths$testdata, "LandR", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    speciesLayers = file.path(paths$testdata, "LandR", "speciesLayers.tif") |> terra::rast(),
+    standDT       = {
+      standDT = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread()
+      standDT$disturbance_type_id = 0L
+      standDT
+    },
+    studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
+    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+    
   )
   
+  # Run simInit
+  simTestInit <- SpaDES.core::simInit2(simInitInput)
   expect_s4_class(simTestInit, "simList")
   
   # Run spades
-  simTest <- SpaDEStestMuffleOutput(
-    SpaDES.core::spades(simTestInit)
-  )
-  # Run tests
+  simTest <- SpaDES.core::spades(simTestInit)
   expect_s4_class(simTest, "simList")
   
   # check all outputs are there
@@ -186,73 +179,66 @@ test_that("module runs with Biomass_core and CBM_core when dynamic: RIA-small", 
   # Set up project
   projectName <- "integration_LandRCBM_RIA-small"
 
-  simInitInput <- SpaDEStestMuffleOutput(
+  simInitInput <- SpaDES.project::setupProject(
     
-    SpaDES.project::setupProject(
-      
-      modules = c(
-        "PredictiveEcology/Biomass_core@development",
-        "LandRCBM_split3pools",
-        "PredictiveEcology/CBM_core@development"
+    modules = c(
+      "PredictiveEcology/Biomass_core@development",
+      "LandRCBM_split3pools",
+      "PredictiveEcology/CBM_core@development"
+    ),
+    times   = list(start = 2000, end = 2021),
+    paths   = list(
+      projectPath = spadesTestPaths$projectPath,
+      modulePath  = spadesTestPaths$temp$modules,
+      packagePath = spadesTestPaths$packagePath,
+      inputPath   = spadesTestPaths$inputPath,
+      cachePath   = spadesTestPaths$cachePath,
+      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
+      testdata    = spadesTestPaths$testdata
+    ),
+    require = c("terra", "reproducible"),
+    
+    # Parameters
+    params = list(
+      .globals = list(
+        dataYear = 2001, #will get kNN 2011 data, and NTEMS 2011 landcover
+        sppEquivCol = 'LandR'
       ),
-      times   = list(start = 2000, end = 2021),
-      paths   = list(
-        projectPath = spadesTestPaths$projectPath,
-        modulePath  = spadesTestPaths$temp$modules,
-        packagePath = spadesTestPaths$packagePath,
-        inputPath   = spadesTestPaths$inputPath,
-        cachePath   = spadesTestPaths$cachePath,
-        outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
-      ),
-      require = c("terra", "reproducible"),
-      
-      # Parameters
-      params = list(
-        .globals = list(
-          dataYear = 2001, #will get kNN 2011 data, and NTEMS 2011 landcover
-          sppEquivCol = 'LandR'
-        ),
-        CBM_core = list(
-          .plot = FALSE,
-          skipCohortGroupHandling = TRUE,
-          skipPrepareCBMvars = TRUE
-        )),
-
-      # Prepare input objects
-      studyArea             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp")     |> sf::st_read(quiet = TRUE),
-      rasterToMatch         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "rasterToMatch.tif") |> terra::rast(),
-      standDT               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2")       |> qs2::qs_read(),
-      biomassMap            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "biomassMap.tif")    |> terra::rast(),
-      cohortData            = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "cohortData.qs2")    |> qs2::qs_read(),
-      pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
-      speciesLayers         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesLayers.tif") |> terra::rast(),
-      ecoregionMap          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregionMap.tif")  |> terra::rast(),
-      minRelativeB          = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.qs2")  |> qs2::qs_read(),
-      ecoregion             = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "ecoregion.qs2")     |> qs2::qs_read(),
-      species               = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "species.qs2")       |> qs2::qs_read(),
-      speciesEcoregion      = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.qs2") |> qs2::qs_read(),
-      yieldTablesCumulative = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.qs2") |> qs2::qs_read(),
-      yieldTablesId         = file.path(spadesTestPaths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.qs2") |> qs2::qs_read(),
-      sppEquiv = {
-        speciesInStudy <- LandR::speciesInStudyArea(studyArea, dPath = spadesTestPaths$inputPath)
-        species <- LandR::equivalentName(speciesInStudy$speciesList, df = LandR::sppEquivalencies_CA, "LandR")
-        sppEquiv <- LandR::sppEquivalencies_CA[LandR %in% species]
-        sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]
-      }
-    )
+      CBM_core = list(
+        .plot = FALSE,
+        skipCohortGroupHandling = TRUE,
+        skipPrepareCBMvars = TRUE
+      )),
+    
+    # Prepare input objects
+    studyArea             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "studyArea.shp")     |> sf::st_read(quiet = TRUE),
+    rasterToMatch         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "rasterToMatch.tif") |> terra::rast(),
+    standDT               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "standDT.qs2")       |> qs2::qs_read(),
+    biomassMap            = file.path(paths$testdata, "LandRCBM-RIA-small/input", "biomassMap.tif")    |> terra::rast(),
+    cohortData            = file.path(paths$testdata, "LandRCBM-RIA-small/input", "cohortData.qs2")    |> qs2::qs_read(),
+    pixelGroupMap         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "pixelGroupMap.tif") |> terra::rast(),
+    speciesLayers         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "speciesLayers.tif") |> terra::rast(),
+    ecoregionMap          = file.path(paths$testdata, "LandRCBM-RIA-small/input", "ecoregionMap.tif")  |> terra::rast(),
+    minRelativeB          = file.path(paths$testdata, "LandRCBM-RIA-small/input", "minRelativeB.qs2")  |> qs2::qs_read(),
+    ecoregion             = file.path(paths$testdata, "LandRCBM-RIA-small/input", "ecoregion.qs2")     |> qs2::qs_read(),
+    species               = file.path(paths$testdata, "LandRCBM-RIA-small/input", "species.qs2")       |> qs2::qs_read(),
+    speciesEcoregion      = file.path(paths$testdata, "LandRCBM-RIA-small/input", "speciesEcoregion.qs2") |> qs2::qs_read(),
+    yieldTablesCumulative = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesCumulative.qs2") |> qs2::qs_read(),
+    yieldTablesId         = file.path(paths$testdata, "LandRCBM-RIA-small/input", "yieldTablesId.qs2") |> qs2::qs_read(),
+    sppEquiv = {
+      speciesInStudy <- LandR::speciesInStudyArea(studyArea, dPath = paths$inputPath)
+      species <- LandR::equivalentName(speciesInStudy$speciesList, df = LandR::sppEquivalencies_CA, "LandR")
+      sppEquiv <- LandR::sppEquivalencies_CA[LandR %in% species]
+      sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""]
+    }
   )
 
   # Run simInit
-  simTestInit <- SpaDEStestMuffleOutput(
-    SpaDES.core::simInit2(simInitInput)
-  )
-
+  simTestInit <- SpaDES.core::simInit2(simInitInput)
   expect_s4_class(simTestInit, "simList")
 
   # Run spades
-  simTest <- SpaDEStestMuffleOutput(
-    SpaDES.core::spades(simTestInit)
-  )
+  simTest <- SpaDES.core::spades(simTestInit)
   expect_s4_class(simTest, "simList")
   
   # species ID are correct
