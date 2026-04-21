@@ -21,8 +21,8 @@ test_that("function to split cohortData works", {
   
   table6 <- fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv", showProgress = FALSE)
   table7 <- fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv", showProgress = FALSE)
-  tableMerch <- reproducible::prepInputs(url = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC/view?usp=drive_link",
-                                         fun = "data.table::fread",
+  tableMerch <- reproducible::prepInputs(url = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC",
+                                         fun = data.table::fread(targetFile, verbose = FALSE),
                                          destinationPath = spadesTestPaths$temp$inputs,
                                          filename2 = "appendix2_table7_tb.csv")
   tableMerch <- cbind(tableMerch, minAge = 15)

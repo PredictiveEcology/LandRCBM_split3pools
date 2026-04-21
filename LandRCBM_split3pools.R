@@ -882,7 +882,7 @@ PrepareCBMvars <- function(sim){
   #                above ground biomass pools.
   if (!suppliedElsewhere("table6", sim)) {
     sim$table6 <- prepInputs(url = extractURL("table6"),
-                             fun = "data.table::fread",
+                             fun = data.table::fread(targetFile, verbose = FALSE),
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table6_tb.csv",
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTable6")
@@ -890,7 +890,7 @@ PrepareCBMvars <- function(sim){
   
   if (!suppliedElsewhere("table7", sim)) {
     sim$table7 <- prepInputs(url = extractURL("table7"),
-                             fun = "data.table::fread",
+                             fun = data.table::fread(targetFile, verbose = FALSE),
                              destinationPath = inputPath(sim),
                              filename2 = "appendix2_table7_tb.csv",
                              overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
@@ -898,7 +898,7 @@ PrepareCBMvars <- function(sim){
   
   if (!suppliedElsewhere("tableMerchantability", sim)) {
     sim$tableMerchantability <- prepInputs(url = extractURL("tableMerchantability"),
-                                           fun = "data.table::fread",
+                                           fun = data.table::fread(targetFile, verbose = FALSE),
                                            destinationPath = inputPath(sim),
                                            filename2 = "merchantabilityParams.csv",
                                            overwrite = TRUE) |> Cache(userTags = "prepInputsTableMerch")
