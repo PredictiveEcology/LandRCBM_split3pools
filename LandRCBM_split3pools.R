@@ -159,7 +159,7 @@ defineModule(sim, list(
       objectName = "gcMeta",
       objectClass = "data.table",
       desc = paste("Growth curve-level information.",
-                   "Columns are `gcID`, `species_id`, `speciesCode`, and `sw_hw`")
+                   "Columns are `gcID`, `speciesCode`, and `sw_hw`")
     ),  
     createsOutput(
       objectName = "standDT",
@@ -451,11 +451,11 @@ SplitYieldTables <- function(sim) {
   }
   
   # 1.5. Store essential cohort information (cohortID, pixelIndex, age, gcID) in simList.
-  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcID)]
+  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, speciesCode, gcID)]
   
   # 1.6. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcID to species information.
-  sim$gcMeta <- unique(cohortDT, by = "gcID")[, .(gcID, species_id, speciesCode, sw_hw)]
+  sim$gcMeta <- unique(cohortDT, by = "gcID")[, .(gcID, speciesCode, sw_hw)]
   
   # 1.8. Prepare yield table data (`sim$yieldTablesCumulative`) for biomass pool splitting.
   #      Get unique combinations of original yieldTableIndex and spatial units.
@@ -636,14 +636,12 @@ AnnualIncrements <- function(sim){
   groupCols <- c("speciesCode", "age", "merch_inc", "foliage_inc", "other_inc")
   incrementsDT[, gcID := .GRP, by = groupCols]
   incrementsDT[, cohortID := .I]
-  # Add CBM species_id for gcMeta (is named newCode in incrementsDT)
-  incrementsDT <- addSpeciesCode(incrementsDT, code = "CBM_speciesID")
   # Add forest type ("sw" or "hw") for gcMeta
   incrementsDT <- addForestType(incrementsDT)
   # Create data.table with cohort-level information
-  sim$cohortDT <- incrementsDT[, .(cohortID, pixelIndex, age, gcID)]
+  sim$cohortDT <- incrementsDT[, .(cohortID, pixelIndex, age, speciesCode, gcID)]
   # Create data.table with growth curve-level information
-  sim$gcMeta <- unique(incrementsDT, by = "gcID")[, .(gcID, species_id = newCode, speciesCode, sw_hw)]
+  sim$gcMeta <- unique(incrementsDT, by = "gcID")[, .(gcID, speciesCode, sw_hw)]
   # Create final growth increment data.table
   sim$gcIncrements <- unique(incrementsDT, by = "gcID")[, .(gcID, age, merch_inc, foliage_inc, other_inc)]
   setkey(sim$gcIncrements, gcID)
@@ -657,21 +655,18 @@ UpdateCohortGroups <- function(sim){
   # Get the pools for the cohort groups of the previous timestep
   cohortsPrev <- unique(sim$cbm_vars$key, by = c("pixelIndex", "row_idx_prev"))[, .(pixelIndex, row_idx_prev)]
   cohortsPrev <- merge(cohortsPrev,
-                       sim$cbm_vars$state[, .(row_idx, spatial_unit_id, age, species_id = species)],
+                       sim$cbm_vars$state[, .(row_idx, spatial_unit_id, age, speciesCode)],
                        by.x = "row_idx_prev",
                        by.y = "row_idx",
                        sort = FALSE)
   # Add 1 to age for the match with the current timestep
   cohortsPrev[, age := age + 1L]
   
-  # Get information for the cohorts of the current timestep
-  cohortsT <- merge(sim$cohortDT[, .(pixelIndex, age, gcID, cohortID)], sim$gcMeta[, .(gcID, species_id)])
-  
   # Match the cohorts based on pixel, age, and species.
   cohorts <- merge(
     cohortsPrev,
-    cohortsT,
-    by = c("pixelIndex", "age", "species_id"),
+    sim$cohortDT[, .(pixelIndex, age, gcID, speciesCode, cohortID)],
+    by = c("pixelIndex", "age", "speciesCode"),
     all = TRUE,
     allow.cartesian = TRUE,
     sort = FALSE
@@ -693,7 +688,6 @@ UpdateCohortGroups <- function(sim){
     missingCohorts[, gcID := 0L]
     missingCohorts[, cohortID := 0L]
     missingCohorts[, age := 0L]
-    missingCohorts[, species_id := 0L]
     maxCohortGroupID <- max(cohorts$row_idx, na.rm = TRUE)
     missingCohorts[, row_idx := .GRP + maxCohortGroupID, by = pixelIndex]
     cohorts[is.na(gcID), ] <- missingCohorts
@@ -711,7 +705,7 @@ UpdateCohortGroups <- function(sim){
   
   # Update cbm_vars state.
   sim$cbm_vars$state <- merge(
-    cohorts[, .(row_idx, gcID, species = species_id, age, row_idx_prev)],
+    cohorts[, .(row_idx, gcID, age, speciesCode, row_idx_prev)],
     sim$cbm_vars$state[, .(row_idx, area, time_since_last_disturbance, time_since_land_use_change, last_disturbance_type, enabled, delay, sw_hw, land_class_id, admin_name, eco_id, spatial_unit_id)],
     by.x = "row_idx_prev",
     by.y = "row_idx",
@@ -847,7 +841,6 @@ PrepareCBMvars <- function(sim){
     # Get growth curve information
     newCohort_gcids <- newCohorts_cbm_state$gcID
     newCohorts_gcMeta <- sim$gcMeta[match(newCohort_gcids, sim$gcMeta$gcID)]
-    newCohorts_cbm_state[, species := newCohorts_gcMeta$species_id]
     newCohorts_cbm_state[, sw_hw := as.integer(newCohorts_gcMeta$sw_hw == "hw")]
     newCohorts_cbm_state[, time_since_last_disturbance := age]
     

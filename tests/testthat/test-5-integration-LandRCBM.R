@@ -102,8 +102,9 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$gcIncrements$other_inc)
   expect_equal(nrow(simTest$cbm_vars$state), NcohortGroups)
   
-  # species ID are correct
-  expect_equal(head(simTest$cbm_vars$state$species, 5), c(31, 15, 31, 15, 31))
+  # check species types
+  expect_in(simTest$cbm_vars$state[speciesCode == "Abie_las", sw_hw], 0L) # SW
+  expect_in(simTest$cbm_vars$state[speciesCode == "Pinu_con", sw_hw], 0L) # SW
   
   # spatial unit id is correct
   expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
@@ -134,7 +135,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
   expect_named(simTest$cohortDT,
-               c("cohortID", "pixelIndex", "age", "gcID"),
+               c("cohortID", "pixelIndex", "age", "speciesCode", "gcID"),
                ignore.order = TRUE)
   expect_setequal(simTest$cohortDT$gcID, simTest$cohortDT$cohortID)
   
@@ -149,7 +150,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # check gcMeta
   expect_is(simTest$gcMeta, "data.table")
   expect_named(simTest$gcMeta, 
-               c("gcID", "species_id", "speciesCode", "sw_hw"))
+               c("gcID", "speciesCode", "sw_hw"))
   expect_equal(nrow(simTest$gcMeta), nrow(simTest$gcIncrements))
   expect_setequal(simTest$gcMeta$gcID, simTest$gcIncrements$gcID)
   
