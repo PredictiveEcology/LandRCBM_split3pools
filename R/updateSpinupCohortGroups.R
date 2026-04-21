@@ -1,8 +1,9 @@
 updateSpinupCohortGroups <- function(spinupOut, key){
+
   # Step 1: Combine pools and state columns into a single data.table
   combinedOutputs <- cbind(
     spinupOut$pools,
-    spinupOut$state[, c("spatial_unit_id", "age", "species")]
+    spinupOut$state[, c("spatial_unit_id", "age", "speciesCode")]
   ) |> as.data.table()
   
   # Step 2: Create a unique cohort group ID for identical rows

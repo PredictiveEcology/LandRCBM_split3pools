@@ -23,7 +23,7 @@ Require::Require(c("data.table", "terra"))
 # Install required packages
 withr::with_options(c(timeout = 600), Require::Install(
   c(SpaDES.core::packages(modules = basename(getwd()), paths = "..")[[1]],
-    "SpaDES.project", "googledrive", "data.table", "qs2"),
+    "SpaDES.project", "googledrive", "data.table"),
   repos = unique(c("predictiveecology.r-universe.dev", getOption("repos")))
 ))
 
