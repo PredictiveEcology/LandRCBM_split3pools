@@ -43,12 +43,12 @@ test_that("module runs as a standAlone when not dynamic", {
   
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
-  expect_named(simTest$cohortDT, c("cohortID", "pixelIndex", "age", "gcID"))
+  expect_named(simTest$cohortDT, c("cohortID", "pixelIndex", "age", "speciesCode", "gcID"))
   expect_true(all(simTest$cohortDT$age %in% simTest$cohortData$age))
   
   # check gcMeta
   expect_is(simTest$gcMeta, "data.table")
-  expect_named(simTest$gcMeta, c("gcID", "species_id", "speciesCode", "sw_hw"))
+  expect_named(simTest$gcMeta, c("gcID", "speciesCode", "sw_hw"))
   expect_true(all(simTest$cohortDT$gcID %in% simTest$gcMeta$gcID))
   
   # check gcIncrements
