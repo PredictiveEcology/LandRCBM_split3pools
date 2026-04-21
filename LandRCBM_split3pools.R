@@ -71,15 +71,13 @@ defineModule(sim, list(
       desc = "Template raster to use for simulations; defaults is the RIA study area."
     ),
     expectsInput(
-      objectName = "standDT", objectClass =  "data.table",
-      desc = paste0("A data table with spatial information of each pixel."),
+      objectName = "standDT", objectClass = "data.table",
+      desc = "Table of stand attributes.",
       columns = c(
-        pixelIndex         = "`masterRaster` cell index",
-        area               = "`masterRaster` cell area in meters",
-        admin_abbrev       = "Canada administrative abbreviation extracted from `adminLocator`",
-        admin_boundary_id  = "CBM-CFS3 administrative boundary ID",
-        eco_id             = "Canada ecozone ID extracted from `ecoLocator`",
-        spatial_unit_id    = "CBM-CFS3 spatial unit ID"
+        pixelIndex   = "Stand ID",
+        admin_name   = "Canada province or territory name",
+        admin_abbrev = "Canada province or territory 2-character abbreviation",
+        eco_id       = "Canada ecozone ID"
       )
     ),
     expectsInput(
