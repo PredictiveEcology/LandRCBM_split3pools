@@ -160,12 +160,6 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Growth curve-level information.",
                    "Columns are `gcID`, `speciesCode`, and `sw_hw`")
-    ),  
-    createsOutput(
-      objectName = "standDT",
-      objectClass = "data.table",
-      desc = paste("A data table with spatial information for the CBM spinup.",
-                   "Columns are `pixelIndex`, `area`, and `spatial_unit_id`.")
     ),
     createsOutput(
       objectName = "summaryAGB",
