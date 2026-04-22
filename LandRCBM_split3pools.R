@@ -10,11 +10,12 @@ defineModule(sim, list(
   ),
   childModules = character(0),
   version = list(LandRCBM_split3pools = "0.0.0.9000"),
+  loadOrder = list(after = "Biomass_core"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
-  reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
+  reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra", "sf",
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.1.2.0002)", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
@@ -44,6 +45,24 @@ defineModule(sim, list(
   ),
   inputObjects = bindrows(
     expectsInput(
+      objectName = "masterRaster", objectClass = "SpatRaster",
+      desc = "Raster grid defining the study area."),
+    expectsInput(
+      objectName = "rasterToMatch", objectClass = "SpatRaster",
+      desc = "Optional. Raster grid defining the study area for the Biomass family of modules. Defaults to `masterRaster`."),
+    expectsInput(
+      objectName = "studyArea", objectClass = "sf",
+      desc = "Optional. Polygon defining the study area for the Biomass family of modules. Defaults to extent of `masterRaster`."),
+    expectsInput(
+      objectName = "standDT", objectClass = "data.table",
+      desc = "Table of stand attributes.",
+      columns = c(
+        pixelIndex   = "Stand ID",
+        admin_name   = "Canada province or territory name",
+        admin_abbrev = "Canada province or territory 2-character abbreviation",
+        eco_id       = "Canada ecozone ID"
+      )),
+    expectsInput(
       objectName = "cohortData", objectClass = "data.table",
       desc = "Total above ground biomass (g/m^2) of each cohorts by pixel groups.",
       columns = c(
@@ -53,7 +72,10 @@ defineModule(sim, list(
         B = "Total above ground biomass in (g/m^2).",
         pixelGroup = "Id of the group of pixels sharing the same cohort composition and ecoregion, used in LandR.",
         totalBiomass = "Total above ground biomass in the pixel group."
-      )
+      )),
+    expectsInput(
+      objectName = "pixelGroupMap", objectClass = "SpatRaster",
+      desc = "PixelGroup map from LandR. Group of pixels that shares the same cohort composition"
     ),
     expectsInput(
       objectName = "cbm_vars",
@@ -61,29 +83,6 @@ defineModule(sim, list(
       desc = paste("List of 4 data tables: parameters, pools, flux, and state.",
                    "This is created initially during the spinup and updated each year."),
     ), 
-    expectsInput(
-      objectName = "pixelGroupMap", objectClass = "SpatRaster",
-      desc = paste("PixelGroup map from LandR. Group of pixels that shares the same.",
-                   "cohort composition")
-    ),
-    expectsInput(
-      objectName = "rasterToMatch", objectClass =  "SpatRaster",
-      desc = "Template raster to use for simulations; defaults is the RIA study area."
-    ),
-    expectsInput(
-      objectName = "standDT", objectClass = "data.table",
-      desc = "Table of stand attributes.",
-      columns = c(
-        pixelIndex   = "Stand ID",
-        admin_name   = "Canada province or territory name",
-        admin_abbrev = "Canada province or territory 2-character abbreviation",
-        eco_id       = "Canada ecozone ID"
-      )
-    ),
-    expectsInput(
-      objectName = "studyArea", objectClass =  "sfc",
-      desc = "Polygon to use as the study area; default is the RIA study area."
-    ),
     expectsInput(
       objectName = "table6", objectClass = "data.table",
       desc = paste("Proportion model parameters similar to Boudewyn et al 2007,",
@@ -294,11 +293,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # get the sum of each pool per pixelGroups
       poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch", "foliage", "other")]
       # rasterize
-      merchRast <- rast(sim$rasterToMatch, names = "merchantable")
+      merchRast <- rast(sim$masterRaster, names = "merchantable")
       merchRast[poolSum$pixelIndex] <- poolSum$merch
-      foliageRast <- rast(sim$rasterToMatch, names = "foliage")
+      foliageRast <- rast(sim$masterRaster, names = "foliage")
       foliageRast[poolSum$pixelIndex] <- poolSum$foliage
-      otherRast <- rast(sim$rasterToMatch, names = "other")
+      otherRast <- rast(sim$masterRaster, names = "other")
       otherRast[poolSum$pixelIndex] <- poolSum$other
       
       # plot
@@ -323,11 +322,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         increments <- sim$cohortDT[sim$gcIncrements, on = c("gcID", "age")]
         incrementSum  <- increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
         # rasterize
-        merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
+        merchIncRast <- rast(sim$masterRaster, names = "merchantable increments")
         merchIncRast[incrementSum$pixelIndex] <- incrementSum$merch_inc
-        foliageIncRast <- rast(sim$rasterToMatch, names = "foliage increments")
+        foliageIncRast <- rast(sim$masterRaster, names = "foliage increments")
         foliageIncRast[incrementSum$pixelIndex] <- incrementSum$foliage_inc
-        otherIncRast <- rast(sim$rasterToMatch, names = "other increments")
+        otherIncRast <- rast(sim$masterRaster, names = "other increments")
         otherIncRast[incrementSum$pixelIndex] <- incrementSum$other_inc
         
         # plot
@@ -860,6 +859,14 @@ PrepareCBMvars <- function(sim){
 
 .inputObjects <- function(sim) {
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
+  
+  # Set study area
+  if (!suppliedElsewhere("rasterToMatch", sim)){
+    sim$rasterToMatch <- sim$masterRaster
+  }
+  if (!suppliedElsewhere("studyArea", sim)){
+    sim$studyArea <- sf::st_sf(geometry = sf::st_as_sfc(sf::st_bbox(sim$masterRaster)))
+  }
   
   # NFI params. Used to split total biomass into biomass of the three CBM
   #                above ground biomass pools.
