@@ -48,7 +48,7 @@ test_that("module runs as a standAlone when not dynamic", {
   
   # check gcMeta
   expect_is(simTest$gcMeta, "data.table")
-  expect_named(simTest$gcMeta, c("gcID", "speciesCode", "sw_hw"))
+  expect_named(simTest$gcMeta, c("gcID", "speciesCode", "sw"))
   expect_true(all(simTest$cohortDT$gcID %in% simTest$gcMeta$gcID))
   
   # check gcIncrements

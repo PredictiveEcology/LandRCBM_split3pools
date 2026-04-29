@@ -43,16 +43,14 @@ addSpeciesCode <- function(cohortData, code = "CanfiCode"){
 
 addForestType <- function(cohortData){
   speciesCode <- unique(cohortData$speciesCode)
-  sw_hw <- LandR::sppEquivalencies_CA[match(speciesCode, LandR), Broadleaf]
-  sw_hw <- ifelse(sw_hw, "hw", "sw")
+  sw <- !LandR::sppEquivalencies_CA[match(speciesCode, LandR), Broadleaf]
   
-  if(any(is.na(sw_hw))) {
-    missing_species <- speciesCode[which(is.na(sw_hw))]
+  if(any(is.na(sw))) {
+    missing_species <- speciesCode[which(is.na(sw))]
     stop("no species match found for in Boudewyn tables: ", paste(missing_species, collapse = ", "))
   }
   
-  refTable <- data.table(speciesCode = speciesCode,
-                         sw_hw = sw_hw)
-  allCohortInfo <- cohortData[refTable ,on = "speciesCode"]
+  refTable <- data.table(speciesCode = speciesCode, sw = sw)
+  allCohortInfo <- cohortData[refTable, on = "speciesCode"]
   return(allCohortInfo)
 }
