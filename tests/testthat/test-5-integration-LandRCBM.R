@@ -135,7 +135,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # check cohortDT
   expect_is(simTest$cohortDT, "data.table")
   expect_named(simTest$cohortDT,
-               c("cohortID", "pixelIndex", "age", "speciesCode", "gcID"),
+               c("cohortID", "pixelIndex", "age", "speciesCode", "sw", "gcID"),
                ignore.order = TRUE)
   expect_setequal(simTest$cohortDT$gcID, simTest$cohortDT$cohortID)
   
@@ -150,7 +150,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # check gcMeta
   expect_is(simTest$gcMeta, "data.table")
   expect_named(simTest$gcMeta, 
-               c("gcID", "speciesCode", "sw_hw"))
+               c("gcID", "speciesCode", "sw"))
   expect_equal(nrow(simTest$gcMeta), nrow(simTest$gcIncrements))
   expect_setequal(simTest$gcMeta$gcID, simTest$gcIncrements$gcID)
   

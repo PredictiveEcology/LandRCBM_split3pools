@@ -137,13 +137,13 @@ test_that("function addForestType works", {
   expected_output <- data.table(
     pixelGroup = c(1, 2, 3, 4),
     speciesCode = c("Acer_sac", "Betu_pap", "Pinu_con", "Thuj_jun"),
-    sw_hw = c("hw", "hw", "sw", "sw")
+    sw = c(FALSE, FALSE, TRUE, TRUE)
   )
   
   # Tests
   expect_is(result, "data.table")
   expect_equal(result, expected_output)
-  expect_true("sw_hw" %in% names(result))
+  expect_true("sw" %in% names(result))
   expect_equal(nrow(result), 4)
   
   # Error when incorrect species name
