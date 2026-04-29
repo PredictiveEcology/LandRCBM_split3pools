@@ -9,7 +9,7 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
                     cohortData[age > 0,.(speciesCode, age, pixelGroup)],
                     allow.cartesian = TRUE)
   
-  # add sw_hw information of species
+  # add sw/hw information of species
   cohortDT <- addForestType(cohortDT)
   setorder(cohortDT, pixelIndex, speciesCode, age)
   
@@ -19,7 +19,7 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
     cohortDT <- merge(cohortDT, yieldTablesId, by = "pixelIndex", all.x = TRUE)
     
     # Get the species combinations per yieldTableIndex from the original data
-    species_combos <- unique(cohortDT[, .(yieldTableIndex, speciesCode, sw_hw)])
+    species_combos <- unique(cohortDT[, .(yieldTableIndex, speciesCode, sw)])
     
     # Find pixels in yieldTablesId that are not in original cohortDT
     missing_pixels <- setdiff(yieldTablesId[yieldTableIndex != 0, pixelIndex], unique(cohortDT$pixelIndex))
@@ -35,7 +35,7 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
       new_rows[, age := 0L]
       
       # Keep same column order as final table
-      setcolorder(new_rows, c("pixelIndex", "speciesCode", "age", "yieldTableIndex", "sw_hw"))
+      setcolorder(new_rows, c("pixelIndex", "speciesCode", "age", "yieldTableIndex", "sw"))
       
       # Bind to cohortDT
       cohortDT <- rbindlist(list(cohortDT, new_rows), use.names = TRUE, fill = TRUE)
@@ -48,7 +48,7 @@ generateCohortDT <- function(cohortData, pixelGroupMap, yieldTablesId){
     cohortDT[, gcID := .GRP, by = .(yieldTableIndex, speciesCode)]
     
     # Keep final columns in desired order
-    cohortDT <- cohortDT[, .(cohortID, pixelIndex, speciesCode, age, gcID, yieldTableIndex, sw_hw)]
+    cohortDT <- cohortDT[, .(cohortID, pixelIndex, speciesCode, age, gcID, yieldTableIndex, sw)]
   } else {
     stop("yieldTablesId needs to cannot be NULL")
   }
