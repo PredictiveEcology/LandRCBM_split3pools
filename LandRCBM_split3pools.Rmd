@@ -27,7 +27,18 @@ The inputs of `LandRCBM_split3pools` are a combination expected outputs from `La
 The default inputs are for the RIA study area. Most inputs are expected to be provided by other modules (`CBMdefault`, `Biomass_core`, `Biomass_yieldTables`, `Biomass_borealDataPrep`, etc.).
 
 | Name              | Class      | Description                            | Source          |
-
+|-------------------|------------|----------------------------------------|-----------------|
+| cohortData        | Data table | Table with cohort-level attributes     | Biomass_borealDataPrep |
+| cbm_vars          | list       | List of 4 data tables: parameters, pools, flux, and state | CBM_core |
+| pixelGroupMap     | Spatraster | Pixel group map from LandR Groups pixels that share the same cohort composition | Biomass_borealDataPrep |
+| rasterToMatch     | SpatRaster | Template raster to use for simulations | User provided   |
+| standDT           | Data table | Table of stand attributes. Stands can have 1 or more cohorts | CBM_dataPrep |
+| studyArea         | sfc        | Polygon object that defines study area | User provided   |
+| table6            | Data table | Boudewyn table used in volume-to-biomass translations | [National Forest Inventory](https://nfi.nfis.org/resources/biomass_models/appendix2_table6.csv)|
+| table7            | Data table | Boudewyn table used in volume-to-biomass translations | [National Forest Inventory](https://nfi.nfis.org/resources/biomass_models/appendix2_table7.csv)|
+| tableMerchantability | Data table | Parameters for estimation of merchantable proportion of stemwood | [Google Drive](https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC/view?usp=drive_link) |
+| yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements | Biomass_yieldTables |
+| yieldTablesId     | Data table | Table spatially linking yield tables to pixels | Biomass_yieldTables |
 
 ## Parameters
 
@@ -61,7 +72,16 @@ Third, at the end of the simulation, the modules returns figures of the evolutio
 ### Outputs
 
 | Name              | Class      | Description                                                     |
-
+|-------------------|------------|-----------------------------------------------------------------|
+| aboveGroundBiomass | Data table | Above ground biomass in each pool for each pixel and cohort    |
+| cbm_vars          | List       | List of 4 data tables: parameters, pools, flux, and state       |
+| cohortDT          | Data table | Table of cohort-level attributes                                |
+| gcIncrements      | Data table | growth increment matrix. Provides increments for each pool in each pixel and cohort |
+| gcMeta            | Data table | Growth curve metadata                                           |
+| standDT           | Data table | Table of stand attributes. Stands can have 1 or more cohorts    |
+| summaryAGB        | Data table | Sum of carbon mass for each species and above ground pools at each time step |
+| yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements     |
+| yieldTablesId     | Data table | Table spatially linking yield tables to pixels                  |
 
 ### Links to other modules
 
