@@ -81,10 +81,6 @@ Third, at the end of the simulation, the modules returns figures of the evolutio
 | yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements     |
 | yieldTablesId     | Data table | Table spatially linking yield tables to pixels                  |
 
-### Usage
-
-An example of a workflow to build yield tables for the RIA study area (Northeast British-Columbia) can be found in the script `global_LandRyieldTables.R` of the repository [LandRCBM](https://github.com/DominiqueCaron/LandRCBM).
-
 
 ### Links to other modules
 
