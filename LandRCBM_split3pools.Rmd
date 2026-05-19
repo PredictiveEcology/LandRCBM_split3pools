@@ -81,6 +81,11 @@ Third, at the end of the simulation, the modules returns figures of the evolutio
 | yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements     |
 | yieldTablesId     | Data table | Table spatially linking yield tables to pixels                  |
 
+### Usage
+
+An example of a workflow to build yield tables for the RIA study area (Northeast British-Columbia) can be found in the script `global_LandRyieldTables.R` of the repository [LandRCBM](https://github.com/DominiqueCaron/LandRCBM).
+
+
 ### Links to other modules
 
 - [CBM_defaults](https://github.com/PredictiveEcology/CBM_defaults)
@@ -90,6 +95,6 @@ Third, at the end of the simulation, the modules returns figures of the evolutio
 - [Biomass_borealDataPrep](https://github.com/PredictiveEcology/Biomass_borealDataPrep)
 - [Biomass_speciesFactorial](https://github.com/PredictiveEcology/Biomass_borealDataPrep)
 - [Biomass_speciesParameters](https://github.com/PredictiveEcology/Biomass_speciesParameters)
-- [Biomass_yieldTables](https://github.com/PredictiveEcology/Biomass_yieldTables)
+- [LandRCBM_split3pools](https://github.com/PredictiveEcology/LandRCBM_split3pools)
 - [Biomass_regeneration](https://github.com/PredictiveEcology/Biomass_regeneration)
 - [Biomass_core](https://github.com/PredictiveEcology/Biomass_core)
