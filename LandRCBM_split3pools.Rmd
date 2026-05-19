@@ -67,8 +67,6 @@ Second, at a regular interval, controlled by the parameter `.plotInterval`, the 
 
 Third, at the end of the simulation, the modules returns figures of the evolution of the above ground biomass divided into pools across the landscape for each species.
 
-
-
 ### Outputs
 
 | Name              | Class      | Description                                                     |
@@ -85,4 +83,13 @@ Third, at the end of the simulation, the modules returns figures of the evolutio
 
 ### Links to other modules
 
-The module can be used as a standalone, but will be most likely used with other modules. The module from the `Biomass_*` family can provide most inputs needed by `LandRCBM_split3pools` and simulate vegetation dynamics. Disturbance modules like `fireSense` can be used to simulate disturbances. Finally, `CBM_core` can be used to simulate the carbon dynamics between the different carbon pools.
+- [CBM_defaults](https://github.com/PredictiveEcology/CBM_defaults)
+- [CBM_datPrep](https://github.com/PredictiveEcology/CBM_dataPrep)
+- [CBM_vol2biomass](https://github.com/PredictiveEcology/CBM_vol2biomass)
+- [CBM_core](https://github.com/PredictiveEcology/CBM_core)
+- [Biomass_borealDataPrep](https://github.com/PredictiveEcology/Biomass_borealDataPrep)
+- [Biomass_speciesFactorial](https://github.com/PredictiveEcology/Biomass_borealDataPrep)
+- [Biomass_speciesParameters](https://github.com/PredictiveEcology/Biomass_speciesParameters)
+- [Biomass_yieldTables](https://github.com/PredictiveEcology/Biomass_yieldTables)
+- [Biomass_regeneration](https://github.com/PredictiveEcology/Biomass_regeneration)
+- [Biomass_core](https://github.com/PredictiveEcology/Biomass_core)
