@@ -22,7 +22,7 @@ The objective of this module is to make data coming from the `LandR` ecosystem c
 
 ## Inputs
 
-The inputs of `LandRCBM_split3pools` are a combination expected outputs from `LandR`, data to convert total above ground biomass into above merchantable, foliage and other biomass, and data that are expected as input in `spadesCBM`.
+The inputs of [LandRCBM_split3pools](https://github.com/PredictiveEcology/LandRCBM_split3pools) are a combination expected outputs from `LandR`, data to convert total above ground biomass into above merchantable, foliage and other biomass, and data that are expected as input in `spadesCBM`.
 
 The default inputs are for the RIA study area. Most inputs are expected to be provided by other modules (`CBMdefault`, `Biomass_core`, `Biomass_yieldTables`, `Biomass_borealDataPrep`, etc.).
 
@@ -40,32 +40,33 @@ The default inputs are for the RIA study area. Most inputs are expected to be pr
 | yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements | Biomass_yieldTables |
 | yieldTablesId     | Data table | Table spatially linking yield tables to pixels | Biomass_yieldTables |
 
-## Parameters
-
 
 ## Module functioning
 
 ### Events
 
-There are 7 events:
+[LandRCBM_split3pools](https://github.com/PredictiveEcology/LandRCBM_split3pools) has 7 events, 3 of which are plotting events. Saved plots can be found in the `~/LandRCBM/outputs/[simulation name]/figures/LandRCBM_split3pools` directory. 
 
-1. *init*: Splits the total above ground biomass in yield tables into biomass of each of the three above ground carbon pools.
-2. *plotYC*: Plots the yield tables split in above ground carbon pools and the resulting increments.
-3. *annualIncrements*: Each time step, compares the `cohortData` with previous year, calculates the difference in biomass for each cohort, and convert this difference into increments of the three above ground carbon pools.
-4. *annualDisturbances*: If specified, translates yearly disturbances simulated in other modules into a data.table that can be digested by `CBM_core`.
-5. *summarizeAGBPools*: Each time step, summarizes the above ground biomass in each above ground carbon pools for each species across the landscape.
-6. *plotMaps*: At a regular interval, maps the above ground biomass and increments of each above carbon pools.
-7. *plotSummaries*: At the end of the simulation, plots the evolution of the above ground biomass of each pools for each species and for the entire landscape.
+#### `init`
+This initial event splits the total above ground biomass from the yield tables into biomass of each of the above ground carbon pools (merchantable, foliage, and other). 
 
-### Plotting
+#### `plotYC`
+This plotting event plots the split yield tables from the `init` event. 
 
-There are 3 types of plots that are created.
+#### `annualIncrements`
+In this event, `cohortData` from the current simulaion year is compared with the previous year and the difference in biomass for each cohort is calculated and converted into increments of the three above ground carbon pools. 
 
-First, the modules plots figures related to the yield tables. The module returns a figure for the yield curves of total above ground biomass for a number (controlled by the parameter `numPixGroupPlots`) yield table ids. For the same yield table ids, the module also plots the yield tables divided into above ground carbon pools and the resulting increments.
+#### `annualDisturbances`
+If specified, yearly disturbances simulated in other modules are translated into a data table that can be digested by [CBM_core](https://github.com/PredictiveEcology/CBM_core). 
 
-Second, at a regular interval, controlled by the parameter `.plotInterval`, the modules returns maps of the biomass and increments of merchantable, foliage, and other carbon pools.
+#### `summarizeAGBPools`
+Here the above ground biomass in each above ground carbon pool is summarized for each species across the landscape at each time step. 
 
-Third, at the end of the simulation, the modules returns figures of the evolution of the above ground biomass divided into pools across the landscape for each species.
+#### `plotMaps`
+This plotting event maps the above ground biomass and increments of each above ground carbon pools at a regular interval. 
+
+#### `plotSummaries`
+This simple plotting event plots the evolution of hte above ground biomass of each pool for each species and for the entire landscape at the end of the simulation. 
 
 ### Outputs
 
