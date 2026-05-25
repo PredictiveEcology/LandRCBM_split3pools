@@ -29,7 +29,7 @@ The default inputs are for the Western Boreal Regional Integrated Assessment (RI
 | Name              | Class      | Description                            | Source          |
 |-------------------|------------|----------------------------------------|-----------------|
 | cohortData        | Data table | Table with cohort-level attributes     | Biomass_borealDataPrep |
-| cbm_vars          | list       | List of 4 data tables: parameters, pools, flux, and state | CBM_core |
+| cbm_vars          | list       | List of 5 data tables: key, parameters, pools, flux, and state | CBM_core |
 | pixelGroupMap     | Spatraster | Pixel group map from LandR Groups pixels that share the same cohort composition | Biomass_borealDataPrep |
 | rasterToMatch     | SpatRaster | Template raster to use for simulations | User provided   |
 | standDT           | Data table | Table of stand attributes. Stands can have 1 or more cohorts | CBM_dataPrep |
@@ -76,9 +76,9 @@ This simple plotting event plots the evolution of the aboveground biomass of eac
 | Name              | Class      | Description                                                     |
 |-------------------|------------|-----------------------------------------------------------------|
 | aboveGroundBiomass | Data table | Above ground biomass in each pool for each pixel and cohort    |
-| cbm_vars          | List       | List of 4 data tables: parameters, pools, flux, and state       |
+| cbm_vars          | List       | List of 5 data tables: key, parameters, pools, flux, and state  |
 | cohortDT          | Data table | Table of cohort-level attributes                                |
-| gcIncrements      | Data table | growth increment matrix. Provides increments for each pool in each pixel and cohort |
+| gcIncrements      | Data table | Growth increment matrix. Provides increments for each pool in each pixel and cohort |
 | gcMeta            | Data table | Growth curve metadata                                           |
 | summaryAGB        | Data table | Sum of carbon mass for each species and above ground pools at each time step |
 | yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements     |
