@@ -71,15 +71,13 @@ defineModule(sim, list(
       desc = "Template raster to use for simulations; defaults is the RIA study area."
     ),
     expectsInput(
-      objectName = "standDT", objectClass =  "data.table",
-      desc = paste0("A data table with spatial information of each pixel."),
+      objectName = "standDT", objectClass = "data.table",
+      desc = "Table of stand attributes.",
       columns = c(
-        pixelIndex         = "`masterRaster` cell index",
-        area               = "`masterRaster` cell area in meters",
-        admin_abbrev       = "Canada administrative abbreviation extracted from `adminLocator`",
-        admin_boundary_id  = "CBM-CFS3 administrative boundary ID",
-        eco_id             = "Canada ecozone ID extracted from `ecoLocator`",
-        spatial_unit_id    = "CBM-CFS3 spatial unit ID"
+        pixelIndex   = "Stand ID",
+        admin_name   = "Canada province or territory name",
+        admin_abbrev = "Canada province or territory 2-character abbreviation",
+        eco_id       = "Canada ecozone ID"
       )
     ),
     expectsInput(
@@ -160,12 +158,6 @@ defineModule(sim, list(
       objectClass = "data.table",
       desc = paste("Growth curve-level information.",
                    "Columns are `gcID`, `speciesCode`, and `sw`")
-    ),  
-    createsOutput(
-      objectName = "standDT",
-      objectClass = "data.table",
-      desc = paste("A data table with spatial information for the CBM spinup.",
-                   "Columns are `pixelIndex`, `area`, and `spatial_unit_id`.")
     ),
     createsOutput(
       objectName = "summaryAGB",
@@ -655,7 +647,7 @@ UpdateCohortGroups <- function(sim){
   # Get the pools for the cohort groups of the previous timestep
   cohortsPrev <- unique(sim$cbm_vars$key, by = c("pixelIndex", "row_idx_prev"))[, .(pixelIndex, row_idx_prev)]
   cohortsPrev <- merge(cohortsPrev,
-                       sim$cbm_vars$state[, .(row_idx, spatial_unit_id, age, speciesCode)],
+                       sim$cbm_vars$state[, .(row_idx, age, speciesCode)],
                        by.x = "row_idx_prev",
                        by.y = "row_idx",
                        sort = FALSE)
@@ -706,7 +698,7 @@ UpdateCohortGroups <- function(sim){
   # Update cbm_vars state.
   sim$cbm_vars$state <- merge(
     cohorts[, .(row_idx, gcID, age, speciesCode, sw, row_idx_prev)],
-    sim$cbm_vars$state[, .(row_idx, area, time_since_last_disturbance, time_since_land_use_change, last_disturbance_type, enabled, delay, land_class_id, admin_name, eco_id, spatial_unit_id)],
+    sim$cbm_vars$state[, .(row_idx, delay, admin_name, eco_id, land_class_id, last_disturbance_type, time_since_last_disturbance, time_since_land_use_change, enabled)],
     by.x = "row_idx_prev",
     by.y = "row_idx",
     all.x = TRUE
@@ -773,7 +765,7 @@ PrepareCBMvars <- function(sim){
   new_cbm_flux <- unique(new_cbm_flux, by = "row_idx")
   
   # 3. Prepare cbm parameters
-  new_cbm_parameters <- sim$cbm_vars$state[, .(row_idx, spatial_unit_id, gcID)]
+  new_cbm_parameters <- sim$cbm_vars$state[, .(row_idx, admin_name, eco_id, gcID)]
   
   # Set no disturbance by default (will be changed later for disturbed cohorts)
   new_cbm_parameters[, disturbance_type := 0]
@@ -828,11 +820,9 @@ PrepareCBMvars <- function(sim){
   
   # Set the state of the new cohorts
   if(any(is.na(new_cbm_state))) {
-    # remove spatial_unit_id. It will be retrieved by cbm_core
-    new_cbm_state[, spatial_unit_id := NULL]
     
-    newCohorts_cbm_state <- new_cbm_state[is.na(area), ]
-    setnafill(newCohorts_cbm_state, fill = 1L, cols = c("area", "last_disturbance_type", "enabled"))
+    newCohorts_cbm_state <- new_cbm_state[is.na(enabled), ]
+    setnafill(newCohorts_cbm_state, fill = 1L, cols = c("last_disturbance_type", "enabled"))
     setnafill(newCohorts_cbm_state, fill = -1L, cols = c("land_class_id", "time_since_land_use_change")) 
     setnafill(newCohorts_cbm_state, fill = 0L, cols = "delay") 
     
@@ -846,7 +836,7 @@ PrepareCBMvars <- function(sim){
     
     # Combine with cohorts that were present before
     new_cbm_state <- rbind(
-      new_cbm_state[!is.na(area),],
+      new_cbm_state[!is.na(enabled),],
       newCohorts_cbm_state
     )
   }
