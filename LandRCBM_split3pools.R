@@ -6,6 +6,8 @@ defineModule(sim, list(
   authors = c(
     person("Celine", "Boisvenue", email = "cboivenue@gmail.com", role = c("aut", "cre")),
     person("Dominique", "Caron", email = "dominique.caron@nrcan-rncan.gc.ca", role = c("aut")),
+    person("Susan",   "Murray",    email = "murray.e.susan@gmail.com",           role = c("ctb")),
+    person("Camille", "Giuliano",  email = "camsgiu@gmail.com",                  role = c("ctb")),
     person("Alex M", "Chubaty", email = "achubaty@for-cast.ca", role = "ctb")
   ),
   childModules = character(0),
@@ -18,8 +20,8 @@ defineModule(sim, list(
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.1.2.0002)", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
     defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
-                    "When plotting the yield curves, this is how many unique pixel groups will ",
-                    "be randomly selected and plotted."),
+                    "Number of pixel groups that will be randomly selected and ",
+                    "for which yield curves will be plotted."),
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
                     "Minimum age for which a cohort can have wood considered merchantable."),
     defineParameter(".plots", "character", "screen", NA, NA,
@@ -58,13 +60,14 @@ defineModule(sim, list(
     expectsInput(
       objectName = "cbm_vars",
       objectClass = "list",
-      desc = paste("List of 4 data tables: parameters, pools, flux, and state.",
+      desc = paste("List of 5 data tables defining active cohorts in the current year:",
+                   "key, parameters, pools, flux, and state.",
                    "This is created initially during the spinup and updated each year."),
     ), 
     expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
-      desc = paste("PixelGroup map from LandR. Group of pixels that shares the same.",
-                   "cohort composition")
+      desc = paste("Map of pixel group from LandR. Group of pixels that shares the same ",
+                   "cohort composition.")
     ),
     expectsInput(
       objectName = "rasterToMatch", objectClass =  "SpatRaster",
@@ -137,7 +140,8 @@ defineModule(sim, list(
     createsOutput(
       objectName = "cbm_vars", objectClass = "list",
       desc = paste(
-        "List of 4 data tables: parameters, pools, flux, and state.",
+        "List of 5 data tables defining active cohorts in the current year:",
+        "key, parameters, pools, flux, and state.",
         "This is created initially during the spinup and updated each year.")
     ),
     createsOutput(
