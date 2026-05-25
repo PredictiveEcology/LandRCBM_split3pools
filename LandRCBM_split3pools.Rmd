@@ -18,13 +18,13 @@ This documentation is work in progress. Potential discrepancies and omissions ma
 
 ## Overview
 
-The objective of this module is to make data coming from the `LandR` ecosystem compatible with the `spadesCBM`. The module provides the yearly increments for the three above ground biomass pools: merchantable, foliage, and  other. It does so for the yield tables useful for the spinup event of `spadesCBM`, and for the yearly cohort data which is used for the annual event of `spadesCBM`. The module can also translate disturbances provided by disturbance modules into the format that is expected in `spadesCBM`.
+`LandRCBM_split3pools` translates forest landscape dynamics simulated from `LandR` compatible with the `spadesCBM`. The module provides the annual increments for the three above ground biomass pools: merchantable, foliage, and  other. It does so for the yield tables which are used during the spinup event of `spadesCBM`, and for the annual cohort data which are used for the annual event of `spadesCBM`. 
 
 ## Inputs
 
-The inputs of [LandRCBM_split3pools](https://github.com/PredictiveEcology/LandRCBM_split3pools) are a combination expected outputs from `LandR`, data to convert total above ground biomass into above merchantable, foliage and other biomass, and data that are expected as input in `spadesCBM`.
+The inputs of [LandRCBM_split3pools](https://github.com/PredictiveEcology/LandRCBM_split3pools) are a combination of outputs from `LandR`, data to convert total above ground biomass into biomass of merchantable, foliage and other wood pools, and outputs in `spadesCBM`.
 
-The default inputs are for the RIA study area. Most inputs are expected to be provided by other modules (`CBMdefault`, `Biomass_core`, `Biomass_yieldTables`, `Biomass_borealDataPrep`, etc.).
+The default inputs are for the Western Boreal Regional Integrated Assessment (RIA) study area. Most inputs are expected to be provided by other modules (`CBMdefault`, `Biomass_core`, `Biomass_yieldTables`, `Biomass_borealDataPrep`, etc.).
 
 | Name              | Class      | Description                            | Source          |
 |-------------------|------------|----------------------------------------|-----------------|
@@ -47,26 +47,29 @@ The default inputs are for the RIA study area. Most inputs are expected to be pr
 
 [LandRCBM_split3pools](https://github.com/PredictiveEcology/LandRCBM_split3pools) has 7 events, 3 of which are plotting events. Saved plots can be found in the `~/LandRCBM/outputs/[simulation name]/figures/LandRCBM_split3pools` directory. 
 
-#### `init`
-This initial event splits the total above ground biomass from the yield tables into biomass of each of the above ground carbon pools (merchantable, foliage, and other). 
+#### `splitInit`
+This initial event splits the total above ground biomass of the yield tables and the initial landscape into biomass of each of the above ground carbon pools (merchantable, foliage, and other). 
 
-#### `plotYC`
-This plotting event plots the split yield tables from the `init` event. 
+#### `postSpinupAdjustBiomass`
+After the CBM spinup, the biomass in the aboveground (merchantable, foliage, and other) and belowground (coarse roots and fine roots) live carbon pools will not match the observed data. This event re-initializes these pools to match observed initial aboveground biomass.  
 
 #### `annualIncrements`
-In this event, `cohortData` from the current simulaion year is compared with the previous year and the difference in biomass for each cohort is calculated and converted into increments of the three above ground carbon pools. 
+In this event, `cohortData` from the current simulation year is compared with the previous year and the difference in biomass for each cohort is calculated and converted into increments of the three aboveground carbon pools. 
 
-#### `annualDisturbances`
-If specified, yearly disturbances simulated in other modules are translated into a data table that can be digested by [CBM_core](https://github.com/PredictiveEcology/CBM_core). 
+#### `prepareCBMvars`
+Each year, the object `cbm_vars` is updated to incorporate the calculated annual aboveground increments, handle dead organic matter cohorts (cohort without aboveground biomass), new cohorts, and disturbed cohorts. 
 
 #### `summarizeAGBPools`
-Here the above ground biomass in each above ground carbon pool is summarized for each species across the landscape at each time step. 
+Here, the above ground biomass in each above ground carbon pool is summarized for each species across the landscape at each time step. 
+
+#### `plotYC`
+This event plots the yield curves for a number of randomly selected pixel groups. The yield curves describe how aboveground carbon pools change with stand age.
 
 #### `plotMaps`
-This plotting event maps the above ground biomass and increments of each above ground carbon pools at a regular interval. 
+This event maps the aboveground carbon stocks and increments at a regular interval.
 
 #### `plotSummaries`
-This simple plotting event plots the evolution of hte above ground biomass of each pool for each species and for the entire landscape at the end of the simulation. 
+This simple plotting event plots the evolution of the aboveground biomass of each pool for each species and for the entire landscape at the end of the simulation. 
 
 ### Outputs
 
@@ -77,7 +80,6 @@ This simple plotting event plots the evolution of hte above ground biomass of ea
 | cohortDT          | Data table | Table of cohort-level attributes                                |
 | gcIncrements      | Data table | growth increment matrix. Provides increments for each pool in each pixel and cohort |
 | gcMeta            | Data table | Growth curve metadata                                           |
-| standDT           | Data table | Table of stand attributes. Stands can have 1 or more cohorts    |
 | summaryAGB        | Data table | Sum of carbon mass for each species and above ground pools at each time step |
 | yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements     |
 | yieldTablesId     | Data table | Table spatially linking yield tables to pixels                  |
