@@ -34,8 +34,8 @@ The default inputs are for the Western Boreal Regional Integrated Assessment (RI
 | rasterToMatch     | SpatRaster | Template raster to use for simulations | User provided   |
 | standDT           | Data table | Table of stand attributes. Stands can have 1 or more cohorts | CBM_dataPrep |
 | studyArea         | sfc        | Polygon object that defines study area | User provided   |
-| table6            | Data table | Boudewyn table used in volume-to-biomass translations | [National Forest Inventory](https://nfi.nfis.org/resources/biomass_models/appendix2_table6.csv)|
-| table7            | Data table | Boudewyn table used in volume-to-biomass translations | [National Forest Inventory](https://nfi.nfis.org/resources/biomass_models/appendix2_table7.csv)|
+| table6            | Data table | Boudewyn table with proportion model parameters | [National Forest Inventory](https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv)|
+| table7            | Data table | Boudewyn table with caps on proportion models | [National Forest Inventory](https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv)|
 | tableMerchantability | Data table | Parameters for estimation of merchantable proportion of stemwood | [Google Drive](https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC/view?usp=drive_link) |
 | yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements | Biomass_yieldTables |
 | yieldTablesId     | Data table | Table spatially linking yield tables to pixels | Biomass_yieldTables |
