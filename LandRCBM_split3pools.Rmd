@@ -71,6 +71,44 @@ This event maps the aboveground carbon stocks and increments at a regular interv
 #### `plotSummaries`
 This simple plotting event plots the evolution of the aboveground biomass of each pool for each species and for the entire landscape at the end of the simulation. 
 
+### Estimating merchantable proportion of stemwood
+
+Merchantable wood is estimated in @boudewyn2007 with the following equation:
+$nonmerchfactor = k + a * b_m^b$
+$nonmerchfactor = b_{nm}/b_m$
+$b_{nm} = b_m + b_n$
+
+Where:
+
+- $b_n$ is the stemwood biomass of live, nonmerchantable trees
+
+- $b_m$ is the stemwood biomass of merchantable sized live trees
+
+- $b_{nm}$ is the total stemwood biomass in live trees
+
+- $k$, $a$, and $b$ are model parameters fit separately by jurisdiction, ecozone, and lead tree species (Table 4 in @boudewyn2007).
+
+
+Because it is not possible to analytically infer new parameters for the equation above, they had to be inferred through simulations resulting in a new exponential model with this form to estimate the mechantable proportion of stemwood:
+
+$b_m = k - e^{-a(b_{nm} - b)}$
+
+Where:
+
+- $k$, $a$, and $b$ are model parameters inferred separately from those in @boudewyn2007
+
+If the value of $b_m$ exceeds the simulated inferred $cap$, then the value will default to the $cap$ proportion like so:
+
+$$\text{b_m} =
+\begin{cases}
+\text{b_m}, & \text{if b_m} > \text{cap} \\
+\text{cap}, & \text{if b_m} \le \text{cap}
+\end{cases}$$
+
+
+![](https://raw.githubusercontent.com/PredictiveEcology/LandRCBM/main/manual/images/merchantabilityFit1.png){fig-align="center" width="650"}
+*figure 1: comparison between merchantable proportion curves from the fitted function used in `Biomass_yieldTables` and the equations from @boudewyn2007 for a number of species
+
 ### Outputs
 
 | Name              | Class      | Description                                                     |
