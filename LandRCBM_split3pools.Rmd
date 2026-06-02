@@ -74,6 +74,7 @@ This simple plotting event plots the evolution of the aboveground biomass of eac
 ### Estimating merchantable proportion of stemwood
 
 Merchantable wood is estimated in @boudewyn2007 with the following equation:
+
 $nonmerchfactor = k + a * b_m^b$
 $nonmerchfactor = b_{nm}/b_m$
 $b_{nm} = b_m + b_n$
@@ -105,9 +106,10 @@ $$\text{b_m} =
 \text{cap}, & \text{if b_m} \le \text{cap}
 \end{cases}$$
 
+The merchantable proportion of stemwood biomass is calculated in this way for each species present in the simulation. Below is an example of some species along with a comparison to the estimates using the original @boudewyn2007 equation.
 
 ![](https://raw.githubusercontent.com/PredictiveEcology/LandRCBM/main/manual/images/merchantabilityFit1.png){fig-align="center" width="650"}
-*figure 1: comparison between merchantable proportion curves from the fitted function used in `Biomass_yieldTables` and the equations from @boudewyn2007 for a number of species
+*figure 1: comparison between merchantable proportion curves from the fitted function used in `Biomass_yieldTables` and the equations from @boudewyn2007 for a number of species*
 
 ### Outputs
 
