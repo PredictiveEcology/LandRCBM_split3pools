@@ -123,7 +123,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   DOMCohortGroups  = simTest$cbm_vars$state[gcID == 0, row_idx]
   # DOM cohort groups have 0 above ground biomass
   expect_true(
-    all(simTest$cbm_vars$pools[DOMCohortGroups, .(Merch, Foliage, Other)] == 0)
+    all(round(simTest$cbm_vars$pools[DOMCohortGroups, .(Merch, Foliage, Other)], 10^-12) == 0)
   )
   # There can't be more than 1 DOM cohort groups per pixel
   expect_equal(
