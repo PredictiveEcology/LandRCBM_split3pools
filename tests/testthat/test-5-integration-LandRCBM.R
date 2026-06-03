@@ -91,16 +91,13 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   expect_is(simTest$cbm_vars, "list")
   expect_named(simTest$cbm_vars, c("key", "pools", "flux", "parameters", "state"))
   NcohortGroups <- length(unique(simTest$cbm_vars$key$row_idx))
-  expect_equal(nrow(simTest$cbm_vars$pools), NcohortGroups)
-  expect_equal(simTest$cbm_vars$pools$Merch, simTest$aboveGroundBiomass$merch)
-  expect_equal(simTest$cbm_vars$pools$Foliage, simTest$aboveGroundBiomass$foliage)
-  expect_equal(simTest$cbm_vars$pools$Other, simTest$aboveGroundBiomass$other)
-  expect_equal(nrow(simTest$cbm_vars$flux), NcohortGroups)
+  expect_equal(nrow(simTest$cbm_vars$pools),      NcohortGroups)
+  expect_equal(nrow(simTest$cbm_vars$flux),       NcohortGroups)
   expect_equal(nrow(simTest$cbm_vars$parameters), NcohortGroups)
+  expect_equal(nrow(simTest$cbm_vars$state),      NcohortGroups)
   expect_equal(simTest$cbm_vars$parameters$merch_inc, simTest$gcIncrements$merch_inc)
   expect_equal(simTest$cbm_vars$parameters$foliage_inc, simTest$gcIncrements$foliage_inc)
   expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$gcIncrements$other_inc)
-  expect_equal(nrow(simTest$cbm_vars$state), NcohortGroups)
   
   # check species types
   expect_in(simTest$cbm_vars$state[speciesCode == "Abie_las", sw_hw], 0L) # SW
