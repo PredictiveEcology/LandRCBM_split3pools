@@ -95,9 +95,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   expect_equal(nrow(simTest$cbm_vars$flux),       NcohortGroups)
   expect_equal(nrow(simTest$cbm_vars$parameters), NcohortGroups)
   expect_equal(nrow(simTest$cbm_vars$state),      NcohortGroups)
-  expect_equal(simTest$cbm_vars$parameters$merch_inc, simTest$gcIncrements$merch_inc)
-  expect_equal(simTest$cbm_vars$parameters$foliage_inc, simTest$gcIncrements$foliage_inc)
-  expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$gcIncrements$other_inc)
   
   # check species types
   expect_in(simTest$cbm_vars$state[speciesCode == "Abie_las", sw_hw], 0L) # SW
@@ -108,6 +105,11 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   
   # checks for "active" cohorts
   ActiveCohortGroups <- simTest$cbm_vars$state[gcID != 0, row_idx]
+  
+  expect_equal(
+    simTest$cbm_vars$parameters[ActiveCohortGroups, .(merch_inc, foliage_inc, other_inc)],
+    simTest$gcIncrements[, .(merch_inc, foliage_inc, other_inc)]
+  )
   expect_equal(
     simTest$aboveGroundBiomass[,.(Merch = merch, Foliage = foliage, Other = other)],
     simTest$cbm_vars$pools[ActiveCohortGroups,.(Merch, Foliage, Other)]
