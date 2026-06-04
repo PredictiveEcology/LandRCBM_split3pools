@@ -30,7 +30,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
       ),
       CBM_core = list(
         .plot = FALSE,
-        skipCohortGroupHandling = TRUE,
         skipPrepareCBMvars = TRUE
       ),
       Biomass_core = list(
@@ -64,104 +63,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   # Run spades
   simTest <- SpaDES.core::spades(simTestInit)
   expect_s4_class(simTest, "simList")
-  
-  # check all outputs are there
-  expect_true(all(
-    c("aboveGroundBiomass", "cbm_vars", "cohortDT", "gcIncrements", "gcMeta", 
-      "summaryAGB", "yieldTablesCumulative", "yieldTablesId") %in%
-      names(simTest)
-  ))
-  
-  # check aboveGroundBiomass
-  expect_is(simTest$aboveGroundBiomass, "data.table")
-  expect_named(simTest$aboveGroundBiomass,
-               c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"),
-               ignore.order = TRUE)
-  # check that total biomass per species match cohortData
-  expectedSpeciesB <- simTest$cohortData[, .(total_biomass = sum(B)/200), by = speciesCode]
-  resultSpeciesB <- copy(simTest$aboveGroundBiomass)[, B := merch + foliage + other]
-  resultSpeciesB <- resultSpeciesB[, .(total_biomass = sum(B)), by = speciesCode]
-  expect_equal(expectedSpeciesB, resultSpeciesB)
-  
-  # check cbm_vars key
-  expect_is(simTest$cbm_vars$key, "data.table")
-  expect_named(simTest$cbm_vars$key, c("pixelIndex", "row_idx_prev", "cohortID", "row_idx", "disturbance_type_id"), ignore.order = TRUE)
-  
-  # check cbm_vars
-  expect_is(simTest$cbm_vars, "list")
-  expect_named(simTest$cbm_vars, c("key", "pools", "flux", "parameters", "state"))
-  NcohortGroups <- length(unique(simTest$cbm_vars$key$row_idx))
-  expect_equal(nrow(simTest$cbm_vars$pools), NcohortGroups)
-  expect_equal(simTest$cbm_vars$pools$Merch, simTest$aboveGroundBiomass$merch)
-  expect_equal(simTest$cbm_vars$pools$Foliage, simTest$aboveGroundBiomass$foliage)
-  expect_equal(simTest$cbm_vars$pools$Other, simTest$aboveGroundBiomass$other)
-  expect_equal(nrow(simTest$cbm_vars$flux), NcohortGroups)
-  expect_equal(nrow(simTest$cbm_vars$parameters), NcohortGroups)
-  expect_equal(simTest$cbm_vars$parameters$merch_inc, simTest$gcIncrements$merch_inc)
-  expect_equal(simTest$cbm_vars$parameters$foliage_inc, simTest$gcIncrements$foliage_inc)
-  expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$gcIncrements$other_inc)
-  expect_equal(nrow(simTest$cbm_vars$state), NcohortGroups)
-  
-  # check species types
-  expect_in(simTest$cbm_vars$state[speciesCode == "Abie_las", sw_hw], 0L) # SW
-  expect_in(simTest$cbm_vars$state[speciesCode == "Pinu_con", sw_hw], 0L) # SW
-  
-  # spatial unit id is correct
-  expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
-  
-  # checks for "active" cohorts
-  ActiveCohortGroups <- simTest$cbm_vars$state[gcID != 0, row_idx]
-  expect_equal(
-    simTest$aboveGroundBiomass[,.(Merch = merch, Foliage = foliage, Other = other)],
-    simTest$cbm_vars$pools[ActiveCohortGroups,.(Merch, Foliage, Other)]
-  )
-  expect_equal(
-    simTest$aboveGroundBiomass$age,
-    simTest$cbm_vars$state$age[ActiveCohortGroups]
-  )
-  
-  # checks for DOM cohorts (there are none in this test)
-  DOMCohortGroups  = simTest$cbm_vars$state[gcID == 0, row_idx]
-  # DOM cohort groups have 0 above ground biomass
-  expect_true(
-    all(simTest$cbm_vars$pools[DOMCohortGroups, .(Merch, Foliage, Other)] == 0)
-  )
-  # There can't be more than 1 DOM cohort groups per pixel
-  expect_equal(
-    length(DOMCohortGroups),
-    nrow(simTest$cbm_vars$key[row_idx %in% DOMCohortGroups])
-  )
-  
-  # check cohortDT
-  expect_is(simTest$cohortDT, "data.table")
-  expect_named(simTest$cohortDT,
-               c("cohortID", "pixelIndex", "age", "speciesCode", "sw", "gcID"),
-               ignore.order = TRUE)
-  expect_setequal(simTest$cohortDT$gcID, simTest$cohortDT$cohortID)
-  
-  # check gcIncrements
-  expect_is(simTest$gcIncrements, "data.table")
-  expect_named(simTest$gcIncrements,
-               c("gcID", "age", "merch_inc", "foliage_inc", "other_inc"),
-               ignore.order = TRUE)
-  expect_equal(nrow(simTest$gcIncrements), nrow(simTest$cohortDT))
-  expect_setequal(simTest$cohortDT$gcID, simTest$gcIncrements$gcID)
-  
-  # check gcMeta
-  expect_is(simTest$gcMeta, "data.table")
-  expect_named(simTest$gcMeta, 
-               c("gcID", "speciesCode", "sw"))
-  expect_equal(nrow(simTest$gcMeta), nrow(simTest$gcIncrements))
-  expect_setequal(simTest$gcMeta$gcID, simTest$gcIncrements$gcID)
-  
-  # check summaryAGB
-  expect_is(simTest$summaryAGB, "data.table")
-  expect_named(
-    simTest$summaryAGB, 
-    c("speciesCode", "merch", "foliage", "other", "year"),
-    ignore.order = TRUE
-  )
-  expect_equal(simTest$summaryAGB$year, do.call(c, lapply(times$start:times$end, rep, 2)))
   
   ## Check event order
   completedEvents <- completed(simTest)
@@ -205,4 +106,14 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   realizedEventOrder <- completedEvents[eventTime == end(simTest) & eventType %in% eventsToCheck]
   expect_equal(expectedEventOrder, realizedEventOrder$eventType)
   
+  # check output object structure
+  check_module_outputs(simTest)
+  
+  # check cbm_vars
+  expect_in(simTest$cbm_vars$state[speciesCode == "Abie_las", sw_hw], 0L) # SW
+  expect_in(simTest$cbm_vars$state[speciesCode == "Pinu_con", sw_hw], 0L) # SW
+  
+  expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
+  
 })
+
