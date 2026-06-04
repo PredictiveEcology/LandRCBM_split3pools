@@ -1,11 +1,11 @@
 
 defineModule(sim, list(
-  name     = "test_recruitment",
-  desc     = "Simple testing module to simulate cohort recruitment in `cohortData`",
+  name = "test_recruitment",
+  description = "Simple testing module to simulate cohort recruitment in `cohortData`",
   timeunit = "year",
   reqdPkgs = list("data.table"),
   inputObjects = bindrows(
-    expectsInput(objectName = "cohortData", objectClass = "data.table", desc = NA)
+    expectsInput(objectName = "cohortData", objectClass = "data.table", desc = NA, sourceURL = NA)
   ),
   outputObjects = bindrows(
     createsOutput(objectName = "cohortData", objectClass = "data.table", desc = NA)
