@@ -135,7 +135,7 @@ test_that("Integration with CBM_core: step", {
   
   # cohortDT
   ## Check that all cohorts are set as softwood
-  expect_in(simTest$cohortDT$sw, TRUE)
+  expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that all input cohorts are still present
   inCohorts <- merge(
@@ -228,7 +228,7 @@ test_that("Integration with CBM_core: step with DOM cohorts", {
   
   # cohortDT
   ## Check that all cohorts are set as softwood
-  expect_in(simTest$cohortDT$sw, TRUE)
+  expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that 3 cohorts are gone
   inCohorts <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
@@ -325,7 +325,7 @@ test_that("Integration with CBM_core: step with new cohorts", {
   
   # cohortDT
   ## Check that all cohorts are set as softwood
-  expect_in(simTest$cohortDT$sw, TRUE)
+  expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that 1 cohort has been added
   inCohorts <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
