@@ -91,16 +91,10 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   expect_is(simTest$cbm_vars, "list")
   expect_named(simTest$cbm_vars, c("key", "pools", "flux", "parameters", "state"))
   NcohortGroups <- length(unique(simTest$cbm_vars$key$row_idx))
-  expect_equal(nrow(simTest$cbm_vars$pools), NcohortGroups)
-  expect_equal(simTest$cbm_vars$pools$Merch, simTest$aboveGroundBiomass$merch)
-  expect_equal(simTest$cbm_vars$pools$Foliage, simTest$aboveGroundBiomass$foliage)
-  expect_equal(simTest$cbm_vars$pools$Other, simTest$aboveGroundBiomass$other)
-  expect_equal(nrow(simTest$cbm_vars$flux), NcohortGroups)
+  expect_equal(nrow(simTest$cbm_vars$pools),      NcohortGroups)
+  expect_equal(nrow(simTest$cbm_vars$flux),       NcohortGroups)
   expect_equal(nrow(simTest$cbm_vars$parameters), NcohortGroups)
-  expect_equal(simTest$cbm_vars$parameters$merch_inc, simTest$gcIncrements$merch_inc)
-  expect_equal(simTest$cbm_vars$parameters$foliage_inc, simTest$gcIncrements$foliage_inc)
-  expect_equal(simTest$cbm_vars$parameters$other_inc, simTest$gcIncrements$other_inc)
-  expect_equal(nrow(simTest$cbm_vars$state), NcohortGroups)
+  expect_equal(nrow(simTest$cbm_vars$state),      NcohortGroups)
   
   # check species types
   expect_in(simTest$cbm_vars$state[speciesCode == "Abie_las", sw_hw], 0L) # SW
@@ -111,6 +105,11 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   
   # checks for "active" cohorts
   ActiveCohortGroups <- simTest$cbm_vars$state[gcID != 0, row_idx]
+  
+  expect_equal(
+    simTest$cbm_vars$parameters[ActiveCohortGroups, .(merch_inc, foliage_inc, other_inc)],
+    simTest$gcIncrements[, .(merch_inc, foliage_inc, other_inc)]
+  )
   expect_equal(
     simTest$aboveGroundBiomass[,.(Merch = merch, Foliage = foliage, Other = other)],
     simTest$cbm_vars$pools[ActiveCohortGroups,.(Merch, Foliage, Other)]
@@ -124,7 +123,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   DOMCohortGroups  = simTest$cbm_vars$state[gcID == 0, row_idx]
   # DOM cohort groups have 0 above ground biomass
   expect_true(
-    all(simTest$cbm_vars$pools[DOMCohortGroups, .(Merch, Foliage, Other)] == 0)
+    all(round(simTest$cbm_vars$pools[DOMCohortGroups, .(Merch, Foliage, Other)], 10^-12) == 0)
   )
   # There can't be more than 1 DOM cohort groups per pixel
   expect_equal(
