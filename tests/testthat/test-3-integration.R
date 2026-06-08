@@ -154,97 +154,6 @@ test_that("Integration with CBM_core: step", {
   )
 })
 
-test_that("Integration with CBM_core: step with DOM cohorts", {
-  
-  ## NOTE: this test runs for 2 years to allow DOM cohorts to register as DOM.
-  ## During the year that the cohort dies, the cohort will have negative increments
-  ## To move the existing biomass into DOM pools.
-  
-  ## SIMULATE ----
-  
-  # Set up project
-  projectName <- "integration_1-CBM_core_3-step-DOM"
-  times <- list(start = 2000, end = 2001)
-  
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
-      "test_growth",
-      "test_mortality",
-      "LandRCBM_split3pools",
-      "PredictiveEcology/CBM_core@development"
-    ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata
-    ),
-    params = list(
-      CBM_core = list(
-        .plot = FALSE,
-        skipPrepareCBMvars = TRUE
-      )
-    ),
-    
-    # Prepare input objects
-    require = c("data.table", "terra", "sf"),
-    
-    studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
-    rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
-    standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    cohortData            = file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    pixelGroupMap         = file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
-    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
-  )
-  
-  # Run simInit
-  ## Suppress warnings about test modules missing metadata
-  simTestInit <- suppressWarnings(SpaDES.core::simInit2(simInitInput))
-  expect_s4_class(simTestInit, "simList")
-  
-  # Run spades
-  simTest <- SpaDES.core::spades(simTestInit)
-  expect_s4_class(simTest, "simList")
-  
-  
-  ## CHECK ----
-  
-  # check output object structure
-  check_module_outputs(simTest)
-  
-  # gcIncrements
-  ## Check that the total increase in carbon for each cohort is 0.5 tonnes/ha
-  ## This is expected with an increase of biomass of 1 tonnes/ha for each cohort per year
-  expect_equal(
-    with(simTest$gcIncrements, mapply(sum, merch_inc, foliage_inc, other_inc)),
-    rep(0.5, nrow(simTest$gcIncrements))
-  )
-  
-  # cohortDT
-  ## Check that all cohorts are set as softwood
-  expect_in(simTest$gcMeta$sw, TRUE)
-  
-  ## Expect that 3 cohorts are gone
-  inCohorts <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
-  expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 1)
-  expect_equal(nrow(simTest$cohortDT[pixelIndex == 2]), 0)
-  expect_equal(nrow(simTest$cohortDT), nrow(inCohorts) - 3)
-  
-  # check that DOM cohorts are located in the correct pixels
-  row_idx_DOM <- c(
-    simTest$cbm_vars$key[pixelIndex == 1 & row_idx %in% simTest$cbm_vars$state[speciesCode == "Abie_las", row_idx], row_idx],
-    simTest$cbm_vars$key[pixelIndex == 2, row_idx]
-  )
-  expect_equal(simTest$cbm_vars$state[row_idx_DOM, gcID], c(0, 0))
-  
-})
-
 test_that("Integration with CBM_core: step with new cohorts", {
   
   ## NOTE: this test runs for 1 year to check that the cohort's initial biomass
@@ -338,4 +247,96 @@ test_that("Integration with CBM_core: step with new cohorts", {
     1
   )
 })
+
+test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
+  
+  ## NOTE: this test runs for 2 years to allow DOM cohorts to register as DOM.
+  ## During the year that the cohort dies, the cohort will have negative increments
+  ## To move the existing biomass into DOM pools.
+  
+  ## SIMULATE ----
+  
+  # Set up project
+  projectName <- "integration_1-CBM_core_3-step-DOM"
+  times <- list(start = 2000, end = 2001)
+  
+  simInitInput <- SpaDES.project::setupProject(
+    
+    modules = c(
+      "test_growth",
+      "test_mortality",
+      "LandRCBM_split3pools",
+      "PredictiveEcology/CBM_core@development"
+    ),
+    times = times,
+    paths = list(
+      projectPath = spadesTestPaths$projectPath,
+      modulePath  = spadesTestPaths$temp$modules,
+      packagePath = spadesTestPaths$packagePath,
+      inputPath   = spadesTestPaths$inputPath,
+      cachePath   = spadesTestPaths$cachePath,
+      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
+      testdata    = spadesTestPaths$testdata
+    ),
+    params = list(
+      CBM_core = list(
+        .plot = FALSE,
+        skipPrepareCBMvars = TRUE
+      )
+    ),
+    
+    # Prepare input objects
+    require = c("data.table", "terra", "sf"),
+    
+    studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
+    rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
+    standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
+    cohortData            = file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    pixelGroupMap         = file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
+    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+  )
+  
+  # Run simInit
+  ## Suppress warnings about test modules missing metadata
+  simTestInit <- suppressWarnings(SpaDES.core::simInit2(simInitInput))
+  expect_s4_class(simTestInit, "simList")
+  
+  # Run spades
+  simTest <- SpaDES.core::spades(simTestInit)
+  expect_s4_class(simTest, "simList")
+  
+  
+  ## CHECK ----
+  
+  # check output object structure
+  check_module_outputs(simTest)
+  
+  # gcIncrements
+  ## Check that the total increase in carbon for each cohort is 0.5 tonnes/ha
+  ## This is expected with an increase of biomass of 1 tonnes/ha for each cohort per year
+  expect_equal(
+    with(simTest$gcIncrements, mapply(sum, merch_inc, foliage_inc, other_inc)),
+    rep(0.5, nrow(simTest$gcIncrements))
+  )
+  
+  # cohortDT
+  ## Check that all cohorts are set as softwood
+  expect_in(simTest$gcMeta$sw, TRUE)
+  
+  ## Expect that 3 cohorts are gone
+  inCohorts <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
+  expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 1)
+  expect_equal(nrow(simTest$cohortDT[pixelIndex == 2]), 0)
+  expect_equal(nrow(simTest$cohortDT), nrow(inCohorts) - 3)
+  
+  # check that DOM cohorts are located in the correct pixels
+  row_idx_DOM <- c(
+    simTest$cbm_vars$key[pixelIndex == 1 & row_idx %in% simTest$cbm_vars$state[speciesCode == "Abie_las", row_idx], row_idx],
+    simTest$cbm_vars$key[pixelIndex == 2, row_idx]
+  )
+  expect_equal(simTest$cbm_vars$state[row_idx_DOM, gcID], c(0, 0))
+  
+})
+
 
