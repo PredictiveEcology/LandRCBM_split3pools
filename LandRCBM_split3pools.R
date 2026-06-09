@@ -697,7 +697,7 @@ UpdateCohortGroups <- function(sim){
     all.y = TRUE,
     sort = FALSE
   ) |> unique()
-  setkey(sim$cbm_vars$key, row_idx)
+  setkey(sim$cbm_vars$key, cohortID)
   
   # Update cbm_vars state.
   sim$cbm_vars$state <- merge(
