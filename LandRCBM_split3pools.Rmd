@@ -138,8 +138,6 @@ The merchantable proportion of stemwood biomass is calculated in this way for ea
 | gcIncrements      | Data table | Growth increment matrix. Provides increments for each pool in each pixel and cohort |
 | gcMeta            | Data table | Growth curve metadata                                           |
 | summaryAGB        | Data table | Sum of carbon mass for each species and above ground pools at each time step |
-| yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements     |
-| yieldTablesId     | Data table | Table spatially linking yield tables to pixels                  |
 
 
 ### Links to other modules
