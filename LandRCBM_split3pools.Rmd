@@ -71,9 +71,26 @@ This event maps the aboveground carbon stocks and increments at a regular interv
 #### `plotSummaries`
 This simple plotting event plots the evolution of the aboveground biomass of each pool for each species and for the entire landscape at the end of the simulation. 
 
+### Estimating proportion of stemwood, bark, branches, and foliage biomass
+
+In @boudewyn2007, total aboveground biomass is divided into biomass of stemwood, stem bark, branches, and foliage using the following equations:
+
+$p_{stewmwood} = \frac{1}{1 + e^{a1 + a2 \times vol + a3 \times lvol} + e^{b1 + b2 \times vol + b3 \times lvol} + e^{c1 + c2 \times vol + c3 \times lvol}}$
+$p_{bark} = \frac{e^{a1 + a2 \times vol + a3 \times lvol}}{1 + e^{a1 + a2 \times vol + a3 \times lvol} + e^{b1 + b2 \times vol + b3 \times lvol} + e^{c1 + c2 \times vol + c3 \times lvol}}$
+$p_{branches} = \frac{e^{b1 + b2 \times vol + b3 \times lvol}}{1 + e^{a1 + a2 \times vol + a3 \times lvol} + e^{b1 + b2 \times vol + b3 \times lvol} + e^{c1 + c2 \times vol + c3 \times lvol}}$
+$p_{foliage} = \frac{e^{c1 + c2 \times vol + c3 \times lvol}}{1 + e^{a1 + a2 \times vol + a3 \times lvol} + e^{b1 + b2 \times vol + b3 \times lvol} + e^{c1 + c2 \times vol + c3 \times lvol}}$
+
+Where:
+
+- $p_{stewmwood}$, $p_{bark}$, $p_{branches}$, and $p_{foliage}$ are the proportion of aboveground biomass that is stemwood, stem bark, branches, and foliage respectively. These proportions sum to 1.
+- $vol$ and $lvol$ are the gross merchantable volume per hectare and the log-transformed gross merchantable volume.
+- $a1$, $a2$, $a3$, $b1$, $b2$, $b3$, $c1$, $c2$, and $c3$ are model parameters fit separately by jurisdiction, ecozone, and lead tree species.
+
+`LandRCBM_split3pools` uses an alternative set of equations with aboveground biomass per hectare (in tonnes) and the log-transformed aboveground biomass as the independent variables instead of $vol$ and $lvol$. The parameters for this alternative set of equations were estimated using the same approach and data used to calibrate the original equations. These new parameters are available on the [National Forest Inventory website](https://nfi.nfis.org/en/biomass_models).
+
 ### Estimating merchantable proportion of stemwood
 
-Merchantable wood is estimated in @boudewyn2007 with the following equation:
+Merchantable wood is estimated in @boudewyn2007 with the following equations:
 
 $nonmerchfactor = k + a * b_m^b$
 $nonmerchfactor = b_{nm}/b_m$
@@ -90,20 +107,20 @@ Where:
 - $k$, $a$, and $b$ are model parameters fit separately by jurisdiction, ecozone, and lead tree species (Table 4 in @boudewyn2007).
 
 
-Because it is not possible to analytically infer new parameters for the equation above, they had to be inferred through simulations resulting in a new exponential model with this form to estimate the mechantable proportion of stemwood:
+Because it is not possible to analytically infer new parameters for the equation above, they had to be inferred through simulations resulting in a new exponential model with this form to estimate the mechantable proportion of stemwood ($b_m/b_{nm}$):
 
-$b_m = k - e^{-a(b_{nm} - b)}$
+$b_m/b_{nm} = k - e^{-a(b_{nm} - b)}$
 
 Where:
 
 - $k$, $a$, and $b$ are model parameters inferred separately from those in @boudewyn2007
 
-If the value of $b_m$ exceeds the simulated inferred $cap$, then the value will default to the $cap$ proportion like so:
+If the proportion of stemwood that is merchantable ($b_m/b_{nm}$) exceeds the simulated inferred $cap$, then the value will default to the $cap$ proportion like so:
 
-$$\text{b_m} =
+$$b_m/b_{nm} =
 \begin{cases}
-\text{b_m}, & \text{if b_m} > \text{cap} \\
-\text{cap}, & \text{if b_m} \le \text{cap}
+b_m/b_{nm}, & b_m/b_{nm} > \text{cap} \\
+\text{cap}, & b_m/b_{nm} \le \text{cap}
 \end{cases}$$
 
 The merchantable proportion of stemwood biomass is calculated in this way for each species present in the simulation. Below is an example of some species along with a comparison to the estimates using the original @boudewyn2007 equation.
@@ -121,8 +138,6 @@ The merchantable proportion of stemwood biomass is calculated in this way for ea
 | gcIncrements      | Data table | Growth increment matrix. Provides increments for each pool in each pixel and cohort |
 | gcMeta            | Data table | Growth curve metadata                                           |
 | summaryAGB        | Data table | Sum of carbon mass for each species and above ground pools at each time step |
-| yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements     |
-| yieldTablesId     | Data table | Table spatially linking yield tables to pixels                  |
 
 
 ### Links to other modules
