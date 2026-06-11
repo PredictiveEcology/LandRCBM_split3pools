@@ -3,22 +3,27 @@
 # @param spinup logical. Checks match expected state after the spinup.
 check_module_outputs <- function(simTest, spinup = FALSE){
   
-  # yieldTablesId
-  expect_is(simTest$yieldTablesId, "data.table")
-  expect_in(c("pixelIndex", "yieldTableIndex"), 
-            names(simTest$yieldTablesId))
+  # abovegroundbiomass
+  expect_is(simTest$aboveGroundBiomass, "data.table")
+  expect_in(c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"), 
+            names(simTest$aboveGroundBiomass))
   
-  # yieldTablesCumulative
-  expect_is(simTest$yieldTablesCumulative, "data.table")
-  expect_in(c("speciesCode", "age", "yieldTableIndex", "merch", "foliage", "other"),
-            names(simTest$yieldTablesCumulative))
-  
-  expect_true(all(simTest$yieldTablesCumulative$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
+  ## check that total biomass per species match cohortData
+  expectedSpeciesB <- simTest$cohortData[, .(total_biomass = sum(B)/200), by = speciesCode]
+  resultSpeciesB <- copy(simTest$aboveGroundBiomass)[, B := merch + foliage + other]
+  resultSpeciesB <- resultSpeciesB[, .(total_biomass = sum(B)), by = speciesCode]
+  expect_equal(expectedSpeciesB[order(speciesCode)], resultSpeciesB[order(speciesCode)])
   
   # gcMeta
-  expect_is(simTest$gcMeta, "data.table")
-  expect_in(c("gcID", "speciesCode", "sw"),
-            names(simTest$gcMeta))
+  if (spinup){
+    expect_in(c("gcID", "admin_abbrev", "eco_id", "speciesCode", "CanfiCode", "sw"),
+              names(simTest$gcMeta))
+    expect_in("yieldTableIndex", names(simTest$gcMeta))
+    expect_true(all(simTest$gcMeta$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
+  }else{
+    expect_in(c("gcID", "speciesCode", "sw"),
+              names(simTest$gcMeta))
+  }
   
   # gcIncrements
   expect_is(simTest$gcIncrements, "data.table")
@@ -28,10 +33,7 @@ check_module_outputs <- function(simTest, spinup = FALSE){
   expect_setequal(simTest$gcIncrements$gcID, simTest$gcMeta$gcID)
   
   if (spinup){
-    expect_in("yieldTableIndex", names(simTest$gcIncrements))
     expect_equal(nrow(simTest$gcIncrements), nrow(simTest$yieldTablesCumulative))
-    expect_true(all(simTest$gcIncrements$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
-    
   }else{
     expect_setequal(simTest$gcIncrements$gcID, simTest$gcMeta$gcID)
     expect_equal(nrow(simTest$gcIncrements), nrow(simTest$gcMeta))
@@ -43,17 +45,6 @@ check_module_outputs <- function(simTest, spinup = FALSE){
             names(simTest$cohortDT))
   
   expect_true(all(simTest$cohortDT$gcID %in% simTest$gcMeta$gcID))
-  
-  # abovegroundbiomass
-  expect_is(simTest$aboveGroundBiomass, "data.table")
-  expect_in(c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"), 
-            names(simTest$aboveGroundBiomass))
-  
-  ## check that total biomass per species match cohortData
-  expectedSpeciesB <- simTest$cohortData[, .(total_biomass = sum(B)/200), by = speciesCode]
-  resultSpeciesB <- copy(simTest$aboveGroundBiomass)[, B := merch + foliage + other]
-  resultSpeciesB <- resultSpeciesB[, .(total_biomass = sum(B)), by = speciesCode]
-  expect_equal(expectedSpeciesB[order(speciesCode)], resultSpeciesB[order(speciesCode)])
   
   # summaryAGB
   if (!spinup){

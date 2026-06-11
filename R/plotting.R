@@ -34,7 +34,7 @@ gg_speciessummary <- function(x) {
 }
 
 gg_yieldCurves <- function(x, title){
-  ggplot(x, aes(age, totB, color = speciesCode)) + geom_line() + theme_bw() +
+  ggplot(x, aes(age, biomass, color = speciesCode)) + geom_line() + theme_bw() +
     #scale_color_manual(values = colors) +
     facet_wrap(~yieldTableIndex) +
     labs(title = title, x = "Age", y = 'AGB (tonnes/ha)', color = "Species") +
