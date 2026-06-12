@@ -10,6 +10,11 @@ test_that("function generateDt works", {
     B = c(10, 500, 300, 250),
     age = c(10, 10, 100, 0)
   )
+  standDT <- data.table::data.table(
+    pixelIndex   = 1:4,
+    admin_abbrev = "BC",
+    eco_id       = 1
+  )
   yieldTablesId <- data.table(
     pixelIndex = c(1, 2, 3), 
     yieldTableIndex = c(1001, 1002, 1001) 
@@ -18,12 +23,12 @@ test_that("function generateDt works", {
   ## Runs with yieldTablesId
   
   # Run function
-  result <- generateCohortDT(cohortData, pixelGroupMap, yieldTablesId)
+  result <- generateCohortDT(cohortData, pixelGroupMap, standDT, yieldTablesId)
   # Tests
   expect_is(result, "data.table")
   expect_equal(nrow(result), 5)
-  expected_cols <- c("cohortID", "pixelIndex", "speciesCode", 
-                     "age", "gcID", "yieldTableIndex", "sw")
+  expected_cols <- c("cohortID", "pixelIndex", "admin_abbrev", "eco_id", 
+                     "speciesCode", "age", "yieldTableIndex", "gcID")
   expect_named(result, expected_cols, ignore.order = TRUE)
   expect_false(0 %in% result$age)
   
@@ -40,6 +45,6 @@ test_that("function generateDt works", {
   expect_false(any(gcid_abie %in% gcid_pinu))
 
   # Run function
-  expect_error(generateCohortDT(cohortData, pixelGroupMap, yieldTablesId = NULL))
+  expect_error(generateCohortDT(cohortData, pixelGroupMap, standDT, yieldTablesId = NULL))
 
 })
