@@ -19,9 +19,6 @@ defineModule(sim, list(
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.1.2.0002)", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
-    defineParameter("numPixGroupPlots", "integer", 10L, NA, NA,
-                    "Number of pixel groups that will be randomly selected and ",
-                    "for which yield curves will be plotted."),
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
                     "Minimum age for which a cohort can have wood considered merchantable."),
     defineParameter(".plots", "character", "screen", NA, NA,
@@ -30,17 +27,11 @@ defineModule(sim, list(
                     "Describes the simulation time at which the first plot event should occur."),
     defineParameter(".plotInterval", "numeric", NA, NA, NA,
                     "Describes the simulation time interval between plot events."),
+    defineParameter(".plotNumPixGroup", "integer", 10L, NA, NA,
+                    "When plotting the yield curves, this is how many unique pixel groups will ",
+                    "be randomly selected and plotted."),
     defineParameter(".plotMaps", "logical", TRUE, NA, NA,
-                    desc = "Controls whether maps should be plotted or not. Set to `FALSE` if `P(sim)$.plots == NA`"),
-    defineParameter(".saveInitialTime", "numeric", NA, NA, NA,
-                    "Describes the simulation time at which the first save event should occur."),
-    defineParameter(".saveInterval", "numeric", NA, NA, NA,
-                    "This describes the simulation time interval between save events."),
-    defineParameter(".studyAreaName", "character", NA, NA, NA,
-                    "Human-readable name for the study area used - e.g., a hash of the study",
-                    "area obtained using `reproducible::studyAreaName()`"),
-    defineParameter(".seed", "list", list(), NA, NA,
-                    "Named list of seeds to use for each event (names)."),
+                    "Controls whether maps should be plotted or not. Set to `FALSE` if `P(sim)$.plots == NA`"),
     defineParameter(".useCache", "character", "postSpinupAdjustBiomass", NA, NA,
                     "Should caching of events or module be used?")
   ),
@@ -372,11 +363,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
 
 PlotYieldTables <- function(sim){
   nPixGroups <- length(unique(sim$yieldTablesId$yieldTableIndex))
-  nPlots <- P(sim)$numPixGroupPlots
+  nPlots <- P(sim)$.plotNumPixGroup
   if (nPlots <= 0){
     stop("numPlots needs to be a positive integer")
   } else if (nPlots > nPixGroups) {
-    message("numPixGroupPlots is greater than the number of pixel groups, ",
+    message(".plotNumPixGroup is greater than the number of pixel groups, ",
             "plotting all pixelgroups.")
     nPlots <- nPixGroups
   } 
