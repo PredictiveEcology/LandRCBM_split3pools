@@ -17,7 +17,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
-                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.5)", "PredictiveEcology/LandR@development"),
+                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.5)"),
   parameters = bindrows(
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
                     "Minimum age for which a cohort can have wood considered merchantable."),
@@ -118,7 +118,11 @@ defineModule(sim, list(
         pixelIndex = "Integer id of the pixel.",
         yieldTableIndex = "Id of the group of pixels sharing yield tables."
       )
-    )
+    ),
+    expectsInput(
+      objectName = "sppEquiv", objectClass = "data.table",
+      desc = "Optional. Table of species equivalencies. See `LandR::sppEquivalencies_CA`."
+    ),
   ),
   outputObjects = bindrows(
     createsOutput(
@@ -203,7 +207,8 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
         table6 = sim$table6,
         table7 = sim$table7,
-        tableMerchantability = sim$tableMerchantability
+        tableMerchantability = sim$tableMerchantability,
+        sppEquiv = sim$sppEquiv
       )
       
       # split yield tables into AGB pools
@@ -404,9 +409,13 @@ SplitYieldTables <- function(sim) {
   # 1.3. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcID to species information.
   sim$gcMeta <- unique(cohortDT[, .(gcID, admin_abbrev, eco_id, yieldTableIndex, speciesCode)])
-  sim$gcMeta <- addForestType(sim$gcMeta)
-  sim$gcMeta <- addSpeciesCode(sim$gcMeta, "CanfiCode")
-  data.table::setnames(sim$gcMeta, "newCode", "CanfiCode")
+  sim$gcMeta <- cbind(
+    sim$gcMeta,
+    CBMutils::sppMatch(
+      sim$gcMeta$speciesCode, sppEquivalencies = sim$sppEquiv,
+      match = "LandR", return = c("Broadleaf", "CanfiCode"))[
+        , .(sw = !Broadleaf, canfi_species = CanfiCode)]
+  )
   setkey(sim$gcMeta, gcID)
   setcolorder(sim$gcMeta)
   
@@ -423,8 +432,8 @@ SplitYieldTables <- function(sim) {
     sim$yieldTablesCumulative[, .(yieldTableIndex, speciesCode, age, biomass)], 
     by = c("speciesCode", "yieldTableIndex"))
   setnames(allInfoYieldTables,
-           old = c("admin_abbrev", "eco_id",  "CanfiCode",     "biomass"),
-           new = c("juris_id",     "ecozone", "canfi_species", "B"))
+           old = c("admin_abbrev", "eco_id",  "biomass"),
+           new = c("juris_id",     "ecozone", "B"))
   
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoYieldTables[, B := B / 100]
@@ -537,7 +546,8 @@ AnnualIncrements <- function(sim){
     standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
     table6 = sim$table6,
     table7 = sim$table7,
-    tableMerchantability = sim$tableMerchantability
+    tableMerchantability = sim$tableMerchantability,
+    sppEquiv = sim$sppEquiv
   )
   
   # Step 3: Calculate this year's increments.-----------------------------------
@@ -567,7 +577,10 @@ AnnualIncrements <- function(sim){
   sim$cohortDT <- incrementsDT[, .(cohortID, pixelIndex, age, speciesCode, gcID)]
   # Create data.table with growth curve-level information
   sim$gcMeta <- unique(incrementsDT, by = "gcID")[, .(gcID, speciesCode)]
-  sim$gcMeta <- addForestType(sim$gcMeta)
+  sim$gcMeta[, sw := !CBMutils::sppMatch(
+    sim$gcMeta$speciesCode, sppEquivalencies = sim$sppEquiv,
+    match = "LandR", return = "Broadleaf")$Broadleaf]
+  
   # Create final growth increment data.table
   sim$gcIncrements <- unique(incrementsDT, by = "gcID")[, .(gcID, age, merch_inc, foliage_inc, other_inc)]
   setkey(sim$gcIncrements, gcID)

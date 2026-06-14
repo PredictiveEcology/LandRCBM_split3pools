@@ -1,4 +1,5 @@
-splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, tableMerchantability){
+splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, tableMerchantability,
+                            sppEquiv = NULL){
   # Prepare cohort data for biomass splitting-----------------------------------
   # Match pixel group with jurisdiction and CBM spatial units
   spatialDT <- data.table(
@@ -10,20 +11,19 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, 
     spatialDT) |> na.omit()
   # New pixel group for unique combination of pixelGroup and CBM spatial units
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, juris_id, ecozone)]
-  # Add spatial information to cohortData
-  spatialUnits <- unique(spatialDT, by = "newPixelGroup")[, !("pixelIndex")]
-  allInfoCohortData <- addSpatialUnits(
-    cohortData = cohortData,
-    spatialUnits = spatialUnits
-  ) # note that the new pixelGroup column is the unique combination of pixelGroup and CBM spatial units
   
-  # Get species information
-  # Add the species code in canfi
-  allInfoCohortData <- addSpeciesCode(
-    cohortData = allInfoCohortData,
-    code = "CanfiCode"
-  )
-  setnames(allInfoCohortData, old = "newCode", new = "canfi_species")
+  # Add spatial information to cohortData
+  # note that the new pixelGroup column is the unique combination of pixelGroup and CBM spatial units
+  spatialUnits <- unique(spatialDT, by = "newPixelGroup")[, !("pixelIndex")]
+  allInfoCohortData <- merge(cohortData, spatialUnits, by = "pixelGroup", allow.cartesian = TRUE)
+  allInfoCohortData[, pixelGroup := NULL]
+  setnames(allInfoCohortData, old = "newPixelGroup", new = "pixelGroup")
+  
+  # Add CanFI species code
+  allInfoCohortData$canfi_species <- CBMutils::sppMatch(
+    allInfoCohortData$speciesCode, sppEquivalencies = sppEquiv,
+    match = "LandR", return = "CanfiCode")$CanfiCode
+  
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoCohortData[, B := B/100]
   
@@ -46,3 +46,4 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, 
   setorderv(biomassCurrent, c("pixelIndex", "speciesCode", "age"))
   return(biomassCurrent)
 }
+
