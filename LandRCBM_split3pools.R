@@ -17,7 +17,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
-                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.1.2.0002)", "PredictiveEcology/LandR@development"),
+                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.5)", "PredictiveEcology/LandR@development"),
   parameters = bindrows(
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
                     "Minimum age for which a cohort can have wood considered merchantable."),
@@ -230,7 +230,10 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       spinupOut$pools[nonAge0, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
       
       # 3. Update below ground live pools.
-      rootsC <- CBMutils::calcRootC(spinupOut$pools, spinupOut$state$sw_hw)
+      rootsC <- CBMutils::calcRootC(cbind(spinupOut$pools, sw = spinupOut$state$sw_hw == 0))[, .(
+        CoarseRoots = SoftwoodCoarseRoots + HardwoodCoarseRoots,
+        FineRoots   = SoftwoodFineRoots   + HardwoodFineRoots
+      )]
       spinupOut$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
       
       # 4. Update cbm_vars
