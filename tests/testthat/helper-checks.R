@@ -16,7 +16,7 @@ check_module_outputs <- function(simTest, spinup = FALSE){
   
   # gcMeta
   if (spinup){
-    expect_in(c("gcID", "admin_abbrev", "eco_id", "speciesCode", "CanfiCode", "sw"),
+    expect_in(c("gcID", "admin_abbrev", "eco_id", "speciesCode", "canfi_species", "sw"),
               names(simTest$gcMeta))
     expect_in("yieldTableIndex", names(simTest$gcMeta))
     expect_true(all(simTest$gcMeta$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
