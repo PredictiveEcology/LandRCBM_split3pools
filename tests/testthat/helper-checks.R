@@ -25,6 +25,11 @@ check_module_outputs <- function(simTest, spinup = FALSE){
               names(simTest$gcMeta))
   }
   
+  ## Disturbed and DOM cohorts will have no species and increments == 0
+  expect_true(all(
+    is.na(simTest$gcMeta[gcID %in% c(-1, 0), .(speciesCode)])
+  ))
+  
   # gcIncrements
   expect_is(simTest$gcIncrements, "data.table")
   expect_in(
@@ -39,12 +44,64 @@ check_module_outputs <- function(simTest, spinup = FALSE){
     expect_equal(nrow(simTest$gcIncrements), nrow(simTest$gcMeta))
   }
   
+  ## Disturbed and DOM cohorts will have increments == 0
+  expect_true(all(
+    simTest$gcIncrements[gcID %in% c(-1, 0), .(merch_inc, foliage_inc, other_inc)] == 0
+  ))
+  
   # cohortDT
   expect_is(simTest$cohortDT, "data.table")
-  expect_in(c("cohortID", "pixelIndex", "age", "speciesCode", "gcID"),
+  expect_in(c("pixelIndex", "age", "gcID"),
             names(simTest$cohortDT))
   
   expect_true(all(simTest$cohortDT$gcID %in% simTest$gcMeta$gcID))
+  
+  # checks for "active" cohorts
+  cohortDT <- data.table::copy(simTest$cohortDT)
+  cohortDT[simTest$gcMeta, speciesCode := speciesCode, on = "gcID"]
+  
+  cohort_active <- cohortDT$gcID > 0
+  
+  expect_equal(sum(cohort_active), nrow(simTest$aboveGroundBiomass))
+  
+  expect_equal(
+    cohortDT[cohort_active, .(
+      pixelIndex,
+      speciesCode, age,
+      merch   = pools.SoftwoodMerch   + pools.HardwoodMerch,
+      foliage = pools.SoftwoodFoliage + pools.HardwoodFoliage,
+      other   = pools.SoftwoodOther   + pools.HardwoodOther
+    )][order(pixelIndex, speciesCode, age)],
+    simTest$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)][
+      order(pixelIndex, speciesCode, age)],
+    check.attributes = FALSE
+  )
+  
+  expect_equal(
+    simTest$cohortDT[cohort_active, .(
+      merch   = sum(pools.SoftwoodMerch   + pools.HardwoodMerch), 
+      foliage = sum(pools.SoftwoodFoliage + pools.HardwoodFoliage),
+      other   = sum(pools.SoftwoodOther   + pools.HardwoodOther)
+    ), by = pixelIndex],
+    simTest$aboveGroundBiomass[, .(merch = sum(merch), foliage = sum(foliage), other = sum(other)), by = pixelIndex],
+    tolerance = 0.01, # hmmm
+    check.attributes = FALSE
+  )
+  
+  # checks for DOM cohorts
+  
+  ## DOM cohort groups have 0 above ground biomass
+  expect_true(
+    all(round(
+      simTest$cohortDT[!cohort_active, .(
+        pools.SoftwoodMerch,   pools.HardwoodMerch,
+        pools.SoftwoodFoliage, pools.HardwoodFoliage, 
+        pools.SoftwoodOther,   pools.HardwoodOther)], 
+      10^-12) == 0)
+  )
+  
+  ## There can't be more than 1 DOM cohort groups per pixel
+  expect_true(!any(duplicated(simTest$cohortDT[!cohort_active, pixelIndex])))
   
   # summaryAGB
   if (!spinup){
@@ -55,62 +112,5 @@ check_module_outputs <- function(simTest, spinup = FALSE){
       names(simTest$summaryAGB))
     expect_equal(simTest$summaryAGB$year, do.call(c, lapply(start(simTest):end(simTest), rep, 2)))
   }
-  
-  # cbm_vars
-  if ("CBM_core" %in% modules(simTest)){
-    check_cbm_vars(simTest)
-  }
-}
-
-
-# Helper function: check cbm_vars
-check_cbm_vars <- function(simTest){
-  
-  expect_is(simTest$cbm_vars, "list")
-  expect_setequal(names(simTest$cbm_vars), c("key", "parameters", "state", "pools", "flux"))
-  expect_equal(data.table::key(simTest$cbm_vars$key), "cohortID")
-  for (table in c("parameters", "state", "pools", "flux")){
-    expect_equal(data.table::key(simTest$cbm_vars[[table]]), "row_idx")
-  }
-  
-  expect_is(simTest$cbm_vars$key, "data.table")
-  expect_in(c("cohortID", "pixelIndex", "row_idx"), names(simTest$cbm_vars$key))
-  
-  # check table row counts
-  NcohortGroups <- length(unique(simTest$cbm_vars$key$row_idx))
-  expect_equal(nrow(simTest$cbm_vars$parameters), NcohortGroups)
-  expect_equal(nrow(simTest$cbm_vars$state),      NcohortGroups)
-  expect_equal(nrow(simTest$cbm_vars$pools),      NcohortGroups)
-  expect_equal(nrow(simTest$cbm_vars$flux),       NcohortGroups)
-  
-  # checks for "active" cohorts
-  row_idx_active <- simTest$cbm_vars$state[gcID != 0, row_idx]
-  if ("disturbance_type_id" %in% names(simTest$cbm_vars$key)){
-    row_idx_active <- intersect(row_idx_active, simTest$cbm_vars$key[is.na(disturbance_type_id), row_idx])
-  }
-  ActiveCohortGroups <- simTest$cbm_vars$key[row_idx %in% row_idx_active, row_idx]
-  
-  expect_equal(
-    simTest$cbm_vars$state[ActiveCohortGroups, age],
-    simTest$aboveGroundBiomass$age
-  )
-  expect_equal(
-    simTest$cbm_vars$pools[ActiveCohortGroups, .(Merch, Foliage, Other)],
-    simTest$aboveGroundBiomass[,.(Merch = merch, Foliage = foliage, Other = other)]
-  )
-
-  # checks for DOM cohorts
-  DOMCohortGroups <- simTest$cbm_vars$key[!row_idx %in% row_idx_active, row_idx]
-
-  ## DOM cohort groups have 0 above ground biomass
-  expect_true(
-    all(round(simTest$cbm_vars$pools[DOMCohortGroups, .(Merch, Foliage, Other)], 10^-12) == 0)
-  )
-
-  ## There can't be more than 1 DOM cohort groups per pixel
-  expect_equal(
-    length(DOMCohortGroups),
-    nrow(simTest$cbm_vars$key[row_idx %in% DOMCohortGroups])
-  )
 }
 

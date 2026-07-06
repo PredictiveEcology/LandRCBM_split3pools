@@ -17,14 +17,20 @@ doEvent.test_disturbance = function(sim, eventTime, eventType) {
     eventType,
     
     init = {
+      
+      # Wildfire in pixel 3
+      sim$treedFirePixelTableSinceLastDisp <- data.table::data.table(
+        burnTime   = 2000,
+        pixelIndex = 3
+      )
+      
       sim <- scheduleEvent(sim, start(sim), "test_disturbance", "disturbance", eventPriority = 6.25)
     },
     
     disturbance = {
       
-      # Remove cohorts from disturbed pixels
-      distEvents <- sim$disturbanceEvents[year == time(sim)]
-      sim$cohortData <- sim$cohortData[!pixelIndex %in% distEvents$pixelIndex]
+      # Remove burned cohorts
+      sim$cohortData <- sim$cohortData[!pixelIndex %in% sim$treedFirePixelTableSinceLastDisp[burnTime == time(sim)]$pixelIndex]
       
       sim <- scheduleEvent(sim, time(sim) + 1, "test_disturbance", "disturbance", eventPriority = 6.25)
       
