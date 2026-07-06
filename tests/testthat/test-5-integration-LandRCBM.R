@@ -40,9 +40,9 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     # Prepare input objects
     require = c("data.table", "terra", "sf"),
     
-    studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     masterRaster          = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
+    studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
     biomassMap            = file.path(paths$testdata, "LandR", "biomassMap.tif") |> terra::rast(),
     cohortData            = file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),

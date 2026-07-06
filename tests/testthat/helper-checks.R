@@ -56,52 +56,55 @@ check_module_outputs <- function(simTest, spinup = FALSE){
   
   expect_true(all(simTest$cohortDT$gcID %in% simTest$gcMeta$gcID))
   
-  # checks for "active" cohorts
-  cohortDT <- data.table::copy(simTest$cohortDT)
-  cohortDT[simTest$gcMeta, speciesCode := speciesCode, on = "gcID"]
+  if ("CBM_core" %in% modules(simTest)){
   
-  cohort_active <- cohortDT$gcID > 0
-  
-  expect_equal(sum(cohort_active), nrow(simTest$aboveGroundBiomass))
-  
-  expect_equal(
-    cohortDT[cohort_active, .(
-      pixelIndex,
-      speciesCode, age,
-      merch   = pools.SoftwoodMerch   + pools.HardwoodMerch,
-      foliage = pools.SoftwoodFoliage + pools.HardwoodFoliage,
-      other   = pools.SoftwoodOther   + pools.HardwoodOther
-    )][order(pixelIndex, speciesCode, age)],
-    simTest$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)][
-      order(pixelIndex, speciesCode, age)],
-    check.attributes = FALSE
-  )
-  
-  expect_equal(
-    simTest$cohortDT[cohort_active, .(
-      merch   = sum(pools.SoftwoodMerch   + pools.HardwoodMerch), 
-      foliage = sum(pools.SoftwoodFoliage + pools.HardwoodFoliage),
-      other   = sum(pools.SoftwoodOther   + pools.HardwoodOther)
-    ), by = pixelIndex],
-    simTest$aboveGroundBiomass[, .(merch = sum(merch), foliage = sum(foliage), other = sum(other)), by = pixelIndex],
-    tolerance = 0.01, # hmmm
-    check.attributes = FALSE
-  )
-  
-  # checks for DOM cohorts
-  
-  ## DOM cohort groups have 0 above ground biomass
-  expect_true(
-    all(round(
-      simTest$cohortDT[!cohort_active, .(
-        pools.SoftwoodMerch,   pools.HardwoodMerch,
-        pools.SoftwoodFoliage, pools.HardwoodFoliage, 
-        pools.SoftwoodOther,   pools.HardwoodOther)], 
-      10^-12) == 0)
-  )
-  
-  ## There can't be more than 1 DOM cohort groups per pixel
-  expect_true(!any(duplicated(simTest$cohortDT[!cohort_active, pixelIndex])))
+    # checks for "active" cohorts
+    cohortDT <- data.table::copy(simTest$cohortDT)
+    cohortDT[simTest$gcMeta, speciesCode := speciesCode, on = "gcID"]
+    
+    cohort_active <- cohortDT$gcID > 0
+    
+    expect_equal(sum(cohort_active), nrow(simTest$aboveGroundBiomass))
+    
+    expect_equal(
+      cohortDT[cohort_active, .(
+        pixelIndex,
+        speciesCode, age,
+        merch   = pools.SoftwoodMerch   + pools.HardwoodMerch,
+        foliage = pools.SoftwoodFoliage + pools.HardwoodFoliage,
+        other   = pools.SoftwoodOther   + pools.HardwoodOther
+      )][order(pixelIndex, speciesCode, age)],
+      simTest$aboveGroundBiomass[, .(pixelIndex, speciesCode, age, merch, foliage, other)][
+        order(pixelIndex, speciesCode, age)],
+      check.attributes = FALSE
+    )
+    
+    expect_equal(
+      simTest$cohortDT[cohort_active, .(
+        merch   = sum(pools.SoftwoodMerch   + pools.HardwoodMerch), 
+        foliage = sum(pools.SoftwoodFoliage + pools.HardwoodFoliage),
+        other   = sum(pools.SoftwoodOther   + pools.HardwoodOther)
+      ), by = pixelIndex],
+      simTest$aboveGroundBiomass[, .(merch = sum(merch), foliage = sum(foliage), other = sum(other)), by = pixelIndex],
+      tolerance = 0.01, # hmmm
+      check.attributes = FALSE
+    )
+    
+    # checks for DOM cohorts
+    
+    ## DOM cohort groups have 0 above ground biomass
+    expect_true(
+      all(round(
+        simTest$cohortDT[!cohort_active, .(
+          pools.SoftwoodMerch,   pools.HardwoodMerch,
+          pools.SoftwoodFoliage, pools.HardwoodFoliage, 
+          pools.SoftwoodOther,   pools.HardwoodOther)], 
+        10^-12) == 0)
+    )
+    
+    ## There can't be more than 1 DOM cohort groups per pixel
+    expect_true(!any(duplicated(simTest$cohortDT[!cohort_active, pixelIndex])))
+  }
   
   # summaryAGB
   if (!spinup){
