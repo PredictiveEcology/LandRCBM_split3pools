@@ -430,7 +430,8 @@ SplitYieldTables <- function(sim) {
   allInfoYieldTables <- merge(
     sim$gcMeta, 
     sim$yieldTablesCumulative[, .(yieldTableIndex, speciesCode, age, biomass)], 
-    by = c("speciesCode", "yieldTableIndex"))
+    by = c("speciesCode", "yieldTableIndex"),
+    allow.cartesian = TRUE)
   setnames(allInfoYieldTables,
            old = c("admin_abbrev", "eco_id",  "biomass"),
            new = c("juris_id",     "ecozone", "B"))
