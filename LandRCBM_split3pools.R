@@ -148,13 +148,6 @@ defineModule(sim, list(
       desc = "TODO"
     ),
     createsOutput(
-      objectName = "aboveGroundBiomass",
-      objectClass = "data.table",
-      desc = paste("Above ground biomass (metric tonnes of carbon/ha) in each pool",
-                   "for each pixel and cohort. Gets updated at each timestep.",
-                   "Columns are `pixelIndex`, `speciesCode`, `age`, `merch`, `foliage`, and `other`.")
-    ),
-    createsOutput(
       objectName = "summaryAGB",
       objectClass = "data.table",
       desc = paste("Sum of carbon mass for each species and above ground", 
@@ -215,17 +208,21 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     
     summarizeAGBPools = {
       
-      sumBySpecies <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
+      AGB <- sim$cohortDT[gcID >= 1, .(
+        pixelIndex, gcID,
+        merch   = pools.SoftwoodMerch   + pools.HardwoodMerch,
+        foliage = pools.SoftwoodFoliage + pools.HardwoodFoliage,
+        other   = pools.SoftwoodOther   + pools.HardwoodOther
+      )]
+      AGB[sim$gcMeta, speciesCode := speciesCode, on = "gcID"]
+      
+      sumBySpecies <- AGB[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
       sumBySpecies$year <- time(sim)[1]
       
-      if (time(sim) == start(sim)){
-        sim$summaryAGB <- sumBySpecies
-      } else {
-        sim$summaryAGB <- rbind(
-          sim$summaryAGB,
-          sumBySpecies
-        )
-      }
+      sim$summaryAGB <- rbind(
+        sim$summaryAGB,
+        sumBySpecies
+      )
       
       # do this for each timestep
       sim <- scheduleEvent(sim, time(sim) + 1, eventPriority = 10, "LandRCBM_split3pools", "summarizeAGBPools")
@@ -241,7 +238,13 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     plotMaps = {
       
       # get the sum of each pool per pixelGroups
-      poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch", "foliage", "other")]
+      poolSum <- sim$cohortDT[gcID >= 1, .(
+        pixelIndex, gcID,
+        merch   = sum(pools.SoftwoodMerch   + pools.HardwoodMerch),
+        foliage = sum(pools.SoftwoodFoliage + pools.HardwoodFoliage),
+        other   = sum(pools.SoftwoodOther   + pools.HardwoodOther)
+      ), by = "pixelIndex"]
+      
       # rasterize
       merchRast <- rast(sim$rasterToMatch, names = "merchantable")
       merchRast[poolSum$pixelIndex] <- poolSum$merch
@@ -333,26 +336,12 @@ SplitYieldTables <- function(sim) {
   # Link yield curve IDs (yieldTableIndex) to CBM spatial units 
   # and generate initial cohort/stand data structures.
   
-  # 1.1. Split initial above ground biomass
-  sim$aboveGroundBiomass <- splitCohortData(
-    cohortData = sim$cohortData,
-    pixelGroupMap = sim$pixelGroupMap,
-    standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
-    table6 = sim$table6,
-    table7 = sim$table7,
-    tableMerchantability = sim$tableMerchantability,
-    sppEquiv = sim$sppEquiv
-  )
-  
-  # 1.2. Generate the cohort-level attributes (`cohortDT`).
+  # 1.1. Generate the cohort-level attributes (`cohortDT`).
   #      This links individual cohorts (pixelGroup x species combinations)
   #      to their corresponding growth curve IDs (`gcID`).
   cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$standDT, sim$yieldTablesId)
   
-  # 1.3. Store essential cohort information in simList.
-  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcID)]
-  
-  # 1.4. Create and store metadata about growth curves (`sim$gcMeta`).
+  # 1.2. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcID to species information.
   sim$gcMeta <- unique(cohortDT[, .(gcID, admin_abbrev, eco_id, yieldTableIndex, speciesCode)])
   sim$gcMeta <- cbind(
@@ -365,7 +354,9 @@ SplitYieldTables <- function(sim) {
   setkey(sim$gcMeta, gcID)
   setcolorder(sim$gcMeta)
   
-  rm(cohortDT)
+  # 1.3. Store essential cohort information in simList.
+  cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, gcID)]
+  sim$cohortDT <- cohortDT
   
   # Step 2: Splitting AGB Curves into CBM Pools --------------------------------
   # Convert the total Above-Ground Biomass (AGB) yield curves into cumulative biomass
@@ -436,9 +427,17 @@ PostSpinupAdjustBiomass <- function(sim){
   colReplace <- do.call(c, lapply(c("Softwood", "Hardwood"), function(x) paste0(
     x, c("Merch", "Foliage", "Other", "CoarseRoots", "FineRoots"))))
   
-  AGB <- data.table::copy(sim$aboveGroundBiomass)
-  
-  AGB[, sw := !CBMutils::sppMatch(AGB$speciesCode, sppEquiv = sim$sppEquiv, match = "LandR", return = "Broadleaf")$Broadleaf]
+  # Split initial above ground biomass
+  AGB <- splitCohortData(
+    cohortData = sim$cohortData,
+    pixelGroupMap = sim$pixelGroupMap,
+    standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
+    table6 = sim$table6,
+    table7 = sim$table7,
+    tableMerchantability = sim$tableMerchantability,
+    sppEquiv = sim$sppEquiv
+  )
+  AGB[sim$gcMeta, sw := sw, on = "speciesCode"]
   AGB[, SoftwoodMerch   := data.table::fifelse( sw, merch,   0)]
   AGB[, SoftwoodFoliage := data.table::fifelse( sw, foliage, 0)]
   AGB[, SoftwoodOther   := data.table::fifelse( sw, other,   0)]
@@ -462,20 +461,11 @@ PostSpinupAdjustBiomass <- function(sim){
 # Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
   
-  # Step 1: Store the above ground biomass of the previous time step.-----------
-  biomassTminus1 <- copy(sim$aboveGroundBiomass)
-  # Increment age to match the *current* age for joining later
-  biomassTminus1[, age := age + 1L]
-  # Rename cols to indicate they are from the previous timestep
-  setnames(biomassTminus1, old = c("merch", "foliage", "other"), 
-           new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
-  # Keep only necessary columns for merging
-  biomassTminus1 <- biomassTminus1[, .(pixelIndex, speciesCode, age,
-                                       merchTminus1, foliageTminus1, otherTminus1)]
-  setkey(biomassTminus1, pixelIndex, speciesCode, age)
+  # Calculate this year's increments.-----------------------------------
   
-  # Step 2: Split current total above ground.-----------------------------------
-  sim$aboveGroundBiomass <- splitCohortData(
+  # Split current total above ground biomass
+  ## Set age to age at beginning of year
+  AGB <- splitCohortData(
     cohortData = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
     standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
@@ -484,12 +474,25 @@ AnnualIncrements <- function(sim){
     tableMerchantability = sim$tableMerchantability,
     sppEquiv = sim$sppEquiv
   )
+  AGB[, age := age - 1]
   
-  # Step 3: Calculate this year's increments.-----------------------------------
-  # Full outer join between current biomass and previous biomass (incremented age)
+  # Get biomass for the previous year
+  if (!"speciesCode" %in% names(sim$cohortDT)){
+    sim$cohortDT[sim$gcMeta, speciesCode := speciesCode, on = "gcID"]
+    on.exit(sim$cohortDT[, speciesCode := NULL])
+  }
+  
+  incrementsDT <- sim$cohortDT[, .(
+    pixelIndex, speciesCode, age, 
+    merchTminus1   = pools.SoftwoodMerch   + pools.HardwoodMerch, 
+    foliageTminus1 = pools.SoftwoodFoliage + pools.HardwoodFoliage, 
+    otherTminus1   = pools.SoftwoodOther   + pools.HardwoodOther
+  )]
+  
+  # Join between current biomass and previous biomass (incremented age)
   incrementsDT <- merge(
-    sim$aboveGroundBiomass,
-    biomassTminus1,
+    AGB,
+    incrementsDT, 
     by = c("pixelIndex", "speciesCode", "age"),
     all.x = TRUE, # Include new cohorts
     all.y = FALSE # Exclude disturbed and DOM cohorts
@@ -504,19 +507,11 @@ AnnualIncrements <- function(sim){
   )]
   incrementsDT[, c(c("merch", "foliage", "other", "merchTminus1", "foliageTminus1", "otherTminus1")) := NULL]
   
-  # Set age to age at beginning of year
-  incrementsDT[, age := age - 1]
-  
   # Create unique ID for each increment
   groupCols <- c("speciesCode", "age", "merch_inc", "foliage_inc", "other_inc")
   incrementsDT[, gcID := as.integer(.GRP), by = groupCols]
   
-  # Step 4: Set cohorts.-----------------------------------
-  
-  if (!"speciesCode" %in% names(sim$cohortDT)){
-    sim$cohortDT[sim$gcMeta, speciesCode := speciesCode, on = "gcID"]
-    on.exit(sim$cohortDT[, speciesCode := NULL])
-  }
+  # Set cohorts.-----------------------------------
   
   sim$cohortDT[, gcID := NULL]
   sim$cohortDT <- merge(
@@ -599,7 +594,7 @@ AnnualIncrements <- function(sim){
   sim$cohortDT[, cohort_proportion := NULL]
   sim$cohortDT[, cohort_index := .GRP, by = c("speciesCode", "age")]
   
-  # Step 5: Set gcMeta and gcIncrements.----------------------------------- 
+  # Set gcMeta and gcIncrements.----------------------------------- 
   
   incrementsDT$sw <- !CBMutils::sppMatch(
     incrementsDT$speciesCode, sppEquiv = sim$sppEquiv, match = "LandR", return = "Broadleaf")$Broadleaf
