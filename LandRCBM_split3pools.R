@@ -530,7 +530,7 @@ AnnualIncrements <- function(sim){
   # New cohorts: initiate pools
   poolCols <- names(sim$cohortDT)[grepl("^pools\\.", names(sim$cohortDT))]
   sim$cohortDT[, new := is.na(pools.SoftwoodMerch)]
-  sim$cohortDT[new==TRUE, (poolCols)  := 0]
+  sim$cohortDT[new==TRUE, (poolCols) := 0]
   sim$cohortDT[, new := NULL]
   
   if (anyNA(sim$cohortDT$gcID)){
