@@ -17,7 +17,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
-                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.5.9001)"),
+                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.5.9003)"),
   parameters = bindrows(
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
                     "Minimum age for which a cohort can have wood considered merchantable."),
@@ -426,41 +426,30 @@ SplitYieldTables <- function(sim) {
   
   # 2.1. Prepare table for CBM pool splitting function.
   #      Rename the primary biomass column to 'B' as expected by CBMutils.
-  allInfoYieldTables <- merge(
+  cumPools <- merge(
     sim$gcMeta, 
     sim$yieldTablesCumulative[, .(yieldTableIndex, speciesCode, age, biomass)], 
     by = c("speciesCode", "yieldTableIndex"),
     allow.cartesian = TRUE)
-  setnames(allInfoYieldTables,
+  cumPools[, speciesCode := NULL]
+  setnames(cumPools,
            old = c("admin_abbrev", "eco_id",  "biomass"),
            new = c("juris_id",     "ecozone", "B"))
   
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
-  allInfoYieldTables[, B := B / 100]
+  cumPools[, B := B / 100]
   
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
   #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
   #      ground biomass as input, implemented in CBMutils.
-  cumPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoYieldTables,
-                                          table6 = sim$table6,
-                                          table7 = sim$table7,
-                                          tableMerchantability = sim$tableMerchantability,
-                                          pixGroupCol = "gcID")
-  cumPools[, speciesCode := NULL]
-  
-  # 2.3. Ensure annual resolution by filling missing ages (especially age 0).
-  minAgeDT <- cumPools[,.(minAge = max(0L, min(age) - 1L)), by = "gcID"]
-  # Create sequences from 0 up to (but not including) the minimum age found.
-  # Filter out cases where minAge is already 0.
-  fillAgesDT <-  minAgeDT[,.(age = seq(from = 0, to = minAge, by = 1)), by = "gcID"]
-  # Only proceed if there are ages to fill
-  if (nrow(fillAgesDT) > 0) {
-    # Create a table with the missing ages and zero biomass for all pools.
-    zeroBiomassDT <- fillAgesDT[, .(merch = 0, foliage = 0, other = 0), by = .(gcID, age)] 
-    
-    # Combine the original curves with the filled zero-biomass ages.
-    cumPools <- rbindlist(list(cumPools, zeroBiomassDT), use.names = TRUE)
-  }
+  cumPools[age == 0 & B <= 0.01, B := 0]
+  CBMutils::cumPoolsCreateAGB(
+    cumPools,
+    pixGroupCol = "gcID",
+    table6 = sim$table6,
+    table7 = sim$table7,
+    tableMerchantability = sim$tableMerchantability
+  )
   
   # Step 3: Calculating Annual Increments --------------------------------------
   # Calculate the year-to-year increment in biomass for each above ground 
