@@ -398,15 +398,12 @@ SplitYieldTables <- function(sim) {
   # Link yield curve IDs (yieldTableIndex) to CBM spatial units 
   # and generate initial cohort/stand data structures.
   
-  # 1.4. Generate the cohort-level attributes (`cohortDT`).
+  # 1.1. Generate the cohort-level attributes (`cohortDT`).
   #      This links individual cohorts (pixelGroup x species combinations)
   #      to their corresponding growth curve IDs (`gcID`).
   cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$standDT, sim$yieldTablesId)
   
-  # 1.2. Store essential cohort information in simList.
-  sim$cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, speciesCode, gcID)]
-  
-  # 1.3. Create and store metadata about growth curves (`sim$gcMeta`).
+  # 1.2. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcID to species information.
   sim$gcMeta <- unique(cohortDT[, .(gcID, admin_abbrev, eco_id, yieldTableIndex, speciesCode)])
   sim$gcMeta <- cbind(
@@ -419,7 +416,9 @@ SplitYieldTables <- function(sim) {
   setkey(sim$gcMeta, gcID)
   setcolorder(sim$gcMeta)
   
-  rm(cohortDT)
+  # 1.3. Store essential cohort information in simList.
+  cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, speciesCode, gcID)]
+  sim$cohortDT <- cohortDT
   
   # Step 2: Splitting AGB Curves into CBM Pools --------------------------------
   # Convert the total Above-Ground Biomass (AGB) yield curves into cumulative biomass
