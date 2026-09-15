@@ -93,8 +93,11 @@ Where:
 Merchantable wood is estimated in @boudewyn2007 with the following equations:
 
 $nonmerchfactor = k + a * b_m^b$
+
 $nonmerchfactor = b_{nm}/b_m$
+
 $b_{nm} = b_m + b_n$
+
 
 Where:
 

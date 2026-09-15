@@ -17,7 +17,6 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, 
   spatialUnits <- unique(spatialDT, by = "newPixelGroup")[, !("pixelIndex")]
   allInfoCohortData <- merge(cohortData, spatialUnits, by = "pixelGroup", allow.cartesian = TRUE)
   allInfoCohortData[, pixelGroup := NULL]
-  setnames(allInfoCohortData, old = "newPixelGroup", new = "pixelGroup")
   
   # Add CanFI species code
   allInfoCohortData$canfi_species <- CBMutils::sppMatch(
@@ -28,22 +27,25 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, 
   allInfoCohortData[, B := B/100]
   
   # Split above ground biomass of current year.---------------------------------
-  cohortPools <- CBMutils::cumPoolsCreateAGB(allInfoAGBin = allInfoCohortData,
-                                             table6 = table6,
-                                             table7 = table7,
-                                             tableMerchantability = tableMerchantability,
-                                             "pixelGroup")
+  
+  CBMutils::cumPoolsCreateAGB(
+    allInfoCohortData,
+    pixGroupCol = "newPixelGroup",
+    table6 = table6,
+    table7 = table7,
+    tableMerchantability = tableMerchantability
+  )
   
   # Get pixel-level biomass data.-----------------------------------------------
-  spatialDT[, pixelGroup := NULL]
-  biomassCurrent  <- merge(spatialDT, # The pixel-pixelGroup reference
-                           cohortPools, # Cohort Biomass data
-                           by.x = "newPixelGroup", 
-                           by.y = "pixelGroup", 
-                           allow.cartesian = TRUE) # There are multiple cohorts per pixelGroup and multiple pixels per pixelGroup
+  allInfoCohortData <- merge(
+    spatialDT[, .(pixelIndex, newPixelGroup)],  # The pixel-pixelGroup reference
+    allInfoCohortData,  # Cohort Biomass data
+    by = "newPixelGroup", 
+    allow.cartesian = TRUE) # There are multiple cohorts per pixelGroup and multiple pixels per pixelGroup
+  
   # Only keep needed columns
-  biomassCurrent <- biomassCurrent[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
-  setorderv(biomassCurrent, c("pixelIndex", "speciesCode", "age"))
-  return(biomassCurrent)
+  allInfoCohortData <- allInfoCohortData[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
+  setorderv(allInfoCohortData, c("pixelIndex", "speciesCode", "age"))
+  return(allInfoCohortData)
 }
 
