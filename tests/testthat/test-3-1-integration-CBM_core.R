@@ -298,15 +298,15 @@ test_that("Integration with CBM_core: step with new cohorts", {
 
 test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   
-  ## NOTE: this test runs for 2 years to allow DOM cohorts to register as DOM.
-  ## During the year that the cohort dies, the cohort will have negative increments
-  ## to move the existing biomass into DOM pools.
+  ## NOTE: this test runs for 3 years to allow all cohorts experiencing mortality 
+  ## to register as DOM. During the year that the cohort dies, the cohort will 
+  ## have negative increments to move the existing biomass into DOM pools.
   
   ## SIMULATE ----
   
   # Set up project
   projectName <- "integration_1-CBM_core_3-step-DOM"
-  times <- list(start = 2000, end = 2001)
+  times <- list(start = 2000, end = 2002)
   
   simInitInput <- SpaDES.project::setupProject(
     
@@ -360,6 +360,11 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
       # Year 2000: remove all cohorts from pixel 2
       data.table::data.table(year = 2000, pixelGroup = 2),
       
+      # Year 2000: remove Abie_las from pixel 3
+      # Year 2001: remove Pinu_con from pixel 3
+      data.table::data.table(year = 2000, pixelGroup = 3, speciesCode = "Abie_las"),
+      data.table::data.table(year = 2001, pixelGroup = 3, speciesCode = "Pinu_con"),
+      
       fill = TRUE)
   )
   
@@ -389,18 +394,28 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   ## Check that all cohorts are set as softwood
   expect_in(simTest$gcMeta$sw, TRUE)
   
-  ## Expect that 3 cohorts are gone
+  ## Expect that 5 cohorts are gone
   inCohorts <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 1)
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 2]), 0)
-  expect_equal(nrow(simTest$cohortDT), nrow(inCohorts) - 3)
+  expect_equal(nrow(simTest$cohortDT[pixelIndex == 3]), 0)
+  expect_equal(nrow(simTest$cohortDT), nrow(inCohorts) - 5)
   
   # check that DOM cohorts are located in the correct pixels
-  row_idx_DOM <- c(
-    simTest$cbm_vars$key[pixelIndex == 1 & row_idx %in% simTest$cbm_vars$state[speciesCode == "Abie_las", row_idx], row_idx],
-    simTest$cbm_vars$key[pixelIndex == 2, row_idx]
-  )
-  expect_equal(simTest$cbm_vars$state[row_idx_DOM, gcID], c(0, 0))
+  ## Pixels 2 and 3 should have 1 merged DOM cohort
+  cohortState <- merge(simTest$cbm_vars$key, simTest$cbm_vars$state, by = "row_idx")
+  
+  expect_equal(nrow(cohortState[gcID == 0]), 3)
+  
+  expect_equal(nrow(cohortState[pixelIndex == 1]), 2)
+  expect_equal(cohortState[pixelIndex == 1 & speciesCode == "Abie_las", gcID], 0)
+  expect_false(cohortState[pixelIndex == 1 & speciesCode != "Abie_las", gcID] == 0)
+  
+  expect_equal(nrow(cohortState[pixelIndex == 2]), 1)
+  expect_equal(cohortState[pixelIndex == 2, gcID], 0)
+  
+  expect_equal(nrow(cohortState[pixelIndex == 3]), 1)
+  expect_equal(cohortState[pixelIndex == 3, gcID], 0)
   
 })
 
