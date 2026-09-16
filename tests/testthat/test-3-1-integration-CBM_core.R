@@ -1,5 +1,24 @@
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
+# Set the `pixelGroup` key to be equal to the `pixelIndex` for simplification.
+{
+  pixelGroupMap <- terra::rast(file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif"))
+  cohortData    <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
+  
+  pixelGroupKey <- terra::values(pixelGroupMap)[,1]
+  cohortData[, pixelGroup := (1:length(pixelGroupKey))[match(cohortData$pixelGroup, pixelGroupKey)]]
+  data.table::setorder(cohortData, pixelGroup, speciesCode, age)
+  
+  pixelGroupMap <- terra::rast(pixelGroupMap, vals = 1:terra::ncell(pixelGroupMap))
+  terra::set.values(pixelGroupMap, NA, cells = setdiff(1:terra::ncell(pixelGroupMap), cohortData$pixelGroup))
+  
+  dir.create(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core"), showWarnings = FALSE)
+  terra::writeRaster(pixelGroupMap, file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "pixelGroupMap.tif"), overwrite = TRUE)
+  data.table::fwrite(cohortData, file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
+  rm(pixelGroupMap)
+  rm(cohortData)
+}
+
 test_that("Integration with CBM_core: spinup", {
   
   ## SIMULATE ----
@@ -22,7 +41,8 @@ test_that("Integration with CBM_core: spinup", {
       inputPath   = spadesTestPaths$inputPath,
       cachePath   = spadesTestPaths$cachePath,
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata
+      testdata    = spadesTestPaths$testdata,
+      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
       CBM_core = list(
@@ -34,22 +54,12 @@ test_that("Integration with CBM_core: spinup", {
     # Prepare input objects
     require = c("data.table", "terra", "sf"),
     
+    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    
-    # Set the `cohortData$pixelGroup` key to be equal to the `pixelIndex` for simplification.
-    pixelGroupMap         = terra::rast(rasterToMatch, vals = 1:terra::ncell(rasterToMatch)),
-    cohortData            = {
-      
-      cohortData    <- file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE)
-      pixelGroupMap <- file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast()
-      
-      pixelGroupKey <- terra::values(pixelGroupMap)[,1]
-      cohortData[, pixelGroup := (1:length(pixelGroupKey))[match(cohortData$pixelGroup, pixelGroupKey)]]
-      return(cohortData)
-    },
-    
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
     yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
   )
@@ -100,7 +110,8 @@ test_that("Integration with CBM_core: step", {
       inputPath   = spadesTestPaths$inputPath,
       cachePath   = spadesTestPaths$cachePath,
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata
+      testdata    = spadesTestPaths$testdata,
+      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
       CBM_core = list(
@@ -112,22 +123,12 @@ test_that("Integration with CBM_core: step", {
     # Prepare input objects
     require = c("data.table", "terra", "sf"),
     
+    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    
-    # Set the `cohortData$pixelGroup` key to be equal to the `pixelIndex` for simplification.
-    pixelGroupMap         = terra::rast(rasterToMatch, vals = 1:terra::ncell(rasterToMatch)),
-    cohortData            = {
-      
-      cohortData    <- file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE)
-      pixelGroupMap <- file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast()
-      
-      pixelGroupKey <- terra::values(pixelGroupMap)[,1]
-      cohortData[, pixelGroup := (1:length(pixelGroupKey))[match(cohortData$pixelGroup, pixelGroupKey)]]
-      return(cohortData)
-    },
-    
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
     yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
   )
@@ -202,7 +203,8 @@ test_that("Integration with CBM_core: step with new cohorts", {
       inputPath   = spadesTestPaths$inputPath,
       cachePath   = spadesTestPaths$cachePath,
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata
+      testdata    = spadesTestPaths$testdata,
+      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
       CBM_core = list(
@@ -214,22 +216,12 @@ test_that("Integration with CBM_core: step with new cohorts", {
     # Prepare input objects
     require = c("data.table", "terra", "sf"),
     
+    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    
-    # Set the `cohortData$pixelGroup` key to be equal to the `pixelIndex` for simplification.
-    pixelGroupMap         = terra::rast(rasterToMatch, vals = 1:terra::ncell(rasterToMatch)),
-    cohortData            = {
-      
-      cohortData    <- file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE)
-      pixelGroupMap <- file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast()
-      
-      pixelGroupKey <- terra::values(pixelGroupMap)[,1]
-      cohortData[, pixelGroup := (1:length(pixelGroupKey))[match(cohortData$pixelGroup, pixelGroupKey)]]
-      return(cohortData)
-    },
-    
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
     yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
   )
@@ -307,7 +299,8 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
       inputPath   = spadesTestPaths$inputPath,
       cachePath   = spadesTestPaths$cachePath,
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata
+      testdata    = spadesTestPaths$testdata,
+      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
       CBM_core = list(
@@ -317,24 +310,14 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
     ),
     
     # Prepare input objects
-    require = c("data.table", "terra", "sf"),
+    require = c("data.table", "terra", "sf"),    
+    
+    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
     
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    
-    # Set the `cohortData$pixelGroup` key to be equal to the `pixelIndex` for simplification.
-    pixelGroupMap         = terra::rast(rasterToMatch, vals = 1:terra::ncell(rasterToMatch)),
-    cohortData            = {
-      
-      cohortData    <- file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE)
-      pixelGroupMap <- file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast()
-      
-      pixelGroupKey <- terra::values(pixelGroupMap)[,1]
-      cohortData[, pixelGroup := (1:length(pixelGroupKey))[match(cohortData$pixelGroup, pixelGroupKey)]]
-      return(cohortData)
-    },
-    
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
     yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
   )
@@ -408,7 +391,8 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
       inputPath   = spadesTestPaths$inputPath,
       cachePath   = spadesTestPaths$cachePath,
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata
+      testdata    = spadesTestPaths$testdata,
+      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
       CBM_core = list(
@@ -418,24 +402,14 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
     ),
     
     # Prepare input objects
-    require = c("data.table", "terra", "sf"),
+    require = c("data.table", "terra", "sf"),    
+    
+    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
     
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-
-    # Set the `cohortData$pixelGroup` key to be equal to the `pixelIndex` for simplification.
-    pixelGroupMap         = terra::rast(rasterToMatch, vals = 1:terra::ncell(rasterToMatch)),
-    cohortData            = {
-      
-      cohortData    <- file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE)
-      pixelGroupMap <- file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast()
-      
-      pixelGroupKey <- terra::values(pixelGroupMap)[,1]
-      cohortData[, pixelGroup := (1:length(pixelGroupKey))[match(cohortData$pixelGroup, pixelGroupKey)]]
-      return(cohortData)
-    },
-    
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
     yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
     
