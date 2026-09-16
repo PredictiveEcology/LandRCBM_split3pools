@@ -169,19 +169,13 @@ test_that("Integration with CBM_core: step", {
   expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that all input cohorts are still present
-  inCohorts <- merge(
-    data.table::data.table(
-      pixelGroup = terra::values(terra::rast(file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif")))[,1]
-    )[, pixelIndex := .I],
-    data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv")),
-    by = "pixelGroup")
-  
+  inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT), nrow(inCohorts))
   
   ## Check cohort ages
   expect_equal(
     simTest$cohortDT[order(pixelIndex, speciesCode)]$age - (end(simTest) - start(simTest) + 1),
-    inCohorts[order(pixelIndex, speciesCode)]$age
+    inCohorts[order(pixelGroup, speciesCode)]$age
   )
 })
 
@@ -285,7 +279,7 @@ test_that("Integration with CBM_core: step with new cohorts", {
   expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that 1 cohort has been added
-  inCohorts <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
+  inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 3)
   expect_equal(nrow(simTest$cohortDT), nrow(inCohorts) + 1)
   
@@ -395,7 +389,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that 5 cohorts are gone
-  inCohorts <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
+  inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 1)
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 2]), 0)
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 3]), 0)
