@@ -130,7 +130,10 @@ test_that("Integration with CBM_core: step", {
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+    
+    # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
+    cohortGrowth = 100
   )
   
   # Run simInit
@@ -223,7 +226,10 @@ test_that("Integration with CBM_core: step with new cohorts", {
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+    
+    # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
+    cohortGrowth = 100
   )
   
   # Run simInit
@@ -319,7 +325,10 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+    
+    # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
+    cohortGrowth = 100
   )
   
   # Run simInit
@@ -411,7 +420,10 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),,
+    
+    # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
+    cohortGrowth = 100,
     
     # Wildfire in pixel 3
     disturbanceMeta = data.table::data.table(
