@@ -45,8 +45,11 @@ test_that("Integration with CBM_core: spinup", {
       tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
+      .globals = list(
+        .useCache = FALSE,
+        .plots    = "png"
+      ),
       CBM_core = list(
-        .plot = FALSE,
         skipPrepareCBMvars = TRUE
       )
     ),
@@ -114,8 +117,11 @@ test_that("Integration with CBM_core: step", {
       tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
+      .globals = list(
+        .useCache = FALSE,
+        .plots    = "png"
+      ),
       CBM_core = list(
-        .plot = FALSE,
         skipPrepareCBMvars = TRUE
       )
     ),
@@ -210,8 +216,11 @@ test_that("Integration with CBM_core: step with new cohorts", {
       tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
+      .globals = list(
+        .useCache = FALSE,
+        .plots    = "png"
+      ),
       CBM_core = list(
-        .plot = FALSE,
         skipPrepareCBMvars = TRUE
       )
     ),
@@ -319,8 +328,11 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
       tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
+      .globals = list(
+        .useCache = FALSE,
+        .plots    = "png"
+      ),
       CBM_core = list(
-        .plot = FALSE,
         skipPrepareCBMvars = TRUE
       )
     ),
@@ -414,8 +426,11 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
       tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
     ),
     params = list(
+      .globals = list(
+        .useCache = FALSE,
+        .plots    = "png"
+      ),
       CBM_core = list(
-        .plot = FALSE,
         skipPrepareCBMvars = TRUE
       )
     ),
