@@ -5,7 +5,8 @@ defineModule(sim, list(
   timeunit = "year",
   reqdPkgs = list("data.table"),
   inputObjects = bindrows(
-    expectsInput(objectName = "cohortData", objectClass = "data.table", desc = NA, sourceURL = NA)
+    expectsInput(objectName = "cohortData", objectClass = "data.table", desc = NA, sourceURL = NA),
+    expectsInput(objectName = "cohortMortality", objectClass = "data.table", desc = NA, sourceURL = NA)
   ),
   outputObjects = bindrows(
     createsOutput(objectName = "cohortData", objectClass = "data.table", desc = NA)
@@ -22,13 +23,16 @@ doEvent.test_mortality = function(sim, eventTime, eventType) {
     
     mortality = {
       
-      if (time(sim) == start(sim)){
-      
-        # Remove Abie_las from pixel 1
-        sim$cohortData <- sim$cohortData[!(pixelGroup == 1 & speciesCode == "Abie_las")]
+      if (time(sim) %in% sim$cohortMortality$year){
         
-        # Remove all cohorts from pixel 2
-        sim$cohortData <- sim$cohortData[!(pixelGroup == 2)]
+        m <- sim$cohortMortality[year == time(sim)]
+        if (!"speciesCode" %in% names(m)) m[, speciesCode := NA]
+        
+        sim$cohortData <- sim$cohortData[!(pixelGroup %in% m[is.na(speciesCode), pixelGroup])]
+        
+        for (i in which(!is.na(m$speciesCode))){
+          sim$cohortData <- sim$cohortData[!(pixelGroup %in% m[i, pixelGroup] & speciesCode %in% m[i, speciesCode])]
+        }
       }
       
       sim <- scheduleEvent(sim, time(sim) + 1, "test_mortality", "mortality", eventPriority = 6.5)

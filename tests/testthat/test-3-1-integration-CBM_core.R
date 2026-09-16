@@ -350,7 +350,17 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
     yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
     
     # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
-    cohortGrowth = 100
+    cohortGrowth = 100,
+    
+    cohortMortality = rbind(
+      
+      # Year 2000: remove Abie_las from pixel 1
+      data.table::data.table(year = 2000, pixelGroup = 1, speciesCode = "Abie_las"),
+      
+      # Year 2000: remove all cohorts from pixel 2
+      data.table::data.table(year = 2000, pixelGroup = 2),
+      
+      fill = TRUE)
   )
   
   # Run simInit
