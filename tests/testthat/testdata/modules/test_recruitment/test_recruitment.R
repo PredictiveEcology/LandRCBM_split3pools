@@ -5,7 +5,8 @@ defineModule(sim, list(
   timeunit = "year",
   reqdPkgs = list("data.table"),
   inputObjects = bindrows(
-    expectsInput(objectName = "cohortData", objectClass = "data.table", desc = NA, sourceURL = NA)
+    expectsInput(objectName = "cohortData", objectClass = "data.table", desc = NA, sourceURL = NA),
+    expectsInput(objectName = "cohortRecruit", objectClass = "data.table", desc = NA, sourceURL = NA)
   ),
   outputObjects = bindrows(
     createsOutput(objectName = "cohortData", objectClass = "data.table", desc = NA)
@@ -22,18 +23,10 @@ doEvent.test_recruitment = function(sim, eventTime, eventType) {
     
     recruitment = {
       
-      if (time(sim) == start(sim)){
-      
-        # Add a cohort to pixel 1
+      if (time(sim) %in% sim$cohortRecruit$year){
         sim$cohortData <- rbind(
           sim$cohortData,
-          data.table::data.table(
-            pixelGroup     = 1,
-            speciesCode    = "Abie_las",
-            ecoregionGroup = "1_210",
-            age            = 1,
-            B              = 200
-          ),
+          sim$cohortRecruit[year == time(sim)][, .SD, .SDcols = intersect(names(sim$cohortData), names(sim$cohortRecruit))],
           fill = TRUE)
       }
       

@@ -229,7 +229,17 @@ test_that("Integration with CBM_core: step with new cohorts", {
     yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
     
     # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
-    cohortGrowth = 100
+    cohortGrowth = 100,
+    
+    # Add a cohort to pixel 1 in year 2000
+    cohortRecruit = data.table::data.table(
+      year           = 2000,
+      pixelGroup     = 1,
+      speciesCode    = "Abie_las",
+      ecoregionGroup = "1_210",
+      age            = 1,
+      B              = 200
+    )
   )
   
   # Run simInit
