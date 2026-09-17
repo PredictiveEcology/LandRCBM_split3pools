@@ -84,8 +84,11 @@ check_cbm_vars <- function(simTest){
   expect_equal(nrow(simTest$cbm_vars$flux),       NcohortGroups)
   
   # checks for "active" cohorts
-  row_idx_active <- simTest$cbm_vars$state$gcID != 0
-  ActiveCohortGroups <- simTest$cbm_vars$key[row_idx %in% which(row_idx_active), row_idx]
+  row_idx_active <- simTest$cbm_vars$state[gcID != 0, row_idx]
+  if ("disturbance_type_id" %in% names(simTest$cbm_vars$key)){
+    row_idx_active <- intersect(row_idx_active, simTest$cbm_vars$key[is.na(disturbance_type_id), row_idx])
+  }
+  ActiveCohortGroups <- simTest$cbm_vars$key[row_idx %in% row_idx_active, row_idx]
   
   expect_equal(
     simTest$cbm_vars$state[ActiveCohortGroups, age],
@@ -97,7 +100,7 @@ check_cbm_vars <- function(simTest){
   )
 
   # checks for DOM cohorts
-  DOMCohortGroups <- simTest$cbm_vars$key[row_idx %in% which(!row_idx_active), row_idx]
+  DOMCohortGroups <- simTest$cbm_vars$key[!row_idx %in% row_idx_active, row_idx]
 
   ## DOM cohort groups have 0 above ground biomass
   expect_true(

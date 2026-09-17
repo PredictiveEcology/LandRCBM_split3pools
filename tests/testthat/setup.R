@@ -20,6 +20,12 @@ spadesTestPaths <- SpaDEStestSetUpDirectories()
 lapply(list.files(file.path(spadesTestPaths$RProj, "R"), full.names = TRUE), source)
 Require::Require(c("data.table", "terra"))
 
+# Copy test modules
+moduleDirs <- list.files(file.path(spadesTestPaths$testdata, "modules"), full = TRUE)
+for (moduleDir in moduleDirs){
+  file.copy(moduleDir, spadesTestPaths$temp$modules, recursive = TRUE, overwrite = TRUE)
+}
+
 # Install required packages
 withr::with_options(c(timeout = 600), Require::Install(
   c(SpaDES.core::packages(modules = basename(getwd()), paths = "..")[[1]],

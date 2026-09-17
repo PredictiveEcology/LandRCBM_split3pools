@@ -19,8 +19,8 @@ testthat::test_dir(file.path("tests", "testthat"), reporter = testthat::Location
 testthat::test_dir(file.path("tests", "testthat"), reporter = testthat::SummaryReporter)
 
 ## RUN INDIVIDUAL TESTS ----
-testthat::test_file(file.path("tests", "testthat", "test-1-matchCurveToCohort.R"))
-testthat::test_file(file.path("tests", "testthat", "test-2-generateCohortDT.R"))
-testthat::test_file(file.path("tests", "testthat", "test-3-splitCohortData.R"))
-testthat::test_file(file.path("tests", "testthat", "test-4-LandRCBM_split3pools.R"))
-testthat::test_file(file.path("tests", "testthat", "test-5-integration-LandRCBM.R"))
+testthat::test_file(file.path("tests", "testthat", "test-1-generateCohortDT.R"))
+testthat::test_file(file.path("tests", "testthat", "test-1-splitCohortData.R"))
+testthat::test_file(file.path("tests", "testthat", "test-2-LandRCBM_split3pools.R"))
+testthat::test_file(file.path("tests", "testthat", "test-3-1-integration-CBM_core.R"))
+testthat::test_file(file.path("tests", "testthat", "test-3-2-integration-LandRCBM.R"))
