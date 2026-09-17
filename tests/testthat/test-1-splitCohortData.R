@@ -24,7 +24,7 @@ test_that("function to split cohortData works", {
   tableMerch <- reproducible::prepInputs(url = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC",
                                          fun = data.table::fread(targetFile, verbose = FALSE),
                                          destinationPath = spadesTestPaths$temp$inputs,
-                                         filename2 = "appendix2_table7_tb.csv")
+                                         targetFile = "merchantabilityParams.csv")
   tableMerch <- cbind(tableMerch, minAge = 15)
   
   # Check that it runs with no error
@@ -35,13 +35,13 @@ test_that("function to split cohortData works", {
       standDT = copy(standDT),
       table6 = copy(table6),
       table7 = copy(table7),
-      tableMerchantability = copy(tableMerch)
+      tableMerch = copy(tableMerch)
     )
   })
 
   # Check result type and columns
   expect_s3_class(result, "data.table")
-  expect_named(result, c("pixelIndex", "speciesCode", "age", "merch", "foliage", "other"))
+  expect_named(result, c("pixelIndex", "speciesCode", "age", "B", "merch", "foliage", "other"))
   
   # Check column types
   expect_type(result$pixelIndex, "integer")
@@ -58,7 +58,7 @@ test_that("function to split cohortData works", {
     standDT = copy(standDT),
     table6 = copy(table6),
     table7 = copy(table7),
-    tableMerchantability = copy(tableMerch)
+    tableMerch = copy(tableMerch)
   )
   
   # Calculate expected rows:
@@ -79,7 +79,7 @@ test_that("function to split cohortData works", {
     standDT = copy(standDT),
     table6 = copy(table6), 
     table7 = copy(table7),
-    tableMerchantability = copy(tableMerch)
+    tableMerch = copy(tableMerch)
   )
   
   # Add total biomass column to result

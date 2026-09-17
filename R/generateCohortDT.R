@@ -48,12 +48,8 @@ generateCohortDT <- function(cohortData, pixelGroupMap, standDT, yieldTablesId){
   setcolorder(cohortDT, c("pixelIndex", "speciesCode", "age"))
   cohortDT[, gcID := .GRP, by = .(admin_abbrev, eco_id, yieldTableIndex, speciesCode)]
   
-  # add the index for individual cohorts
-  cohortDT[, cohortID := .I]
-  setkey(cohortDT, cohortID)
-  
   # Keep final columns in desired order
-  cohortDT <- cohortDT[, .(cohortID, pixelIndex, admin_abbrev, eco_id, speciesCode, age, yieldTableIndex, gcID)]
+  cohortDT <- cohortDT[, .(pixelIndex, admin_abbrev, eco_id, speciesCode, age, yieldTableIndex, gcID)]
   
   # Ensure cohort generation worked
   if (is.null(cohortDT) || nrow(cohortDT) == 0) {

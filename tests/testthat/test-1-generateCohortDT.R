@@ -27,7 +27,7 @@ test_that("function generateDt works", {
   # Tests
   expect_is(result, "data.table")
   expect_equal(nrow(result), 5)
-  expected_cols <- c("cohortID", "pixelIndex", "admin_abbrev", "eco_id", 
+  expected_cols <- c("pixelIndex", "admin_abbrev", "eco_id", 
                      "speciesCode", "age", "yieldTableIndex", "gcID")
   expect_named(result, expected_cols, ignore.order = TRUE)
   expect_false(0 %in% result$age)

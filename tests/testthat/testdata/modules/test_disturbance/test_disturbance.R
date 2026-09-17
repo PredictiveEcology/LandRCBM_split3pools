@@ -23,10 +23,9 @@ doEvent.test_disturbance = function(sim, eventTime, eventType) {
     
     disturbance = {
       
-      # Remove cohorts from disturbed pixels
-      ## Note that this would be done using input rstCurrentBurn
-      distEvents <- sim$disturbanceEvents[year == time(sim)]
-      sim$cohortData <- sim$cohortData[!pixelGroup %in% distEvents$pixelIndex]
+      # Remove burned cohorts from cohortData
+      sim$cohortData <- sim$cohortData[
+        !pixelGroup %in% sim$treedFirePixelTableSinceLastDisp[burnTime == time(sim)]$pixelIndex]
       
       sim <- scheduleEvent(sim, time(sim) + 1, "test_disturbance", "disturbance", eventPriority = 6.5)
       

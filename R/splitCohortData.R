@@ -1,7 +1,8 @@
-splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, tableMerchantability,
+splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6tb, table7tb, tableMerch,
                             sppEquiv = NULL){
-  # Prepare cohort data for biomass splitting-----------------------------------
-  # Match pixel group with jurisdiction and CBM spatial units
+  
+  # Prepare cohort data for biomass splitting
+  # Match pixel group with jurisdiction and ecozone
   spatialDT <- data.table(
     pixelGroup = as.integer(pixelGroupMap[])
   ) 
@@ -9,11 +10,10 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, 
   spatialDT <- merge(
     standDT,
     spatialDT) |> na.omit()
-  # New pixel group for unique combination of pixelGroup and CBM spatial units
+  # New pixel group for unique combination of pixelGroup, jurisdiction, and ecozone
   spatialDT[, newPixelGroup := .GRP, by = .(pixelGroup, juris_id, ecozone)]
   
   # Add spatial information to cohortData
-  # note that the new pixelGroup column is the unique combination of pixelGroup and CBM spatial units
   spatialUnits <- unique(spatialDT, by = "newPixelGroup")[, !("pixelIndex")]
   allInfoCohortData <- merge(cohortData, spatialUnits, by = "pixelGroup", allow.cartesian = TRUE)
   allInfoCohortData[, pixelGroup := NULL]
@@ -26,17 +26,16 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, 
   # Convert biomass units from g/m^2 to tonnes/ha: 1 g/m^2 = 0.01 tonnes/ha
   allInfoCohortData[, B := B/100]
   
-  # Split above ground biomass of current year.---------------------------------
-  
+  # Split above ground biomass of current year
   CBMutils::cumPoolsCreateAGB(
     allInfoCohortData,
     pixGroupCol = "newPixelGroup",
-    table6 = table6,
-    table7 = table7,
-    tableMerchantability = tableMerchantability
+    bTable6tb   = table6tb,
+    bTable7tb   = table7tb,
+    tableMerch  = tableMerch
   )
   
-  # Get pixel-level biomass data.-----------------------------------------------
+  # Get pixel-level biomass data
   allInfoCohortData <- merge(
     spatialDT[, .(pixelIndex, newPixelGroup)],  # The pixel-pixelGroup reference
     allInfoCohortData,  # Cohort Biomass data
@@ -44,7 +43,7 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, 
     allow.cartesian = TRUE) # There are multiple cohorts per pixelGroup and multiple pixels per pixelGroup
   
   # Only keep needed columns
-  allInfoCohortData <- allInfoCohortData[, .(pixelIndex, speciesCode, age, merch, foliage, other)]
+  allInfoCohortData <- allInfoCohortData[, .(pixelIndex, speciesCode, age, B, merch, foliage, other)]
   setorderv(allInfoCohortData, c("pixelIndex", "speciesCode", "age"))
   return(allInfoCohortData)
 }

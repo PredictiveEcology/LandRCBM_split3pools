@@ -50,7 +50,7 @@ test_that("Integration with CBM_core: spinup", {
         .plots    = "png"
       ),
       CBM_core = list(
-        skipPrepareCBMvars = TRUE
+        fixedCohorts = FALSE
       )
     ),
     
@@ -60,6 +60,7 @@ test_that("Integration with CBM_core: spinup", {
     pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
     cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
     
+    masterRaster          = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
@@ -75,7 +76,7 @@ test_that("Integration with CBM_core: spinup", {
   # Run spades
   simTest <- SpaDES.core::spades(simTestInit, events = list(
     LandRCBM_split3pools = c("init", "splitInit", "postSpinupAdjustBiomass"),
-    CBM_core             = c("init", "spinup")
+    CBM_core             = c("init", "setStands", "spinup")
   ))
   expect_s4_class(simTest, "simList")
   
@@ -122,7 +123,7 @@ test_that("Integration with CBM_core: step", {
         .plots    = "png"
       ),
       CBM_core = list(
-        skipPrepareCBMvars = TRUE
+        fixedCohorts = FALSE
       )
     ),
     
@@ -132,6 +133,7 @@ test_that("Integration with CBM_core: step", {
     pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
     cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
     
+    masterRaster          = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
@@ -161,18 +163,20 @@ test_that("Integration with CBM_core: step", {
   ## Check that the total increase in carbon for each cohort is 0.5 tonnes/ha
   ## This is expected with an increase of biomass of 1 tonnes/ha for each cohort per year
   expect_true(all(
-    round(simTest$gcIncrements[, .(inc = merch_inc + foliage_inc + other_inc)]$inc, 6) == 0.5
+    round(simTest$gcIncrements[gcID != 0, .(inc = merch_inc + foliage_inc + other_inc)]$inc, 6) == 0.5
   ))
   
-  # cohortDT
+  # gcMeta
   ## Check that all cohorts are set as softwood
   expect_in(simTest$gcMeta$sw, TRUE)
   
+  # cohortDT
   ## Expect that all input cohorts are still present
   inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT), nrow(inCohorts))
   
   ## Check cohort ages
+  simTest$cohortDT[simTest$gcMeta, speciesCode := speciesCode, on = "gcID"]
   expect_equal(
     simTest$cohortDT[order(pixelIndex, speciesCode)]$age - (end(simTest) - start(simTest) + 1),
     inCohorts[order(pixelGroup, speciesCode)]$age
@@ -187,7 +191,7 @@ test_that("Integration with CBM_core: step with new cohorts", {
   ## SIMULATE ----
   
   # Set up project
-  projectName <- "integration_1-CBM_core_4-step-new"
+  projectName <- "integration_1-CBM_core_3-step-new"
   times <- list(start = 2000, end = 2000)
   
   simInitInput <- SpaDES.project::setupProject(
@@ -215,7 +219,7 @@ test_that("Integration with CBM_core: step with new cohorts", {
         .plots    = "png"
       ),
       CBM_core = list(
-        skipPrepareCBMvars = TRUE
+        fixedCohorts = FALSE
       )
     ),
     
@@ -225,6 +229,7 @@ test_that("Integration with CBM_core: step with new cohorts", {
     pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
     cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
     
+    masterRaster          = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
@@ -268,26 +273,24 @@ test_that("Integration with CBM_core: step with new cohorts", {
     simTest$gcIncrements[gcID == gcID_new, sum(merch_inc, foliage_inc, other_inc)],
     1)
   
+  # gcMeta
+  ## Check that all cohorts are set as softwood
+  expect_in(simTest$gcMeta$sw, TRUE)
+  ## Check that the new cohort is the correct species
+  expect_equal(as.character(simTest$gcMeta[gcID == gcID_new, speciesCode]), "Abie_las")
+  
   ## Check that the total increase in carbon for the other cohorts is 0.5 tonnes/ha
   ## This is expected with an increase of biomass of 1 tonnes/ha for each cohort per year
   expect_true(all(
-    round(simTest$gcIncrements[gcID != gcID_new, .(inc = merch_inc + foliage_inc + other_inc)]$inc, 6) == 0.5
+    round(simTest$gcIncrements[!gcID %in% c(0, gcID_new), .(inc = merch_inc + foliage_inc + other_inc)]$inc, 6) == 0.5
   ))
   
   # cohortDT
-  ## Check that all cohorts are set as softwood
-  expect_in(simTest$gcMeta$sw, TRUE)
-  
-  ## Expect that 1 cohort has been added
+  ## Expect that 1 cohort has been added to pixel 3
   inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 3)
   expect_equal(nrow(simTest$cohortDT), nrow(inCohorts) + 1)
   
-  # check that new cohort is located in the correct pixel
-  expect_equal(
-    simTest$cbm_vars$key[row_idx == simTest$cbm_vars$state[gcID == gcID_new, row_idx], pixelIndex],
-    1
-  )
 })
 
 test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
@@ -299,7 +302,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   ## SIMULATE ----
   
   # Set up project
-  projectName <- "integration_1-CBM_core_3-step-DOM"
+  projectName <- "integration_1-CBM_core_4-step-DOM"
   times <- list(start = 2000, end = 2002)
   
   simInitInput <- SpaDES.project::setupProject(
@@ -327,7 +330,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
         .plots    = "png"
       ),
       CBM_core = list(
-        skipPrepareCBMvars = TRUE
+        fixedCohorts = FALSE
       )
     ),
     
@@ -337,6 +340,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
     pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
     cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
     
+    masterRaster          = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
@@ -381,48 +385,43 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   ## Check that the total increase in carbon for each cohort is 0.5 tonnes/ha
   ## This is expected with an increase of biomass of 1 tonnes/ha for each cohort per year
   expect_true(all(
-    round(simTest$gcIncrements[, .(inc = merch_inc + foliage_inc + other_inc)]$inc, 6) == 0.5
+    round(simTest$gcIncrements[gcID != 0, .(inc = merch_inc + foliage_inc + other_inc)]$inc, 6) == 0.5
   ))
   
-  # cohortDT
+  # gcMeta
   ## Check that all cohorts are set as softwood
   expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that 5 cohorts are gone
   inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
-  expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 1)
-  expect_equal(nrow(simTest$cohortDT[pixelIndex == 2]), 0)
-  expect_equal(nrow(simTest$cohortDT[pixelIndex == 3]), 0)
-  expect_equal(nrow(simTest$cohortDT), nrow(inCohorts) - 5)
+  expect_equal(nrow(simTest$cohortDT[gcID != 0]), nrow(inCohorts) - 5)
   
   # check that DOM cohorts are located in the correct pixels
   ## Pixels 2 and 3 should have 1 merged DOM cohort
-  cohortState <- merge(simTest$cbm_vars$key, simTest$cbm_vars$state, by = "row_idx")
+  expect_equal(nrow(simTest$cohortDT[gcID == 0]), 3)
   
-  expect_equal(nrow(cohortState[gcID == 0]), 3)
+  expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 2) # 1 active, 1 DOM cohort
+  expect_true(0 %in% simTest$cohortDT[pixelIndex == 1, gcID])
+  expect_false(simTest$gcMeta[gcID == simTest$cohortDT[pixelIndex == 1 & gcID != 0, gcID], speciesCode] == "Abie_las")
   
-  expect_equal(nrow(cohortState[pixelIndex == 1]), 2)
-  expect_equal(cohortState[pixelIndex == 1 & speciesCode == "Abie_las", gcID], 0)
-  expect_false(cohortState[pixelIndex == 1 & speciesCode != "Abie_las", gcID] == 0)
+  expect_equal(nrow(simTest$cohortDT[pixelIndex == 2]), 1) # 2 DOM cohorts should be merged
+  expect_equal(simTest$cohortDT[pixelIndex == 2, gcID], 0)
   
-  expect_equal(nrow(cohortState[pixelIndex == 2]), 1)
-  expect_equal(cohortState[pixelIndex == 2, gcID], 0)
-  
-  expect_equal(nrow(cohortState[pixelIndex == 3]), 1)
-  expect_equal(cohortState[pixelIndex == 3, gcID], 0)
+  expect_equal(nrow(simTest$cohortDT[pixelIndex == 3]), 1) # 2 DOM cohorts should be merged
+  expect_equal(simTest$cohortDT[pixelIndex == 3, gcID], 0)
   
 })
 
 test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
   
   ## NOTE: This test runs for 1 year to check that the disturbed cohorts
-  ## Will have their disturbance type correctly registered in sim$cbm_vars
+  ## Will have their disturbance type correctly registered in disturbanceEvents
   ## and have been assigned increments == 0
   
   ## SIMULATE ----
   
   # Set up project
-  projectName <- "integration_1-CBM_core_3-step-DOM"
+  projectName <- "integration_1-CBM_core_5-step-dist"
   times <- list(start = 2000, end = 2000)
   
   simInitInput <- SpaDES.project::setupProject(
@@ -450,7 +449,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
         .plots    = "png"
       ),
       CBM_core = list(
-        skipPrepareCBMvars = TRUE
+        fixedCohorts = FALSE
       )
     ),
     
@@ -460,24 +459,20 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
     pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
     cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
     
+    masterRaster          = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
     studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
     yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),,
+    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
     
     # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
     cohortGrowth = 100,
     
     # Wildfire in pixel 3
-    disturbanceMeta = data.table::data.table(
-      eventID = 1,
-      disturbance_type_id = 1
-    ),
-    disturbanceEvents = data.table::data.table(
-      pixelIndex = 3,
-      year       = 2000,
-      eventID    = 1
+    treedFirePixelTableSinceLastDisp = data.table::data.table(
+      burnTime   = 2000,
+      pixelIndex = 3
     )
   )
   
@@ -496,25 +491,18 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
   # check output object structure
   check_module_outputs(simTest)
   
-  # Check that disturbance_type_id registered in simTest$cbm_vars$key
-  expect_equal(
-    simTest$cbm_vars$key[pixelIndex == 3]$disturbance_type_id,
-    rep(1, 2))
-  
-  # Check that disturbance_type_id registered in simTest$cbm_vars$parameters
-  row_idx_dist <- simTest$cbm_vars$key[pixelIndex == 3, row_idx]
-  expect_true(all(
-    simTest$cbm_vars$parameters[row_idx %in% row_idx_dist, disturbance_type] == 1
-  ))
+  # Check that disturbances registered in disturbanceMeta and disturbanceEvents
+  expect_equal(simTest$disturbanceMeta[eventID == 2001, disturbance_type_name], "Wildfire")
+  expect_equal(simTest$disturbanceEvents, data.table::data.table(eventID = 2001, pixelIndex = 3, year = 2000), check.attributes = FALSE)
   
   # Check that increments for disturbed cohorts are 0
-  expect_true(all(
-    simTest$cbm_vars$parameters[row_idx %in% row_idx_dist, .(merch_inc, foliage_inc, other_inc)] == 0
-  ))
+  expect_equal(simTest$cohortDT[pixelIndex == 3, gcID], rep(0, 2))
   
   # Check that the wildfire cleared all aboveground biomass
   expect_true(all(
-    simTest$cbm_vars$pools[row_idx %in% row_idx_dist, .(Merch, Foliage, Other)] == 0
+    simTest$cohortDT[pixelIndex == 3, .(
+      pools.SoftwoodMerch, pools.SoftwoodFoliage, pools.SoftwoodOther,
+      pools.HardwoodMerch, pools.HardwoodFoliage, pools.HardwoodOther)] == 0
   ))
 })
 
