@@ -160,15 +160,13 @@ test_that("Integration with CBM_core: step", {
   check_module_outputs(simTest)
   
   # gcIncrements
+  ## Check that all cohorts are set as softwood
+  expect_in(simTest$gcIncrements$sw, TRUE)
   ## Check that the total increase in carbon for each cohort is 0.5 tonnes/ha
   ## This is expected with an increase of biomass of 1 tonnes/ha for each cohort per year
   expect_true(all(
     round(simTest$gcIncrements[gcID != 0, .(inc = merch_inc + foliage_inc + other_inc)]$inc, 6) == 0.5
   ))
-  
-  # gcMeta
-  ## Check that all cohorts are set as softwood
-  expect_in(simTest$gcMeta$sw, TRUE)
   
   # cohortDT
   ## Expect that all input cohorts are still present
@@ -176,7 +174,7 @@ test_that("Integration with CBM_core: step", {
   expect_equal(nrow(simTest$cohortDT), nrow(inCohorts))
   
   ## Check cohort ages
-  simTest$cohortDT[simTest$gcMeta, speciesCode := speciesCode, on = "gcID"]
+  simTest$cohortDT[simTest$gcIncrements, speciesCode := speciesCode, on = "gcID"]
   expect_equal(
     simTest$cohortDT[order(pixelIndex, speciesCode)]$age - (end(simTest) - start(simTest) + 1),
     inCohorts[order(pixelGroup, speciesCode)]$age
@@ -266,18 +264,16 @@ test_that("Integration with CBM_core: step with new cohorts", {
   check_module_outputs(simTest)
   
   # gcIncrements
+  ## Check that all cohorts are set as softwood
+  expect_in(simTest$gcIncrements$sw, TRUE)
+  ## Check that the new cohort is the correct species
+  gcID_new <- simTest$cohortDT[pixelIndex == 1 & age == 1, gcID]
+  expect_equal(as.character(simTest$gcIncrements[gcID == gcID_new, speciesCode]), "Abie_las")
   ## Check that the total increase in carbon for the new cohort is 1 tonnes/ha
   ## This is expected with an an addition of 2 tonnes/ha biomass in the first year
-  gcID_new <- simTest$cohortDT[pixelIndex == 1 & age == 1, gcID]
   expect_equal(
     simTest$gcIncrements[gcID == gcID_new, sum(merch_inc, foliage_inc, other_inc)],
     1)
-  
-  # gcMeta
-  ## Check that all cohorts are set as softwood
-  expect_in(simTest$gcMeta$sw, TRUE)
-  ## Check that the new cohort is the correct species
-  expect_equal(as.character(simTest$gcMeta[gcID == gcID_new, speciesCode]), "Abie_las")
   
   ## Check that the total increase in carbon for the other cohorts is 0.5 tonnes/ha
   ## This is expected with an increase of biomass of 1 tonnes/ha for each cohort per year
@@ -382,15 +378,13 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   check_module_outputs(simTest)
   
   # gcIncrements
+  ## Check that all cohorts are set as softwood
+  expect_in(simTest$gcIncrements$sw, TRUE)
   ## Check that the total increase in carbon for each cohort is 0.5 tonnes/ha
   ## This is expected with an increase of biomass of 1 tonnes/ha for each cohort per year
   expect_true(all(
     round(simTest$gcIncrements[gcID != 0, .(inc = merch_inc + foliage_inc + other_inc)]$inc, 6) == 0.5
   ))
-  
-  # gcMeta
-  ## Check that all cohorts are set as softwood
-  expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that 5 cohorts are gone
   inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
@@ -402,7 +396,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 2) # 1 active, 1 DOM cohort
   expect_true(0 %in% simTest$cohortDT[pixelIndex == 1, gcID])
-  expect_false(simTest$gcMeta[gcID == simTest$cohortDT[pixelIndex == 1 & gcID != 0, gcID], speciesCode] == "Abie_las")
+  expect_false(simTest$gcIncrements[gcID == simTest$cohortDT[pixelIndex == 1 & gcID != 0, gcID], speciesCode] == "Abie_las")
   
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 2]), 1) # 2 DOM cohorts should be merged
   expect_equal(simTest$cohortDT[pixelIndex == 2, gcID], 0)
@@ -491,9 +485,11 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
   # check output object structure
   check_module_outputs(simTest)
   
-  # Check that disturbances registered in disturbanceMeta and disturbanceEvents
-  expect_equal(simTest$disturbanceMeta[eventID == 2001, disturbance_type_name], "Wildfire")
-  expect_equal(simTest$disturbanceEvents, data.table::data.table(eventID = 2001, pixelIndex = 3, year = 2000), check.attributes = FALSE)
+  # Check that disturbances registered in disturbanceEvents
+  expect_equal(
+    simTest$disturbanceEvents[, .(year, pixelIndex, disturbance_type_name)], 
+    data.table::data.table(year = 2000, pixelIndex = 3, disturbance_type_name = "Wildfire"), 
+    check.attributes = FALSE)
   
   # Check that increments for disturbed cohorts are 0
   expect_equal(simTest$cohortDT[pixelIndex == 3, gcID], rep(0, 2))

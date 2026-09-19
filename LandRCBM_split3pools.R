@@ -125,19 +125,14 @@ defineModule(sim, list(
       desc = "Table of cohort attributes used and updated by CBM_core."
     ),
     createsOutput(
-      objectName = "gcMeta",
-      objectClass = "data.table",
-      desc = "Growth curve metadata used by CBM_core."
-    ),
-    createsOutput(
       objectName = "gcIncrements",
       objectClass = "data.table",
       desc = "Growth curve carbon increments (t/ha) used by CBM_core."
     ),
     createsOutput(
-      objectName = "disturbanceMeta",
+      objectName = "gcMeta",
       objectClass = "data.table",
-      desc = "Disturbance event types used by CBM_core."
+      desc = "Growth curve metadata used by CBM_core in the spinup."
     ),
     createsOutput(
       objectName = "disturbanceEvents",
@@ -214,7 +209,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         foliage = pools.SoftwoodFoliage + pools.HardwoodFoliage,
         other   = pools.SoftwoodOther   + pools.HardwoodOther
       )]
-      AGB[sim$gcMeta, speciesCode := speciesCode, on = "gcID"]
+      AGB[sim$gcIncrements, speciesCode := speciesCode, on = "gcID"]
       
       sumBySpecies <- AGB[, lapply(.SD, sum, na.rm = TRUE), by = speciesCode, .SDcols = c("merch", "foliage", "other")]
       sumBySpecies$year <- time(sim)[1]
@@ -439,7 +434,6 @@ PostSpinupAdjustBiomass <- function(sim){
   sim$cohortDT[, paste0("pools.", c(colAGB, colRoots)) := NULL]
   sim$cohortDT[sim$gcMeta, speciesCode := speciesCode, on = "gcID"]
   sim$cohortDT <- sim$cohortDT[AGB, on = colJoin]
-  sim$cohortDT[, speciesCode := NULL]
   
   # Return simList
   return(invisible(sim))
@@ -448,36 +442,30 @@ PostSpinupAdjustBiomass <- function(sim){
 # Set yearly disturbances
 AnnualDisturbances <- function(sim){
   
-  distMeta   <- data.table::data.table()
   distEvents <- data.table::data.table()
   
   # Wildfire
   if (!is.null(sim$treedFirePixelTableSinceLastDisp)){
     
-    distMeta <- rbind(
-      distMeta,
-      data.table::data.table(
-        eventID = 2001, disturbance_type_name = "Wildfire"),
-      fill = TRUE)
-    
     distEvents <- rbind(
       distEvents, 
-      sim$treedFirePixelTableSinceLastDisp[burnTime == time(sim), .(eventID = 2001, pixelIndex)],
+      sim$treedFirePixelTableSinceLastDisp[burnTime == time(sim), .(
+        year    = time(sim),
+        pixelIndex,
+        disturbance_type_name = "Wildfire"
+      )],
       fill = TRUE)
   }
   
   if (nrow(distEvents) > 0){
     
     # Apply disturbance to all eligible cohorts
-    distMeta$proportion   <- 1L
+    distEvents$proportion  <- 1L
     
     # Disable merging of cohorts after disturbance
     ## This will use cohort_proportion to recalculate pool values
-    distMeta$enable_merge <- 0L
+    distEvents$enable_merge <- 0L
     
-    sim$disturbanceMeta <- rbind(sim$disturbanceMeta, distMeta, fill = TRUE) |> unique()
-    
-    distEvents$year <- time(sim)
     sim$disturbanceEvents <- rbind(sim$disturbanceEvents, distEvents, fill = TRUE)
   }
   
@@ -503,7 +491,7 @@ AnnualIncrements <- function(sim){
   
   # Get biomass for the previous year
   if (!"speciesCode" %in% names(sim$cohortDT)){
-    sim$cohortDT[sim$gcMeta, speciesCode := speciesCode, on = "gcID"]
+    sim$cohortDT[sim$gcIncrements, speciesCode := speciesCode, on = "gcID"]
     on.exit(sim$cohortDT[, speciesCode := NULL])
   }
   
@@ -591,14 +579,14 @@ AnnualIncrements <- function(sim){
   sim$cohortDT[, cohort_index      := .GRP, by = c("speciesCode", "age")]
   sim$cohortDT[, cohort_proportion := 0]
   
-  # Set gcMeta and gcIncrements
-  cohortDT[, pixelIndex := NULL]
-  cohortDT <- unique(cohortDT[gcID != 0])
-  cohortDT[, sw := !CBMutils::sppMatch(
+  # Set gcIncrements
+  sim$gcIncrements <- unique(
+    cohortDT[gcID != 0, .(gcID, speciesCode, age, merch_inc, foliage_inc, other_inc)]
+  )
+  sim$gcIncrements[, sw := !CBMutils::sppMatch(
     speciesCode, sppEquiv = sim$sppEquiv, match = "LandR", return = "Broadleaf")$Broadleaf]
   
-  cohortDT <- rbind(
-    cohortDT,
+  sim$gcIncrements <- rbind(
     data.table::data.table(
       gcID        = 0L,
       speciesCode = NA_character_,
@@ -608,12 +596,11 @@ AnnualIncrements <- function(sim){
       foliage_inc = 0,
       other_inc   = 0
     ),
+    sim$gcIncrements,
     fill = TRUE)
   
-  sim$gcMeta       <- cohortDT[, .(gcID, speciesCode, sw)]
-  sim$gcIncrements <- cohortDT[, .(gcID, age, merch_inc, foliage_inc, other_inc)]
-  data.table::setkey(sim$gcMeta, gcID)
   data.table::setkey(sim$gcIncrements, gcID, age)
+  sim$gcMeta <- NULL
   
   # Return simList
   return(invisible(sim))

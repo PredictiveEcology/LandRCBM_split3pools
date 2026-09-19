@@ -25,15 +25,13 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     ),
     params = list(
       .globals = list(
+        .plots = NA,
         dataYear = 2001, #will get kNN 2011 data, and NTEMS 2011 landcover
         sppEquivCol = 'LandR'
       ),
       CBM_core = list(
         .plot = FALSE,
         fixedCohorts = FALSE
-      ),
-      Biomass_core = list(
-        .plots = NA
       )
     ),
     

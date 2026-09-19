@@ -3,51 +3,48 @@
 # @param spinup logical. Checks match expected state after the spinup.
 check_module_outputs <- function(simTest, spinup = FALSE){
   
-  # gcMeta
+  # gcMeta and gcIncrements
   if (spinup){
+    
     expect_in(c("gcID", "admin_abbrev", "eco_id", "speciesCode", "canfi_species", "sw"),
               names(simTest$gcMeta))
     expect_in("yieldTableIndex", names(simTest$gcMeta))
     expect_true(all(simTest$gcMeta$yieldTableIndex %in% simTest$yieldTablesId$yieldTableIndex))
-  }else{
-    expect_in(c("gcID", "speciesCode", "sw"),
-              names(simTest$gcMeta))
-  }
-  
-  ## Disturbed and DOM cohorts will have no species and increments == 0
-  if (0 %in% simTest$gcMeta$gcID){
-    expect_true(is.na(simTest$gcMeta[gcID == 0, speciesCode]))
-  }
-  
-  # gcIncrements
-  expect_is(simTest$gcIncrements, "data.table")
-  expect_in(
-    c("gcID", "age", "merch_inc", "foliage_inc", "other_inc"),
-    names(simTest$gcIncrements))
-  expect_setequal(simTest$gcIncrements$gcID, simTest$gcMeta$gcID)
-  
-  if (spinup){
-    expect_equal(nrow(simTest$gcIncrements), nrow(simTest$yieldTablesCumulative))
-  }else{
+    
+    expect_is(simTest$gcIncrements, "data.table")
+    expect_in(
+      c("gcID", "age", "merch_inc", "foliage_inc", "other_inc"),
+      names(simTest$gcIncrements))
     expect_setequal(simTest$gcIncrements$gcID, simTest$gcMeta$gcID)
-    expect_equal(nrow(simTest$gcIncrements), nrow(simTest$gcMeta))
+    expect_equal(nrow(simTest$gcIncrements), nrow(simTest$yieldTablesCumulative))
+    
+  }else{
+    
+    expect_true(is.null(simTest$gcMeta))
+    
+    expect_is(simTest$gcIncrements, "data.table")
+    expect_in(
+      c("gcID", "speciesCode", "sw", "age", "merch_inc", "foliage_inc", "other_inc"),
+      names(simTest$gcIncrements))
+    
+    ## Disturbed and DOM cohorts will have no species and increments == 0
+    expect_true(is.na(simTest$gcIncrements[gcID == 0, speciesCode]))
+    expect_true(all(
+      simTest$gcIncrements[gcID == 0, .(merch_inc, foliage_inc, other_inc)] == 0
+    ))
   }
-  
-  ## Disturbed and DOM cohorts will have increments == 0
-  expect_true(all(
-    simTest$gcIncrements[gcID == 0, .(merch_inc, foliage_inc, other_inc)] == 0
-  ))
   
   # cohortDT
   expect_is(simTest$cohortDT, "data.table")
   expect_in(c("pixelIndex", "age", "gcID"), names(simTest$cohortDT))
-  
-  expect_true(all(simTest$cohortDT$gcID %in% simTest$gcMeta$gcID))
+  expect_true(all(simTest$cohortDT$gcID %in% simTest$gcIncrements$gcID))
   
   if ("CBM_core" %in% modules(simTest)){
     
     cohortDT <- data.table::copy(simTest$cohortDT)
-    cohortDT[simTest$gcMeta, speciesCode := speciesCode, on = "gcID"]
+    if (!"speciesCode" %in% names(cohortDT)){
+      cohortDT[simTest$gcIncrements, speciesCode := speciesCode, on = "gcID"]
+    }
     cohortDT[, AGC := 
                pools.SoftwoodMerch + pools.SoftwoodFoliage + pools.SoftwoodOther + 
                pools.HardwoodMerch + pools.HardwoodFoliage + pools.HardwoodOther]
