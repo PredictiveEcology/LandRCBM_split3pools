@@ -467,6 +467,14 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
     treedFirePixelTableSinceLastDisp = data.table::data.table(
       burnTime   = 2000,
       pixelIndex = 3
+    ),
+    
+    # Partial harvest in pixel 2
+    partialHarvestEvents = data.table::data.table(
+      year        = 2000,
+      pixelIndex  = 2,
+      speciesCode = "Abie_las",
+      age         = 150
     )
   )
   
@@ -487,16 +495,41 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
   
   # Check that disturbances registered in disturbanceEvents
   expect_equal(
-    simTest$disturbanceEvents[, .(year, pixelIndex, disturbance_type_name)], 
-    data.table::data.table(year = 2000, pixelIndex = 3, disturbance_type_name = "Wildfire"), 
+    simTest$disturbanceEvents[pixelIndex == 3, .(year, pixelIndex, gcID, disturbance_type_name)], 
+    data.table::data.table(year = 2000, pixelIndex = 3, NA_integer_, disturbance_type_name = "Wildfire"), 
+    check.attributes = FALSE)
+  expect_equal(
+    simTest$disturbanceEvents[pixelIndex == 2, .(year, pixelIndex, gcID, disturbance_type_name)], 
+    data.table::data.table(year = 2000, pixelIndex = 2, 0L, disturbance_type_name = "Clearcut harvesting without salvage"), 
     check.attributes = FALSE)
   
   # Check that increments for disturbed cohorts are 0
+  simTest$cohortDT[simTest$gcIncrements, speciesCode := speciesCode, on = "gcID"]
   expect_equal(simTest$cohortDT[pixelIndex == 3, gcID], rep(0, 2))
+  expect_setequal(simTest$cohortDT[pixelIndex == 2, speciesCode], c(NA_character_, "Pinu_con"))
+  expect_equal(nrow(simTest$cohortDT[pixelIndex == 2 & gcID == 0]), 1)
+  expect_equal(nrow(simTest$cohortDT[gcID == 0]), 3)
   
-  # Check that the wildfire cleared all aboveground biomass
+  # Check disturbed cohort ages
+  expect_equal(simTest$cohortDT[gcID == 0, age], rep(1, 3))
+  
+  # Check disturbed cohort last disturbance type
+  expect_equal(simTest$cohortDT[pixelIndex == 3, state.last_disturbance_type], rep(1, 2))
+  expect_equal(simTest$cohortDT[pixelIndex == 2 & is.na(speciesCode), state.last_disturbance_type], 204)
+  
+  # Check that the disturbances cleared all aboveground biomass
   expect_true(all(
     simTest$cohortDT[pixelIndex == 3, .(
+      pools.SoftwoodMerch, pools.SoftwoodFoliage, pools.SoftwoodOther,
+      pools.HardwoodMerch, pools.HardwoodFoliage, pools.HardwoodOther)] == 0
+  ))
+  expect_true(all(
+    simTest$cohortDT[pixelIndex == 2 & is.na(speciesCode), .(
+      pools.SoftwoodMerch, pools.SoftwoodFoliage, pools.SoftwoodOther,
+      pools.HardwoodMerch, pools.HardwoodFoliage, pools.HardwoodOther)] == 0
+  ))
+  expect_false(all(
+    simTest$cohortDT[pixelIndex == 2 & speciesCode == "Pinu_con", .(
       pools.SoftwoodMerch, pools.SoftwoodFoliage, pools.SoftwoodOther,
       pools.HardwoodMerch, pools.HardwoodFoliage, pools.HardwoodOther)] == 0
   ))

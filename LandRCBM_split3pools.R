@@ -89,6 +89,10 @@ defineModule(sim, list(
       desc = "Optional. Table of pixels that have been disturbed by wildfire."
     ),
     expectsInput(
+      objectName = "partialHarvestEvents", objectClass = "data.table",
+      desc = "Optional. Table of cohorts that have been disturbed by harvest."
+    ),
+    expectsInput(
       objectName = "sppEquiv", objectClass = "data.table",
       desc = "Optional. Table of species equivalencies. See `LandR::sppEquivalencies_CA`."
     ),
@@ -450,21 +454,36 @@ AnnualDisturbances <- function(sim){
     distEvents <- rbind(
       distEvents, 
       sim$treedFirePixelTableSinceLastDisp[burnTime == time(sim), .(
-        year    = time(sim),
         pixelIndex,
         disturbance_type_name = "Wildfire"
       )],
       fill = TRUE)
   }
   
+  # Harvest
+  if (!is.null(sim$partialHarvestEvents)){
+    
+    distEvents <- rbind(
+      distEvents, 
+      sim$partialHarvestEvents[year == time(sim), .(
+        pixelIndex, 
+        gcID = 0, speciesCode, age,
+        disturbance_type_name = "Clearcut harvesting without salvage"
+      )],
+      fill = TRUE)
+  }
+  
   if (nrow(distEvents) > 0){
     
+    distEvents[, year := as.integer(time(sim))]
+    data.table::setkey(distEvents, year, pixelIndex)
+    
     # Apply disturbance to all eligible cohorts
-    distEvents$proportion  <- 1L
+    distEvents[, proportion := 1L]
     
     # Disable merging of cohorts after disturbance
     ## This will use cohort_proportion to recalculate pool values
-    distEvents$enable_merge <- 0L
+    distEvents[, enable_merge := 0L]
     
     sim$disturbanceEvents <- rbind(sim$disturbanceEvents, distEvents, fill = TRUE)
   }
@@ -530,17 +549,26 @@ AnnualIncrements <- function(sim){
   cohortDT[is.na(B) & BTminus1 == 0, gcID := 0]
   
   # Set gcID for disturbed cohorts so that increments == 0
-  ## This assumes that all disturbances are stand replacing for the whole pixel
   if (!is.null(sim$disturbanceEvents)){
-    cohortDT[
-      pixelIndex %in% sim$disturbanceEvents[year == time(sim), pixelIndex],
-      gcID := 0
-    ]
+    
+    distEvents <- sim$disturbanceEvents[year == time(sim)]
+    if (!"speciesCode" %in% names(distEvents)) distEvents[, speciesCode := NA]
+    if (!"age"         %in% names(distEvents)) distEvents[, age := NA]
+    cohortDT[distEvents[ is.na(speciesCode) &  is.na(age)], gcID := 0, on = c("pixelIndex")]
+    cohortDT[distEvents[!is.na(speciesCode) &  is.na(age)], gcID := 0, on = c("pixelIndex", "speciesCode")]
+    cohortDT[distEvents[!is.na(speciesCode) & !is.na(age)], gcID := 0, on = c("pixelIndex", "speciesCode", "age")]
+    rm(distEvents)
   }
   
   # Create unique gcID for active cohorts
   cohortDT[!gcID %in% 0, gcID := as.integer(.GRP), by = c(
     "speciesCode", "age", "merch_inc", "foliage_inc", "other_inc")]
+  
+  # Add gcID to disturbanceEvents
+  if (any(c("speciesCode", "age") %in% names(sim$disturbanceEvents))){
+    sim$disturbanceEvents[cohortDT, gcID := gcID, on = intersect(
+      c("pixelIndex", "speciesCode", "age"), names(sim$disturbanceEvents))]
+  }
   
   # Set cohorts
   sim$cohortDT[, gcID := NULL]
@@ -557,7 +585,6 @@ AnnualIncrements <- function(sim){
   
   sim$cohortDT[, DOM := gcID == 0 & BTminus1 == 0]
   sim$cohortDT[DOM==TRUE, c("speciesCode", "age") := list(NA, 0)]
-  
   if (anyDuplicated(sim$cohortDT[DOM==TRUE, pixelIndex]) > 0){
 
     sim$cohortDT <- rbind(
