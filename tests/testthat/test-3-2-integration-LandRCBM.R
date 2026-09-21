@@ -25,23 +25,21 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     ),
     params = list(
       .globals = list(
+        .plots = NA,
         dataYear = 2001, #will get kNN 2011 data, and NTEMS 2011 landcover
         sppEquivCol = 'LandR'
       ),
       CBM_core = list(
         .plot = FALSE,
         skipPrepareCBMvars = TRUE
-      ),
-      Biomass_core = list(
-        .plots = NA
       )
     ),
     
     # Prepare input objects
     require = c("data.table", "terra", "sf"),
     
-    studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
+    studyArea             = file.path(paths$testdata, "studyArea.shp") |> sf::st_read(quiet = TRUE),
     standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
     biomassMap            = file.path(paths$testdata, "LandR", "biomassMap.tif") |> terra::rast(),
     cohortData            = file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
