@@ -1,4 +1,4 @@
-splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, tableMerchantability,
+splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6tb, table7tb, tableMerch,
                             sppEquiv = NULL){
   # Prepare cohort data for biomass splitting-----------------------------------
   # Match pixel group with jurisdiction and CBM spatial units
@@ -31,9 +31,9 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6, table7, 
   CBMutils::cumPoolsCreateAGB(
     allInfoCohortData,
     pixGroupCol = "newPixelGroup",
-    table6 = table6,
-    table7 = table7,
-    tableMerchantability = tableMerchantability
+    bTable6tb   = table6tb,
+    bTable7tb   = table7tb,
+    tableMerch  = tableMerch
   )
   
   # Get pixel-level biomass data.-----------------------------------------------
