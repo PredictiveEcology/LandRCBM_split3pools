@@ -17,7 +17,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
-                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.5.9003)"),
+                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.6)"),
   parameters = bindrows(
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
                     "Minimum age for which a cohort can have wood considered merchantable."),
@@ -79,24 +79,29 @@ defineModule(sim, list(
       desc = "Polygon to use as the study area; default is the RIA study area."
     ),
     expectsInput(
-      objectName = "table6", objectClass = "data.table",
-      desc = paste("Proportion model parameters similar to Boudewyn et al 2007,",
-                   "but recalculated using total biomass (metric tonnes of tree biomass/ha) instead of vol/ha."),
+      objectName = "table6tb", objectClass = "data.table",
+      desc = paste(
+        "Boudewyn et al. (2007) an alternative set of proportion model parameters", 
+        "to use when total biomass per hectare in tonnes (tb = stem wood + stem bark + branches + foliage)", 
+        "is the independent variable instead of gross merchantable volume per hectare."),
       sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv"
     ),
     expectsInput(
-      objectName = "table7", objectClass = "data.table",
-      desc = paste("Caps on proportion models similar to Boudewyn et al. 2007",
-                   "but recalculated using total biomass (metric tonnes of tree biomass/ha)",
-                   "instead of vol/ha."),
+      objectName = "table7tb", objectClass = "data.table",
+      desc = paste(
+        "Boudewyn et al. (2007) an alternative set of caps on proportion models",
+        "to use in conjunction with the alternative set of proportion models",
+        "when total biomass per hectare in tonnes (tb = stem wood + stem bark + branches + foliage)", 
+        "is the independent variable instead of gross merchantable volume per hectare."),
       sourceURL = "https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv"
     ),
     expectsInput(
-      objectName = "tableMerchantability", objectClass = "data.table",
-      desc = paste("Parameters to estimate the proportion of stemwood that is merchantable,",
-                   "Estimated by approximating the relationship between stemwood biomass and",
-                   "nonmerchfactor predicted by equation 2 of Boudewyn et al., 2007."),
-      sourceURL = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC/view?usp=drive_link"
+      objectName = "tableMerch", objectClass = "data.table",
+      desc = paste(
+        "Parameters to estimate the proportion of stemwood biomass that is merchantable", 
+        "estimated by approximating the relationship between stemwood biomass and",
+        "nonmerchfactor predicted by equation 2 of Boudewyn et al. (2007)."),
+      sourceURL = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC"
     ),
     expectsInput(
       objectName = "yieldTablesCumulative", objectClass = "data.table",
@@ -200,15 +205,16 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       }
     },
     splitInit = {
+      
       # split initial above ground biomass
       sim$aboveGroundBiomass <- splitCohortData(
-        cohortData = sim$cohortData,
+        cohortData    = sim$cohortData,
         pixelGroupMap = sim$pixelGroupMap,
-        standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
-        table6 = sim$table6,
-        table7 = sim$table7,
-        tableMerchantability = sim$tableMerchantability,
-        sppEquiv = sim$sppEquiv
+        standDT       = sim$standDT[, .(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
+        table6tb      = sim$table6tb,
+        table7tb      = sim$table7tb,
+        tableMerch    = sim$tableMerch,
+        sppEquiv      = sim$sppEquiv
       )
       
       # split yield tables into AGB pools
@@ -446,9 +452,9 @@ SplitYieldTables <- function(sim) {
   CBMutils::cumPoolsCreateAGB(
     cumPools,
     pixGroupCol = "gcID",
-    table6 = sim$table6,
-    table7 = sim$table7,
-    tableMerchantability = sim$tableMerchantability
+    bTable6tb   = sim$table6tb,
+    bTable7tb   = sim$table7tb,
+    tableMerch  = sim$tableMerch
   )
   
   # Step 3: Calculating Annual Increments --------------------------------------
@@ -461,7 +467,7 @@ SplitYieldTables <- function(sim) {
   
   # 3.2. Calculate increments using `diff`.
   setkey(cumPools, gcID, age)
-  cumPools[, (incCols) := lapply(.SD, function(x) c(NA, diff(x))), .SDcols = poolCols, by = "gcID"]
+  cumPools[, (incCols) := lapply(.SD, function(x) c(0, diff(x))), .SDcols = poolCols, by = "gcID"]
   
   # 3.3. Final selection and ordering of columns for `sim$gcIncrements`.
   sim$gcIncrements <- cumPools[,.(gcID, age, merch, foliage, other, merch_inc, foliage_inc, other_inc)]
@@ -530,13 +536,13 @@ AnnualIncrements <- function(sim){
   
   # Step 2: Split current total above ground.-----------------------------------
   sim$aboveGroundBiomass <- splitCohortData(
-    cohortData = sim$cohortData,
+    cohortData    = sim$cohortData,
     pixelGroupMap = sim$pixelGroupMap,
-    standDT = sim$standDT[,.(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
-    table6 = sim$table6,
-    table7 = sim$table7,
-    tableMerchantability = sim$tableMerchantability,
-    sppEquiv = sim$sppEquiv
+    standDT       = sim$standDT[, .(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
+    table6tb      = sim$table6tb,
+    table7tb      = sim$table7tb,
+    tableMerch    = sim$tableMerch,
+    sppEquiv      = sim$sppEquiv
   )
   
   # Step 3: Calculate this year's increments.-----------------------------------
@@ -794,33 +800,38 @@ PrepareCBMvars <- function(sim){
 }
 
 .inputObjects <- function(sim) {
-  cacheTags <- c(currentModule(sim), "function:.inputObjects")
   
   # NFI params. Used to split total biomass into biomass of the three CBM
   #                above ground biomass pools.
-  if (!suppliedElsewhere("table6", sim)) {
-    sim$table6 <- prepInputs(url = extractURL("table6"),
-                             fun = data.table::fread(targetFile, verbose = FALSE),
-                             destinationPath = inputPath(sim),
-                             filename2 = "appendix2_table6_tb.csv",
-                             overwrite = TRUE) |> Cache(userTags = "prepInputsTable6")
+  if (!suppliedElsewhere("table6tb", sim)) {
+    sim$table6tb <- prepInputs(
+      url = extractURL("table6tb"),
+      fun = data.table::fread(targetFile, verbose = FALSE),
+      destinationPath = inputPath(sim),
+      targetFile = "appendix2_table6_tb.csv",
+      overwrite = TRUE
+    ) |> Cache(userTags = "prepInputsTable6tb")
   }
   
-  if (!suppliedElsewhere("table7", sim)) {
-    sim$table7 <- prepInputs(url = extractURL("table7"),
-                             fun = data.table::fread(targetFile, verbose = FALSE),
-                             destinationPath = inputPath(sim),
-                             filename2 = "appendix2_table7_tb.csv",
-                             overwrite = TRUE) |> Cache(userTags = "prepInputsTable7")
+  if (!suppliedElsewhere("table7tb", sim)) {
+    sim$table7tb <- prepInputs(
+      url = extractURL("table7tb"),
+      fun = data.table::fread(targetFile, verbose = FALSE),
+      destinationPath = inputPath(sim),
+      targetFile = "appendix2_table7_tb.csv",
+      overwrite = TRUE
+    ) |> Cache(userTags = "prepInputsTable7tb")
   }
   
-  if (!suppliedElsewhere("tableMerchantability", sim)) {
-    sim$tableMerchantability <- prepInputs(url = extractURL("tableMerchantability"),
-                                           fun = data.table::fread(targetFile, verbose = FALSE),
-                                           destinationPath = inputPath(sim),
-                                           filename2 = "merchantabilityParams.csv",
-                                           overwrite = TRUE) |> Cache(userTags = "prepInputsTableMerch")
-    sim$tableMerchantability <- cbind(sim$tableMerchantability, minAge = P(sim)$minMerchantableAge)
+  if (!suppliedElsewhere("tableMerch", sim)) {
+    sim$tableMerch <- prepInputs(
+      url = extractURL("tableMerch"),
+      fun = data.table::fread(targetFile, verbose = FALSE),
+      destinationPath = inputPath(sim),
+      targetFile = "merchantabilityParams.csv",
+      overwrite = TRUE
+    ) |> Cache(userTags = "prepInputsTableMerch")
+    sim$tableMerch <- cbind(sim$tableMerch, minAge = P(sim)$minMerchantableAge)
   }
   
   return(invisible(sim))

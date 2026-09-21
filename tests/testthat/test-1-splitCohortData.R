@@ -19,23 +19,23 @@ test_that("function to split cohortData works", {
     B = c(15000, 20000, 5000) # Biomass in g/m^2
   )
   
-  table6 <- fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv", showProgress = FALSE)
-  table7 <- fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv", showProgress = FALSE)
+  table6tb <- fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table6_tb.csv", showProgress = FALSE)
+  table7tb <- fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv", showProgress = FALSE)
   tableMerch <- reproducible::prepInputs(url = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC",
                                          fun = data.table::fread(targetFile, verbose = FALSE),
                                          destinationPath = spadesTestPaths$temp$inputs,
-                                         filename2 = "appendix2_table7_tb.csv")
+                                         targetFile = "merchantabilityParams.csv")
   tableMerch <- cbind(tableMerch, minAge = 15)
   
   # Check that it runs with no error
   expect_no_error({
     result <- splitCohortData(
-      cohortData = copy(cohortData), # Use copy to avoid side effects
+      cohortData    = copy(cohortData), # Use copy to avoid side effects
       pixelGroupMap = copy(pixelGroupMap),
-      standDT = copy(standDT),
-      table6 = copy(table6),
-      table7 = copy(table7),
-      tableMerchantability = copy(tableMerch)
+      standDT       = copy(standDT),
+      table6tb      = copy(table6tb),
+      table7tb      = copy(table7tb),
+      tableMerch    = copy(tableMerch)
     )
   })
 
@@ -53,12 +53,12 @@ test_that("function to split cohortData works", {
   
   # Check that it produces the expected number of rows
   result <- splitCohortData(
-    cohortData = copy(cohortData),
+    cohortData    = copy(cohortData),
     pixelGroupMap = copy(pixelGroupMap),
-    standDT = copy(standDT),
-    table6 = copy(table6),
-    table7 = copy(table7),
-    tableMerchantability = copy(tableMerch)
+    standDT       = copy(standDT),
+    table6tb      = copy(table6tb),
+    table7tb      = copy(table7tb),
+    tableMerch    = copy(tableMerch)
   )
   
   # Calculate expected rows:
@@ -74,12 +74,12 @@ test_that("function to split cohortData works", {
   
   # Check that it split biomass correctly
   result <- splitCohortData(
-    cohortData = copy(cohortData),
+    cohortData    = copy(cohortData),
     pixelGroupMap = copy(pixelGroupMap),
-    standDT = copy(standDT),
-    table6 = copy(table6), 
-    table7 = copy(table7),
-    tableMerchantability = copy(tableMerch)
+    standDT       = copy(standDT),
+    table6tb      = copy(table6tb), 
+    table7tb      = copy(table7tb),
+    tableMerch    = copy(tableMerch)
   )
   
   # Add total biomass column to result
