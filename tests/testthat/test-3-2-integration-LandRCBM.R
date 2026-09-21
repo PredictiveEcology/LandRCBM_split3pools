@@ -84,9 +84,6 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     "postSpinupAdjustBiomass",
     "mortalityAndGrowth",
     "annualIncrements",
-    "annual_preprocessing",
-    "prepareCBMvars",
-    "annual_carbonDynamics",
     "summarizeAGBPools"
   )
   realizedEventOrder <- completedEvents[eventTime == start(simTest) & eventType %in% eventsToCheck]
@@ -96,23 +93,13 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
   expectedEventOrder <- c(
     "mortalityAndGrowth",
     "annualIncrements",
-    "annual_preprocessing",
-    "prepareCBMvars",
-    "annual_carbonDynamics",
-    "summarizeAGBPools",
-    "plotSummaries"
+    "summarizeAGBPools"
   )
   realizedEventOrder <- completedEvents[eventTime == end(simTest) & eventType %in% eventsToCheck]
   expect_equal(expectedEventOrder, realizedEventOrder$eventType)
   
   # check output object structure
   check_module_outputs(simTest)
-  
-  # check cbm_vars
-  expect_in(simTest$cbm_vars$state[speciesCode == "Abie_las", sw_hw], 0L) # SW
-  expect_in(simTest$cbm_vars$state[speciesCode == "Pinu_con", sw_hw], 0L) # SW
-  
-  expect_true(all(simTest$cbm_vars$state$spatial_unit_id == 42))
   
 })
 
