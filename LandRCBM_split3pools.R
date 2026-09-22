@@ -444,7 +444,7 @@ SplitYieldTables <- function(sim) {
   # 2.2. Split AGB ('B') into cumulative CBM pools (merch, foliage, other).
   #      Uses equations from Boudewyn et al. 2007 adjusted to use total above
   #      ground biomass as input, implemented in CBMutils.
-  cumPools[age == 0 & B <= 0.01, B := 0]
+  cumPools[age == 0, B := 0]
   CBMutils::cumPoolsCreateAGB(
     cumPools,
     pixGroupCol = "gcID",
