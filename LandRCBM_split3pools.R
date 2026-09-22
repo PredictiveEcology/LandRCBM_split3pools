@@ -75,10 +75,6 @@ defineModule(sim, list(
       )
     ),
     expectsInput(
-      objectName = "studyArea", objectClass =  "sfc",
-      desc = "Polygon to use as the study area; default is the RIA study area."
-    ),
-    expectsInput(
       objectName = "table6tb", objectClass = "data.table",
       desc = paste(
         "Boudewyn et al. (2007) an alternative set of proportion model parameters", 
