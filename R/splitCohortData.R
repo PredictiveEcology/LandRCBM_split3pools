@@ -27,6 +27,7 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6tb, table7
   allInfoCohortData[, B := B/100]
   
   # Split above ground biomass of current year
+  allInfoCohortData[age == 0, B := 0]
   CBMutils::cumPoolsCreateAGB(
     allInfoCohortData,
     pixGroupCol = "newPixelGroup",
