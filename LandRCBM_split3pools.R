@@ -426,7 +426,7 @@ PostSpinupAdjustBiomass <- function(sim){
   )
   
   # Split by SW/HW and calculate root C
-  AGB[sim$gcMeta, sw := sw, on = "speciesCode"]
+  AGB[unique(sim$gcMeta[, .(speciesCode, sw)]), sw := sw, on = "speciesCode"]
   data.table::setnames(AGB, c("merch", "foliage", "other"), colAGB[1:3])
   AGB[sw==FALSE, (colAGB[4:6]) := .SD, .SDcols = colAGB[1:3]]
   AGB[sw==FALSE, (colAGB[1:3]) := 0]
