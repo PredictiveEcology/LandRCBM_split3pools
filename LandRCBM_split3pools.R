@@ -11,12 +11,12 @@ defineModule(sim, list(
     person("Alex M", "Chubaty", email = "achubaty@for-cast.ca", role = "ctb")
   ),
   childModules = character(0),
-  version = list(LandRCBM_split3pools = "0.0.0.9000"),
+  version = list(LandRCBM_split3pools = "0.0.0.9001"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
-  reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
+  reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "crayon", "data.table", "ggplot2", "RColorBrewer", "terra", "tidyterra", "viridis",
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.6)"),
   parameters = bindrows(
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
