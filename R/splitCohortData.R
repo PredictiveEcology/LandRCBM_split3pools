@@ -15,7 +15,8 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6tb, table7
   # Add spatial information to cohortData
   # note that the new pixelGroup column is the unique combination of pixelGroup and CBM spatial units
   spatialUnits <- unique(spatialDT, by = "newPixelGroup")[, !("pixelIndex")]
-  allInfoCohortData <- merge(cohortData, spatialUnits, by = "pixelGroup", allow.cartesian = TRUE)
+  # Only age > 0 cohorts, as in generateCohortDT: CBM does not simulate age-0 cohorts.
+  allInfoCohortData <- merge(cohortData[age > 0], spatialUnits, by = "pixelGroup", allow.cartesian = TRUE)
   allInfoCohortData[, pixelGroup := NULL]
   
   # Add CanFI species code
