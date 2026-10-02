@@ -233,8 +233,10 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       })
       
       # 2. Replace above ground pools with the LandR biomass.
-      nonAge0 <- spinupOut$state$age > 0
-      spinupOut$pools[nonAge0, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+      spinupOut$pools <- replaceAboveGroundPools(
+        pools = spinupOut$pools, state = spinupOut$state,
+        key = sim$cbm_vars$key, aboveGroundBiomass = sim$aboveGroundBiomass
+      )
       
       # 3. Update below ground live pools.
       rootsC <- CBMutils::calcRootC(cbind(spinupOut$pools, sw = spinupOut$state$sw_hw == 0))[, .(
