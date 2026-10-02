@@ -17,7 +17,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", "data.table", "ggplot2", "terra",
-                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.6)"),
+                  "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.6.9006)"),
   parameters = bindrows(
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
                     "Minimum age for which a cohort can have wood considered merchantable."),
@@ -447,7 +447,6 @@ SplitYieldTables <- function(sim) {
   cumPools[age == 0 & B <= 0.01, B := 0]
   CBMutils::cumPoolsCreateAGB(
     cumPools,
-    pixGroupCol = "gcID",
     bTable6tb   = sim$table6tb,
     bTable7tb   = sim$table7tb,
     tableMerch  = sim$tableMerch
