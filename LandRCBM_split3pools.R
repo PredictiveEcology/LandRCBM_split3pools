@@ -50,20 +50,9 @@ defineModule(sim, list(
       )
     ),
     expectsInput(
-      objectName = "cbm_vars",
-      objectClass = "list",
-      desc = paste("List of 5 data tables defining active cohorts in the current year:",
-                   "key, parameters, pools, flux, and state.",
-                   "This is created initially during the spinup and updated each year."),
-    ), 
-    expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = paste("Map of pixel group from LandR. Group of pixels that shares the same ",
                    "cohort composition.")
-    ),
-    expectsInput(
-      objectName = "rasterToMatch", objectClass =  "SpatRaster",
-      desc = "Template raster to use for simulations; defaults is the RIA study area."
     ),
     expectsInput(
       objectName = "standDT", objectClass = "data.table",
@@ -75,6 +64,13 @@ defineModule(sim, list(
         eco_id       = "Canada ecozone ID"
       )
     ),
+    expectsInput(
+      objectName = "cbm_vars",
+      objectClass = "list",
+      desc = paste("List of 5 data tables defining active cohorts in the current year:",
+                   "key, parameters, pools, flux, and state.",
+                   "This is created initially during the spinup and updated each year."),
+    ), 
     expectsInput(
       objectName = "table6tb", objectClass = "data.table",
       desc = paste(
@@ -288,11 +284,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # get the sum of each pool per pixelGroups
       poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch", "foliage", "other")]
       # rasterize
-      merchRast <- rast(sim$rasterToMatch, names = "merchantable")
+      merchRast <- rast(sim$pixelGroupMap, names = "merchantable")
       merchRast[poolSum$pixelIndex] <- poolSum$merch
-      foliageRast <- rast(sim$rasterToMatch, names = "foliage")
+      foliageRast <- rast(sim$pixelGroupMap, names = "foliage")
       foliageRast[poolSum$pixelIndex] <- poolSum$foliage
-      otherRast <- rast(sim$rasterToMatch, names = "other")
+      otherRast <- rast(sim$pixelGroupMap, names = "other")
       otherRast[poolSum$pixelIndex] <- poolSum$other
       
       # plot
@@ -317,11 +313,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         increments <- sim$cohortDT[sim$gcIncrements, on = c("gcID", "age")]
         incrementSum  <- increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
         # rasterize
-        merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
+        merchIncRast <- rast(sim$pixelGroupMap, names = "merchantable increments")
         merchIncRast[incrementSum$pixelIndex] <- incrementSum$merch_inc
-        foliageIncRast <- rast(sim$rasterToMatch, names = "foliage increments")
+        foliageIncRast <- rast(sim$pixelGroupMap, names = "foliage increments")
         foliageIncRast[incrementSum$pixelIndex] <- incrementSum$foliage_inc
-        otherIncRast <- rast(sim$rasterToMatch, names = "other increments")
+        otherIncRast <- rast(sim$pixelGroupMap, names = "other increments")
         otherIncRast[incrementSum$pixelIndex] <- incrementSum$other_inc
         
         # plot
