@@ -30,7 +30,6 @@ splitCohortData <- function(cohortData, pixelGroupMap, standDT, table6tb, table7
   allInfoCohortData[age == 0, B := 0]
   CBMutils::cumPoolsCreateAGB(
     allInfoCohortData,
-    pixGroupCol = "newPixelGroup",
     bTable6tb   = table6tb,
     bTable7tb   = table7tb,
     tableMerch  = tableMerch
