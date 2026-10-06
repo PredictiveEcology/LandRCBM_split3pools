@@ -1,10 +1,11 @@
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-# The annual events AnnualIncrements, UpdateCohortGroups, and PrepareCBMvars must
-# give the same results as before they were sped up. The fixture holds the inputs
-# of two simulation years (2001: DOM and new cohorts; 2003: DOM cohorts and a
-# disturbance) and the outputs of the previous implementation.
-
+# Regression test for annual event functions AnnualIncrements, UpdateCohortGroups, and PrepareCBMvars
+# Fixture contains the inputs and outputs of two simulation years:
+# - 2001: DOM and new cohorts
+# - 2003: DOM cohorts and a disturbance
+# Outputs created at commit a15eb11 (2026-09-29): 
+# https://github.com/PredictiveEcology/LandRCBM_split3pools/commit/a15eb11 
 fixture <- readRDS(file.path(spadesTestPaths$testdata, "annualCohortGroups", "fixture.rds"))
 
 # Load the event functions from the module script
