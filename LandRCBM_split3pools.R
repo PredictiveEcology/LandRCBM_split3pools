@@ -635,9 +635,8 @@ UpdateCohortGroups <- function(sim){
     by = c("pixelIndex", "row_idx_prev"),
     all.y = TRUE,
     sort = FALSE
-  )
+  ) |> unique()
   setkey(sim$cbm_vars$key, cohortID)
-  sim$cbm_vars$key <- uniqueByRepeatedId(sim$cbm_vars$key, "cohortID")
   
   # Update cbm_vars state.
   # Keep the first cohort of each cohort group (as `unique(by = "row_idx")` below
@@ -792,7 +791,7 @@ PrepareCBMvars <- function(sim){
   
   # 5. Put in cbm_vars
   sim$cbm_vars <- list(
-    key = sim$cbm_vars$key |> uniqueByRepeatedId("cohortID", by = c("row_idx", "cohortID")),
+    key = sim$cbm_vars$key |> unique(by = c("row_idx", "cohortID")),
     pools = new_cbm_pools[!is.na(row_idx)],
     flux = new_cbm_flux[!is.na(row_idx)],
     parameters = new_cbm_parameters[!is.na(row_idx)],

@@ -55,23 +55,3 @@ for (year in names(fixture)){
   })
 }
 
-test_that("uniqueByRepeatedId equals unique() on a table keyed by the id", {
-  
-  dt <- data.table::data.table(
-    cohortID = c(0L, 0L, 0L, 0L, 1L, 2L, 3L, 3L),
-    row_idx  = c(5L, 5L, 6L, 5L, 1L, 2L, 3L, 4L),
-    other    = c(1, 1, 2, 1, 1, 1, 1, 1))
-  data.table::setkey(dt, cohortID)
-  
-  expect_equal(uniqueByRepeatedId(dt, "cohortID"), unique(dt))
-  expect_equal(uniqueByRepeatedId(dt, "cohortID", by = c("row_idx", "cohortID")),
-               unique(dt, by = c("row_idx", "cohortID")))
-  
-  # No repeated ids
-  dt2 <- dt[cohortID != 0 & cohortID != 3]
-  expect_equal(uniqueByRepeatedId(dt2, "cohortID"), unique(dt2))
-  
-  # Not keyed by the id: same result as unique()
-  dt3 <- data.table::copy(dt)[, cohortID := rev(cohortID)]
-  expect_equal(uniqueByRepeatedId(dt3, "cohortID"), unique(dt3))
-})
