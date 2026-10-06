@@ -17,7 +17,7 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", 
-                  "crayon", "data.table", "ggplot2", "RColorBrewer", "terra", "tidyterra", "viridis",
+                  "cli", "data.table", "ggplot2", "RColorBrewer", "terra", "tidyterra", "viridis",
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.6.9006)"),
   parameters = bindrows(
     defineParameter("minMerchantableAge", "integer", 15L, NA, NA,
@@ -509,8 +509,8 @@ PlotYieldTablesPools <- function(sim){
         filename = "yieldCurveIncrements",
         title = "Increments merch fol other by species and pixel groups"
   )
-  message(crayon::red("User: please inspect figures of the raw translation of your increments in: ",
-                      figurePath(sim)))
+  message(cli::col_red("User: please inspect figures of the raw translation of your increments in: ",
+                       figurePath(sim)))
   
   return(invisible(sim))
 }
