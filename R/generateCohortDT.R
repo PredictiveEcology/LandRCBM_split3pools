@@ -9,7 +9,7 @@ generateCohortDT <- function(cohortData, pixelGroupMap, standDT, yieldTablesId){
   
   # add cohort information for each pixelIndex
   cohortDT <- merge(cohortDT,
-                    cohortData[age > 0,.(speciesCode, age, pixelGroup)],
+                    cohortData[, .(speciesCode, age, pixelGroup)],
                     by = "pixelGroup",
                     allow.cartesian = TRUE)
   
