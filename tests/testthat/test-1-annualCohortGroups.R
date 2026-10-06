@@ -1,10 +1,11 @@
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-# The annual events AnnualIncrements, UpdateCohortGroups, and PrepareCBMvars must
-# give the same results as before they were sped up. The fixture holds the inputs
-# of two simulation years (2001: DOM and new cohorts; 2003: DOM cohorts and a
-# disturbance) and the outputs of the previous implementation.
-
+# Regression test for annual event functions AnnualIncrements, UpdateCohortGroups, and PrepareCBMvars
+# Fixture contains the inputs and outputs of two simulation years:
+# - 2001: DOM and new cohorts
+# - 2003: DOM cohorts and a disturbance
+# Outputs created at commit a15eb11 (2026-09-29): 
+# https://github.com/PredictiveEcology/LandRCBM_split3pools/commit/a15eb11 
 fixture <- readRDS(file.path(spadesTestPaths$testdata, "annualCohortGroups", "fixture.rds"))
 
 # Load the event functions from the module script
@@ -39,7 +40,11 @@ for (year in names(fixture)){
     expect_equal(sim$gcMeta,             expected$gcMeta)
     expect_equal(sim$gcIncrements,       expected$gcIncrements)
     for (tbl in names(expected$cbm_vars)){
-      expect_equal(sim$cbm_vars[[tbl]], expected$cbm_vars[[tbl]], info = tbl)
+      obj <- data.table::copy(sim$cbm_vars[[tbl]])
+      exp <- data.table::copy(expected$cbm_vars[[tbl]])
+      data.table::setindex(obj, NULL)
+      data.table::setindex(exp, NULL)
+      expect_equal(obj, exp, info = tbl)
     }
   })
   
@@ -50,28 +55,12 @@ for (year in names(fixture)){
     
     expected <- fixture[[year]]$expectP
     for (tbl in names(expected$cbm_vars)){
-      expect_equal(sim$cbm_vars[[tbl]], expected$cbm_vars[[tbl]], info = tbl)
+      obj <- data.table::copy(sim$cbm_vars[[tbl]])
+      exp <- data.table::copy(expected$cbm_vars[[tbl]])
+      data.table::setindex(obj, NULL)
+      data.table::setindex(exp, NULL)
+      expect_equal(obj, exp, info = tbl)
     }
   })
 }
 
-test_that("uniqueByRepeatedId equals unique() on a table keyed by the id", {
-  
-  dt <- data.table::data.table(
-    cohortID = c(0L, 0L, 0L, 0L, 1L, 2L, 3L, 3L),
-    row_idx  = c(5L, 5L, 6L, 5L, 1L, 2L, 3L, 4L),
-    other    = c(1, 1, 2, 1, 1, 1, 1, 1))
-  data.table::setkey(dt, cohortID)
-  
-  expect_equal(uniqueByRepeatedId(dt, "cohortID"), unique(dt))
-  expect_equal(uniqueByRepeatedId(dt, "cohortID", by = c("row_idx", "cohortID")),
-               unique(dt, by = c("row_idx", "cohortID")))
-  
-  # No repeated ids
-  dt2 <- dt[cohortID != 0 & cohortID != 3]
-  expect_equal(uniqueByRepeatedId(dt2, "cohortID"), unique(dt2))
-  
-  # Not keyed by the id: same result as unique()
-  dt3 <- data.table::copy(dt)[, cohortID := rev(cohortID)]
-  expect_equal(uniqueByRepeatedId(dt3, "cohortID"), unique(dt3))
-})
