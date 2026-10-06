@@ -39,7 +39,11 @@ for (year in names(fixture)){
     expect_equal(sim$gcMeta,             expected$gcMeta)
     expect_equal(sim$gcIncrements,       expected$gcIncrements)
     for (tbl in names(expected$cbm_vars)){
-      expect_equal(sim$cbm_vars[[tbl]], expected$cbm_vars[[tbl]], info = tbl)
+      obj <- data.table::copy(sim$cbm_vars[[tbl]])
+      exp <- data.table::copy(expected$cbm_vars[[tbl]])
+      data.table::setindex(obj, NULL)
+      data.table::setindex(exp, NULL)
+      expect_equal(obj, exp, info = tbl)
     }
   })
   
@@ -50,7 +54,11 @@ for (year in names(fixture)){
     
     expected <- fixture[[year]]$expectP
     for (tbl in names(expected$cbm_vars)){
-      expect_equal(sim$cbm_vars[[tbl]], expected$cbm_vars[[tbl]], info = tbl)
+      obj <- data.table::copy(sim$cbm_vars[[tbl]])
+      exp <- data.table::copy(expected$cbm_vars[[tbl]])
+      data.table::setindex(obj, NULL)
+      data.table::setindex(exp, NULL)
+      expect_equal(obj, exp, info = tbl)
     }
   })
 }
