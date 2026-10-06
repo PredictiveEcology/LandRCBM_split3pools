@@ -624,11 +624,10 @@ UpdateCohortGroups <- function(sim){
   }
   
   # Update cbm_vars key
-  keyNew <- cohorts[, .(cohortID, pixelIndex, row_idx, row_idx_prev)]
   if ("disturbance_type_id" %in% names(sim$cbm_vars$key)){
-    keyNew[sim$cbm_vars$key, disturbance_type_id := disturbance_type_id, on = "pixelIndex"]
+    cohorts[sim$cbm_vars$key, disturbance_type_id := disturbance_type_id, on = "pixelIndex"]
   }
-  sim$cbm_vars$key <- keyNew
+  sim$cbm_vars$key <- cohorts[, .SD, .SDcols = names(sim$cbm_vars$key)]
   setkey(sim$cbm_vars$key, cohortID)
   
   # Update cbm_vars state.
