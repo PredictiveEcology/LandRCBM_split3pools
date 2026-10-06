@@ -54,10 +54,6 @@ defineModule(sim, list(
       desc = "Map of pixel group from LandR. Group of pixels share the same cohort composition.",
     ),
     expectsInput(
-      objectName = "rasterToMatch", objectClass =  "SpatRaster",
-      desc = "Template raster to use for simulations."
-    ),
-    expectsInput(
       objectName = "standDT", objectClass = "data.table",
       desc = "Table of stand attributes.",
       columns = c(
@@ -246,11 +242,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       ), by = "pixelIndex"]
       
       # rasterize
-      merchRast <- rast(sim$rasterToMatch, names = "merchantable")
+      merchRast <- rast(sim$pixelGroupMap, names = "merchantable")
       merchRast[poolSum$pixelIndex] <- poolSum$merch
-      foliageRast <- rast(sim$rasterToMatch, names = "foliage")
+      foliageRast <- rast(sim$pixelGroupMap, names = "foliage")
       foliageRast[poolSum$pixelIndex] <- poolSum$foliage
-      otherRast <- rast(sim$rasterToMatch, names = "other")
+      otherRast <- rast(sim$pixelGroupMap, names = "other")
       otherRast[poolSum$pixelIndex] <- poolSum$other
       
       # plot
@@ -275,11 +271,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         increments <- sim$cohortDT[sim$gcIncrements, on = c("gcID", "age")]
         incrementSum  <- increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
         # rasterize
-        merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
+        merchIncRast <- rast(sim$pixelGroupMap, names = "merchantable increments")
         merchIncRast[incrementSum$pixelIndex] <- incrementSum$merch_inc
-        foliageIncRast <- rast(sim$rasterToMatch, names = "foliage increments")
+        foliageIncRast <- rast(sim$pixelGroupMap, names = "foliage increments")
         foliageIncRast[incrementSum$pixelIndex] <- incrementSum$foliage_inc
-        otherIncRast <- rast(sim$rasterToMatch, names = "other increments")
+        otherIncRast <- rast(sim$pixelGroupMap, names = "other increments")
         otherIncRast[incrementSum$pixelIndex] <- incrementSum$other_inc
         
         # plot
