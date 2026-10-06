@@ -15,7 +15,6 @@ test_that("module runs as a standAlone when not dynamic", {
       outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
     ),
     objects = list(
-      rasterToMatch         = file.path(spadesTestPaths$testdata, "rasterToMatch.tif") |> terra::rast(),
       standDT               = file.path(spadesTestPaths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
       cohortData            = file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv") |> data.table::fread(),
       pixelGroupMap         = file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
