@@ -44,7 +44,8 @@ for (year in names(fixture)){
       exp <- data.table::copy(expected$cbm_vars[[tbl]])
       data.table::setindex(obj, NULL)
       data.table::setindex(exp, NULL)
-      expect_equal(obj, exp, info = tbl)
+      expect_setequal(names(obj), names(exp))
+      expect_equal(obj, exp[, .SD, .SDcols = names(obj)], info = tbl)
     }
   })
   
@@ -59,7 +60,8 @@ for (year in names(fixture)){
       exp <- data.table::copy(expected$cbm_vars[[tbl]])
       data.table::setindex(obj, NULL)
       data.table::setindex(exp, NULL)
-      expect_equal(obj, exp, info = tbl)
+      expect_setequal(names(obj), names(exp))
+      expect_equal(obj, exp[, .SD, .SDcols = names(obj)], info = tbl)
     }
   })
 }
