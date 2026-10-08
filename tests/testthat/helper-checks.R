@@ -9,9 +9,12 @@ check_module_outputs <- function(simTest, spinup = FALSE){
             names(simTest$aboveGroundBiomass))
   
   ## check that total biomass per species match cohortData
-  expectedSpeciesB <- simTest$cohortData[, .(total_biomass = sum(B)/200), by = speciesCode]
-  resultSpeciesB <- copy(simTest$aboveGroundBiomass)[, B := merch + foliage + other]
-  resultSpeciesB <- resultSpeciesB[, .(total_biomass = sum(B)), by = speciesCode]
+  expectedSpeciesB <- merge(
+    data.table::data.table(pixelGroup = terra::values(simTest$pixelGroupMap)[,1])[, pixelIndex := 1:.N],
+    simTest$cohortData, by = "pixelGroup")[, .(
+      total_biomass = sum(B)/200), by = speciesCode]
+  resultSpeciesB <- simTest$aboveGroundBiomass[, .(
+    total_biomass = sum(merch + foliage + other)), by = speciesCode]
   expect_equal(expectedSpeciesB[order(speciesCode)], resultSpeciesB[order(speciesCode)])
   
   # gcMeta

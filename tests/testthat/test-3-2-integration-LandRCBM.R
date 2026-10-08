@@ -73,8 +73,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     "prepareCBMvars",
     "annual_carbonDynamics",
     "summarizeAGBPools",
-    "accumulateResults",
-    "plotSummaries"
+    "accumulateResults"
   )
   
   # check event 1st year
@@ -98,8 +97,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
     "annual_preprocessing",
     "prepareCBMvars",
     "annual_carbonDynamics",
-    "summarizeAGBPools",
-    "plotSummaries"
+    "summarizeAGBPools"
   )
   realizedEventOrder <- completedEvents[eventTime == end(simTest) & eventType %in% eventsToCheck]
   expect_equal(expectedEventOrder, realizedEventOrder$eventType)
