@@ -60,6 +60,7 @@ for (year in names(fixture)){
       exp <- data.table::copy(expected$cbm_vars[[tbl]])
       data.table::setindex(obj, NULL)
       data.table::setindex(exp, NULL)
+      if (tbl == "key") exp[, row_idx_prev := NULL] # row_idx_prev dropped in #76
       expect_setequal(names(obj), names(exp))
       expect_equal(obj, exp[, .SD, .SDcols = names(obj)], info = tbl)
     }
