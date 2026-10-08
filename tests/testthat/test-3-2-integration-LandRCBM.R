@@ -31,7 +31,7 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
       ),
       CBM_core = list(
         .plot = FALSE,
-        fixedCohorts = FALSE
+        cohort_fixed = FALSE
       )
     ),
     

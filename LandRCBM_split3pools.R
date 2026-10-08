@@ -470,17 +470,8 @@ AnnualDisturbances <- function(sim){
   }
   
   if (nrow(distEvents) > 0){
-    
     distEvents[, year := as.integer(time(sim))]
     data.table::setkey(distEvents, year, pixelIndex)
-    
-    # Apply disturbance to all eligible cohorts
-    distEvents[, proportion := 1L]
-    
-    # Disable merging of cohorts after disturbance
-    ## This will use cohort_proportion to recalculate pool values
-    distEvents[, enable_merge := 0L]
-    
     sim$disturbanceEvents <- rbind(sim$disturbanceEvents, distEvents, fill = TRUE)
   }
   
@@ -509,6 +500,9 @@ AnnualIncrements <- function(sim){
     sim$cohortDT[sim$gcIncrements, speciesCode := speciesCode, on = "gcID"]
     on.exit(sim$cohortDT[, speciesCode := NULL])
   }
+  
+  if (!"pools.SoftwoodMerch" %in% names(sim$cohortDT)) stop(
+    "CBM_core parameter cohort_fixed must be FALSE to run LandRCBM_split3pools")
   
   cohortDT <- sim$cohortDT[, .(
     pixelIndex, gcID, speciesCode, age, 
@@ -598,9 +592,8 @@ AnnualIncrements <- function(sim){
   # New cohorts: initiate pools
   sim$cohortDT[is.na(pools.SoftwoodMerch), (poolCols) := 0]
 
-  # Set other cohort attributes
-  sim$cohortDT[, cohort_index      := .GRP, by = c("speciesCode", "age")]
-  sim$cohortDT[, cohort_proportion := 0]
+  # Set cohort_index
+  sim$cohortDT[, cohort_index := .GRP, by = c("speciesCode", "age")]
   
   # Set gcIncrements
   sim$gcIncrements <- unique(
@@ -701,9 +694,6 @@ PlotYieldTablesPools <- function(sim){
 }
 
 .inputObjects <- function(sim) {
-  
-  if (isTRUE(P(sim, "fixedCohorts", "CBM_core"))) stop(
-    "CBM_core parameter fixedCohorts must be FALSE to run LandRCBM_split3pools")
   
   cacheTags <- c(currentModule(sim), "function:.inputObjects")
   

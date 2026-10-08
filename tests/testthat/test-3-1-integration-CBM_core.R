@@ -50,7 +50,7 @@ test_that("Integration with CBM_core: spinup", {
         .plots    = "png"
       ),
       CBM_core = list(
-        fixedCohorts = FALSE
+        cohort_fixed = FALSE
       )
     ),
     
@@ -121,7 +121,7 @@ test_that("Integration with CBM_core: step", {
         .plots    = "png"
       ),
       CBM_core = list(
-        fixedCohorts = FALSE
+        cohort_fixed = FALSE
       )
     ),
     
@@ -213,7 +213,7 @@ test_that("Integration with CBM_core: step with new cohorts", {
         .plots    = "png"
       ),
       CBM_core = list(
-        fixedCohorts = FALSE
+        cohort_fixed = FALSE
       )
     ),
     
@@ -320,7 +320,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
         .plots    = "png"
       ),
       CBM_core = list(
-        fixedCohorts = FALSE
+        cohort_fixed = FALSE
       )
     ),
     
@@ -435,7 +435,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
         .plots    = "png"
       ),
       CBM_core = list(
-        fixedCohorts = FALSE
+        cohort_fixed = FALSE
       )
     ),
     
