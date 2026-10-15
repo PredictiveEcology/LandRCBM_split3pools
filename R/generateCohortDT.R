@@ -1,17 +1,7 @@
-generateCohortDT <- function(cohortData, pixelGroupMap, standDT, yieldTablesId){
+generateCohortDT <- function(aboveGroundBiomass, standDT, yieldTablesId){
   
-  # get the pixelGroup for each pixelIndex
-  # `na.omit` removes pixels not forested.
-  cohortDT <- data.table(
-    pixelGroup = as.integer(pixelGroupMap[])
-  ) 
-  cohortDT <- cohortDT[, pixelIndex := .I] |> na.omit()
-  
-  # add cohort information for each pixelIndex
-  cohortDT <- merge(cohortDT,
-                    cohortData[, .(speciesCode, age, pixelGroup)],
-                    by = "pixelGroup",
-                    allow.cartesian = TRUE)
+  # Get cohorts
+  cohortDT <- aboveGroundBiomass[, .(pixelIndex, speciesCode, age)]
   
   if (!is.null(yieldTablesId)){
     # add the yield table index
