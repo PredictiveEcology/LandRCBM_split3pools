@@ -265,7 +265,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       if (any(isDOMkept)) {
         spinupOut$state[isDOMkept, gcID := 0L]
         key[isDOMkept, cohortID := 0L]
-        data.table::setkey(key, cohortID)
       }
       
       # 3. Update below ground live pools.
