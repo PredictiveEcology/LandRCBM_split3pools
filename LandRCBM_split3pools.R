@@ -223,14 +223,50 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     postSpinupAdjustBiomass = {
       spinupOut <- sim$cbm_vars[c("pools", "flux", "parameters", "state")]
+      key <- copy(sim$cbm_vars$key)
       
       # 1. Expand spinup output to have 1 row per cohort
       spinupOut <- lapply(spinupOut, function(tbl) {
-        tbl <- tbl[sim$cbm_vars$key$row_idx, ]
+        tbl <- tbl[key$row_idx, ]
       })
       
       # 2. Replace above ground pools with the LandR biomass.
-      spinupOut$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+      # `sim$aboveGroundBiomass` has no rows for pixels that are unforested at
+      # spinup (pixelGroup 0), while `spinupOut` has one row per cohort,
+      # including the borrowed DOM-only spinup cohorts generated for those
+      # pixels. A positional assignment therefore misaligns (or errors) as soon as 
+      # any pixel is unforested, so match by pixel/species/age instead and treat 
+      # unmatched (DOM-only) cohorts a having zero live above-ground biomass, 
+      # consistent with how `gcID == 0` DOM cohorts are handled in 
+      # `UpdateCohortGroups()`/`PrepareCBMvars()`.
+      cohortInfo <- sim$cohortDT[key, 
+                                 .(pixelIndex, speciesCode, age), 
+                                 on = "cohortID"]
+      agb <- sim$aboveGroundBiomass[cohortInfo, 
+                                    .(merch, foliage, other), 
+                                    on = c("pixelIndex", "speciesCode", "age")]
+      isDOM <- is.na(agb$merch)
+      agb[is.na(merch), c("merch", "foliage", "other") := 0]
+      spinupOut$pools[, c("Merch", "Foliage", "Other") := agb[, .(merch, foliage, other)]]
+      
+      # A single unforested pixel can have several DOM-only (zero biomass) cohorts 
+      # at this point. Collapse them to one DOM cohort per pixel.
+      keepRow <- rep(TRUE, nrow(key))
+      if (any(isDOM)) {
+        domPixels <- cohortInfo$pixelIndex[isDOM]
+        keepRow[isDOM] <- !duplicated(domPixels)
+      }
+      key <- key[keepRow, ]
+      spinupOut <- lapply(spinupOut, function(tbl) tbl[keepRow, ])
+      isDOMkept <- isDOM[keepRow]
+      
+      # Mark the retained DOM-only cohorts with `gcID == 0` / `cohortID == 0`,
+      # the convention to identify DOM cohorts in later timesteps.
+      if (any(isDOMkept)) {
+        spinupOut$state[isDOMkept, gcID := 0L]
+        key[isDOMkept, cohortID := 0L]
+        data.table::setkey(key, cohortID)
+      }
       
       # 3. Update below ground live pools.
       rootsC <- CBMutils::calcRootC(cbind(spinupOut$pools, sw = spinupOut$state$sw_hw == 0))[, .(
@@ -240,7 +276,7 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       spinupOut$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
       
       # 4. Update cbm_vars
-      sim$cbm_vars <- updateSpinupCohortGroups(spinupOut, sim$cbm_vars$key)
+      sim$cbm_vars <- updateSpinupCohortGroups(spinupOut, key)
       
     }, 
     annualIncrements = {
