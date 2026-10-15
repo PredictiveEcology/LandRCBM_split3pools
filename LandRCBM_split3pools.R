@@ -624,15 +624,11 @@ UpdateCohortGroups <- function(sim){
   }
   
   # Update cbm_vars key
-  sim$cbm_vars$key <- merge(
-    sim$cbm_vars$key[, `:=`(row_idx = NULL, cohortID = NULL)],
-    cohorts[, .(pixelIndex, row_idx_prev, row_idx, cohortID)],
-    by = c("pixelIndex", "row_idx_prev"),
-    all.y = TRUE,
-    sort = FALSE
-  )
+  if ("disturbance_type_id" %in% names(sim$cbm_vars$key)){
+    cohorts[sim$cbm_vars$key, disturbance_type_id := disturbance_type_id, on = "pixelIndex"]
+  }
+  sim$cbm_vars$key <- cohorts[, .SD, .SDcols = names(sim$cbm_vars$key)]
   setkey(sim$cbm_vars$key, cohortID)
-  sim$cbm_vars$key <- uniqueByRepeatedId(sim$cbm_vars$key, "cohortID")
   
   # Update cbm_vars state.
   # Keep the first cohort of each cohort group (as `unique(by = "row_idx")` below
@@ -789,11 +785,11 @@ PrepareCBMvars <- function(sim){
   
   # 5. Put in cbm_vars
   sim$cbm_vars <- list(
-    key = sim$cbm_vars$key |> uniqueByRepeatedId("cohortID", by = c("row_idx", "cohortID")),
-    pools = new_cbm_pools[!is.na(row_idx)],
-    flux = new_cbm_flux[!is.na(row_idx)],
+    key        = unique(sim$cbm_vars$key[, row_idx_prev := NULL]),
+    pools      = new_cbm_pools[!is.na(row_idx)],
+    flux       = new_cbm_flux[!is.na(row_idx)],
     parameters = new_cbm_parameters[!is.na(row_idx)],
-    state = new_cbm_state[!is.na(row_idx)]
+    state      = new_cbm_state[!is.na(row_idx)]
   )
   
   return(invisible(sim))
