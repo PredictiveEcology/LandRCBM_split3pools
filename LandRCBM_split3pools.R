@@ -199,17 +199,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     splitInit = {
       
-      # split initial above ground biomass
-      sim$aboveGroundBiomass <- splitCohortData(
-        cohortData    = sim$cohortData,
-        pixelGroupMap = sim$pixelGroupMap,
-        standDT       = sim$standDT[, .(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
-        table6tb      = sim$table6tb,
-        table7tb      = sim$table7tb,
-        tableMerch    = sim$tableMerch,
-        sppEquiv      = sim$sppEquiv
-      )
-      
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
     },
@@ -222,25 +211,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- PlotYieldTablesPools(sim)
     },
     postSpinupAdjustBiomass = {
-      spinupOut <- sim$cbm_vars[c("pools", "flux", "parameters", "state")]
       
-      # 1. Expand spinup output to have 1 row per cohort
-      spinupOut <- lapply(spinupOut, function(tbl) {
-        tbl <- tbl[sim$cbm_vars$key$row_idx, ]
-      })
-      
-      # 2. Replace above ground pools with the LandR biomass.
-      spinupOut$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
-      
-      # 3. Update below ground live pools.
-      rootsC <- CBMutils::calcRootC(cbind(spinupOut$pools, sw = spinupOut$state$sw_hw == 0))[, .(
-        CoarseRoots = SoftwoodCoarseRoots + HardwoodCoarseRoots,
-        FineRoots   = SoftwoodFineRoots   + HardwoodFineRoots
-      )]
-      spinupOut$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
-      
-      # 4. Update cbm_vars
-      sim$cbm_vars <- updateSpinupCohortGroups(spinupOut, sim$cbm_vars$key)
+      # adjust that the live biomass post-CBM spinup with the biomass in LandR
+      sim <- PostSpinupAdjustBiomass(sim)
       
     }, 
     annualIncrements = {
@@ -367,41 +340,30 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   return(invisible(sim))
 }
 
-PlotYieldTables <- function(sim){
-  nPixGroups <- length(unique(sim$yieldTablesId$yieldTableIndex))
-  nPlots <- P(sim)$.plotNumPixGroup
-  if (nPlots <= 0){
-    stop("numPlots needs to be a positive integer")
-  } else if (nPlots > nPixGroups) {
-    message(".plotNumPixGroup is greater than the number of pixel groups, ",
-            "plotting all pixelgroups.")
-    nPlots <- nPixGroups
-  } 
-  pixGroupToPlot <- sample(unique(sim$yieldTablesId$yieldTableIndex), nPlots)
-  
-  mod$yieldTableIndexPlotted <- pixGroupToPlot
-  
-  # plot
-  Plots(sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot], 
-        fn = gg_yieldCurves,
-        types = P(sim)$.plots,
-        filename = paste("yieldCurves"),
-        title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
-  )
-  return(invisible(sim))
-}
-
+# Split yield tables into AGB pools
 SplitYieldTables <- function(sim) {
+  
   # Step 1: Spatial Matching and Cohort/Stand Data Preparation -----------------
   # Link yield curve IDs (yieldTableIndex) to CBM spatial units 
   # and generate initial cohort/stand data structures.
   
-  # 1.1. Generate the cohort-level attributes (`cohortDT`).
+  # 1.1. Split initial above ground biomass
+  sim$aboveGroundBiomass <- splitCohortData(
+    cohortData    = sim$cohortData,
+    pixelGroupMap = sim$pixelGroupMap,
+    standDT       = sim$standDT[, .(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
+    table6tb      = sim$table6tb,
+    table7tb      = sim$table7tb,
+    tableMerch    = sim$tableMerch,
+    sppEquiv      = sim$sppEquiv
+  )
+  
+  # 1.2. Generate the cohort-level attributes (`cohortDT`).
   #      This links individual cohorts (pixelGroup x species combinations)
   #      to their corresponding growth curve IDs (`gcID`).
   cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$standDT, sim$yieldTablesId)
   
-  # 1.2. Create and store metadata about growth curves (`sim$gcMeta`).
+  # 1.3. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcID to species information.
   sim$gcMeta <- unique(cohortDT[, .(gcID, admin_abbrev, eco_id, yieldTableIndex, speciesCode)])
   sim$gcMeta <- cbind(
@@ -414,7 +376,7 @@ SplitYieldTables <- function(sim) {
   setkey(sim$gcMeta, gcID)
   setcolorder(sim$gcMeta)
   
-  # 1.3. Store essential cohort information in simList.
+  # 1.4. Store essential cohort information in simList.
   cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, speciesCode, gcID)]
   sim$cohortDT <- cohortDT
   
@@ -466,6 +428,56 @@ SplitYieldTables <- function(sim) {
   return(invisible(sim))
 }
 
+# Adjust that the live biomass post-CBM spinup with the biomass in LandR
+PostSpinupAdjustBiomass <- function(sim){
+  
+  # 1. Expand spinup output to have 1 row per cohort
+  spinupOut <- sim$cbm_vars[c("pools", "flux", "parameters", "state")]
+  spinupOut <- lapply(spinupOut, function(tbl) {
+    tbl <- tbl[sim$cbm_vars$key$row_idx, ]
+  })
+  
+  # 2. Replace above ground pools with the LandR biomass.
+  spinupOut$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+  
+  # 3. Update below ground live pools.
+  rootsC <- CBMutils::calcRootC(cbind(spinupOut$pools, sw = spinupOut$state$sw_hw == 0))[, .(
+    CoarseRoots = SoftwoodCoarseRoots + HardwoodCoarseRoots,
+    FineRoots   = SoftwoodFineRoots   + HardwoodFineRoots
+  )]
+  spinupOut$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
+  
+  # 4. Update cbm_vars
+  sim$cbm_vars <- updateSpinupCohortGroups(spinupOut, sim$cbm_vars$key)
+  
+  return(invisible(sim))
+  
+}
+
+# Plot the yield tables
+PlotYieldTables <- function(sim){
+  nPixGroups <- length(unique(sim$yieldTablesId$yieldTableIndex))
+  nPlots <- P(sim)$.plotNumPixGroup
+  if (nPlots <= 0){
+    stop("numPlots needs to be a positive integer")
+  } else if (nPlots > nPixGroups) {
+    message(".plotNumPixGroup is greater than the number of pixel groups, ",
+            "plotting all pixelgroups.")
+    nPlots <- nPixGroups
+  } 
+  pixGroupToPlot <- sample(unique(sim$yieldTablesId$yieldTableIndex), nPlots)
+  
+  mod$yieldTableIndexPlotted <- pixGroupToPlot
+  
+  # plot
+  Plots(sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot], 
+        fn = gg_yieldCurves,
+        types = P(sim)$.plots,
+        filename = paste("yieldCurves"),
+        title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
+  )
+  return(invisible(sim))
+}
 
 # Plot the curves that are directly out of the Boudewyn-translation
 PlotYieldTablesPools <- function(sim){
@@ -649,6 +661,7 @@ UpdateCohortGroups <- function(sim){
   return(invisible(sim))
 }
 
+# Split AGB of cohorts into pools
 PrepareCBMvars <- function(sim){
   
   cohortGroupsKey <- unique(sim$cbm_vars$key[, .(row_idx, row_idx_prev)])
