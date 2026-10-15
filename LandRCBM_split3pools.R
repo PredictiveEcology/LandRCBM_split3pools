@@ -361,7 +361,7 @@ SplitYieldTables <- function(sim) {
   # 1.2. Generate the cohort-level attributes (`cohortDT`).
   #      This links individual cohorts (pixelGroup x species combinations)
   #      to their corresponding growth curve IDs (`gcID`).
-  cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$standDT, sim$yieldTablesId)
+  cohortDT <- generateCohortDT(sim$aboveGroundBiomass, sim$standDT, sim$yieldTablesId)
   
   # 1.3. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcID to species information.
