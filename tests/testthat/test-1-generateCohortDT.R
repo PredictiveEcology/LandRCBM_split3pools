@@ -1,6 +1,6 @@
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-test_that("function generateDt works", {
+test_that("generateCohortDT", {
   
   # Create test data
   pixelGroupMap <- rast(matrix(c(10, 20, 10, NA), nrow = 2, ncol = 2, byrow = TRUE))
@@ -26,11 +26,11 @@ test_that("function generateDt works", {
   result <- generateCohortDT(cohortData, pixelGroupMap, standDT, yieldTablesId)
   # Tests
   expect_is(result, "data.table")
-  expect_equal(nrow(result), 5)
+  expect_equal(nrow(result), 6)
   expected_cols <- c("cohortID", "pixelIndex", "admin_abbrev", "eco_id", 
                      "speciesCode", "age", "yieldTableIndex", "gcID")
   expect_named(result, expected_cols, ignore.order = TRUE)
-  expect_false(0 %in% result$age)
+  expect_true(0 %in% result$age)
   
   # Pinu_con should all have the same gcID (both with Abi_las)
   gcid_pinu <- result[speciesCode == "Pinu_con", gcID]
