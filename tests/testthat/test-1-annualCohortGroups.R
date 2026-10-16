@@ -8,13 +8,6 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 # https://github.com/PredictiveEcology/LandRCBM_split3pools/commit/a15eb11 
 fixture <- readRDS(file.path(spadesTestPaths$testdata, "annualCohortGroups", "fixture.rds"))
 
-# Load the event functions from the module script
-modEnv <- new.env(parent = globalenv())
-for (e in parse(file.path(spadesTestPaths$RProj, "LandRCBM_split3pools.R"))){
-  if (is.call(e) && identical(e[[1]], as.name("<-")) && is.name(e[[2]]) &&
-      as.character(e[[2]]) %in% c("AnnualIncrements", "UpdateCohortGroups", "PrepareCBMvars")) eval(e, modEnv)
-}
-
 newSim <- function(inputs){
   sim <- new.env()
   for (n in names(inputs)){
