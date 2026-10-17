@@ -92,8 +92,9 @@ test_that("PostSpinupAdjustBiomass", {
   # Expect 3 pixel groups
   expect_setequal(sim$cbm_vars$key$row_idx, 1:3)
   expect_all_equal(
-    sapply(sim$cbm_vars[c("state", "pools", "flux", "parameters")], nrow),
+    sapply(sim$cbm_vars[c("state", "pools", "flux")], nrow),
     3)
+  expect_false("parameters" %in% names(sim$cbm_vars))
   
   # Check pools have been set correctly
   expect_equal(

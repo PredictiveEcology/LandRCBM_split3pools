@@ -61,30 +61,26 @@ check_module_outputs <- function(simTest, spinup = FALSE){
   
   # cbm_vars
   if ("CBM_core" %in% modules(simTest)){
-    check_cbm_vars(simTest)
+    check_cbm_vars(simTest, spinup = spinup)
   }
 }
 
 
 # Helper function: check cbm_vars
-check_cbm_vars <- function(simTest){
+check_cbm_vars <- function(simTest, spinup = FALSE){
   
   expect_is(simTest$cbm_vars, "list")
-  expect_setequal(names(simTest$cbm_vars), c("key", "parameters", "state", "pools", "flux"))
-  expect_equal(data.table::key(simTest$cbm_vars$key), "cohortID")
-  for (table in c("parameters", "state", "pools", "flux")){
-    expect_equal(data.table::key(simTest$cbm_vars[[table]]), "row_idx")
-  }
   
   expect_is(simTest$cbm_vars$key, "data.table")
+  expect_equal(data.table::key(simTest$cbm_vars$key), "cohortID")
   expect_in(c("cohortID", "pixelIndex", "row_idx"), names(simTest$cbm_vars$key))
   
   # check table row counts
   NcohortGroups <- length(unique(simTest$cbm_vars$key$row_idx))
-  expect_equal(nrow(simTest$cbm_vars$parameters), NcohortGroups)
-  expect_equal(nrow(simTest$cbm_vars$state),      NcohortGroups)
-  expect_equal(nrow(simTest$cbm_vars$pools),      NcohortGroups)
-  expect_equal(nrow(simTest$cbm_vars$flux),       NcohortGroups)
+  for (table in c("state", "pools", "flux", "parameters"[!spinup])){
+    expect_equal(data.table::key(simTest$cbm_vars[[table]]), "row_idx")
+    expect_equal(nrow(simTest$cbm_vars[[table]]), NcohortGroups)
+  }
   
   # checks for "active" cohorts
   row_idx_active <- simTest$cbm_vars$state[gcID != 0, row_idx]

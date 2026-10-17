@@ -432,10 +432,19 @@ SplitYieldTables <- function(sim) {
 PostSpinupAdjustBiomass <- function(sim){
   
   # 1. Expand spinup output to have 1 row per cohort
+  
+  # Remove flux: all values will be set to 0
+  # Remove parameters: this will be set in the annual step
+  cbm_vars_names <- lapply(sim$cbm_vars, names)
+  sim$cbm_vars$flux       <- NULL
+  sim$cbm_vars$parameters <- NULL
+  
   spinupOut <- merge(
     sim$cbm_vars$key,
     cbind(sim$cbm_vars$state, sim$cbm_vars$pools[,-1]),
     by = "row_idx", all.x = TRUE)
+  
+  sim$cbm_vars <- list()
   
   # 2. Replace above ground pools with the LandR biomass.
   spinupOut[sim$aboveGroundBiomass, 
@@ -445,7 +454,7 @@ PostSpinupAdjustBiomass <- function(sim){
   # 3. Regroup cohorts
   spinupOut[, row_idx := .GRP, by = c("row_idx", "Merch", "Foliage", "Other")]
   
-  sim$cbm_vars$key <- spinupOut[, .SD, .SDcols = names(sim$cbm_vars$key)]
+  sim$cbm_vars$key <- spinupOut[, .SD, .SDcols = cbm_vars_names$key]
   data.table::setkey(sim$cbm_vars$key, cohortID)
   
   spinupOut[, setdiff(names(sim$cbm_vars$key), "row_idx") := NULL]
@@ -461,14 +470,12 @@ PostSpinupAdjustBiomass <- function(sim){
   spinupOut[, c("CoarseRoots", "FineRoots")] <- rootsC
   
   # 5. Set cbm_vars
-  sim$cbm_vars$state <- spinupOut[, .SD, .SDcols = names(sim$cbm_vars$state)]
-  sim$cbm_vars$pools <- spinupOut[, .SD, .SDcols = names(sim$cbm_vars$pools)]
+  sim$cbm_vars$state <- spinupOut[, .SD, .SDcols = cbm_vars_names$state]
+  sim$cbm_vars$pools <- spinupOut[, .SD, .SDcols = cbm_vars_names$pools]
   
-  # All flux values will be 0
-  sim$cbm_vars$flux <- sim$cbm_vars$state[, .(row_idx)][, names(sim$cbm_vars$flux)[-1] := 0]
-  
-  # Parameters will be set in the annual step
-  sim$cbm_vars$parameters <- sim$cbm_vars$state[, .(row_idx)]
+  # Set flux pools to 0
+  sim$cbm_vars$flux <- sim$cbm_vars$state[, .(row_idx)][, c(cbm_vars_names$flux) := 0]
+  data.table::setkey(sim$cbm_vars$flux, row_idx)
   
   return(invisible(sim))
   
