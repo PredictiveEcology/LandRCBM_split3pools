@@ -439,12 +439,11 @@ PostSpinupAdjustBiomass <- function(sim){
   sim$cbm_vars$flux       <- NULL
   sim$cbm_vars$parameters <- NULL
   
-  spinupOut <- merge(
+  spinupOut <- cbind(
     sim$cbm_vars$key,
-    cbind(sim$cbm_vars$state, sim$cbm_vars$pools[,-1]),
-    by = "row_idx", all.x = TRUE)
-  
-  sim$cbm_vars <- list()
+    sim$cbm_vars$state[sim$cbm_vars$key$row_idx, -1],
+    sim$cbm_vars$pools[sim$cbm_vars$key$row_idx, -1]
+  )
   
   # 2. Replace above ground pools with the LandR biomass.
   spinupOut[sim$aboveGroundBiomass, 
