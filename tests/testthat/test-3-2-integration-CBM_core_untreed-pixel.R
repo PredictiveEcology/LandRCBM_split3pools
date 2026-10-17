@@ -1,12 +1,12 @@
 
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
-test_that("Integration with CBM_core: allow unforested pixels", {
+test_that("Integration with CBM_core: allow untreed forest pixels", {
   
   ## SIMULATE ----
   
   # Set up project
-  projectName <- "integration_1-CBM_core_unforested-pixel"
+  projectName <- "integration_1-CBM_core_untreed-pixel"
   times <- list(start = 2000, end = 2001)
   
   simInitInput <- SpaDES.project::setupProject(
@@ -38,7 +38,8 @@ test_that("Integration with CBM_core: allow unforested pixels", {
     # Prepare input objects
     require = c("data.table", "terra"),
     
-    # Pixel group 0 in LandR means "unforested"; NA means outside of study area
+    # Pixel group 0 in LandR means pixel is "untreed forest"; 
+    # Different from NA which means outside of study area
     # cohortData will not contain any rows for this pixel group
     # yieldTablesId will have rows for these pixels
     pixelGroupMap = terra::rast(matrix(c(10, 20, 0, NA), nrow = 2, ncol = 2, byrow = TRUE)),
@@ -88,18 +89,18 @@ test_that("Integration with CBM_core: allow unforested pixels", {
   # check output object structure
   check_module_outputs(simTest)
   
-  # check that there is a single DOM cohort in the unforested pixel
+  # check that there is a single DOM cohort in the untreed forest pixel
   expect_equal(nrow(simTest$cbm_vars$key[pixelIndex == 3]), 1)
   
-  # The unforested pixels should have no rows in aboveGroundBiomass...
+  # The untreed forest pixel should have no rows in aboveGroundBiomass...
   expect_false(3 %in% simTest$aboveGroundBiomass$pixelIndex)
   
   # ...but should still have a cohort (the borrowed DOM-only spinup cohort)
   # with zero live above-ground biomass in cbm_vars.
-  unforestedRowIdx <- simTest$cbm_vars$key[pixelIndex == 3, row_idx]
-  expect_length(unique(unforestedRowIdx), 1)
+  untreedRowIdx <- simTest$cbm_vars$key[pixelIndex == 3, row_idx]
+  expect_length(unique(untreedRowIdx), 1)
   expect_equal(
-    as.numeric(simTest$cbm_vars$pools[unforestedRowIdx, c("Merch", "Foliage", "Other")][1]),
+    as.numeric(simTest$cbm_vars$pools[untreedRowIdx, c("Merch", "Foliage", "Other")][1]),
     c(0, 0, 0)
   )
 })
