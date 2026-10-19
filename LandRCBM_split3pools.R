@@ -432,23 +432,49 @@ SplitYieldTables <- function(sim) {
 PostSpinupAdjustBiomass <- function(sim){
   
   # 1. Expand spinup output to have 1 row per cohort
-  spinupOut <- sim$cbm_vars[c("pools", "flux", "parameters", "state")]
-  spinupOut <- lapply(spinupOut, function(tbl) {
-    tbl <- tbl[sim$cbm_vars$key$row_idx, ]
-  })
+  
+  # Remove flux: all values will be set to 0
+  # Remove parameters: this will be set in the annual step
+  cbm_vars_names <- lapply(sim$cbm_vars, names)
+  sim$cbm_vars$flux       <- NULL
+  sim$cbm_vars$parameters <- NULL
+  
+  spinupOut <- cbind(
+    sim$cbm_vars$key,
+    sim$cbm_vars$state[sim$cbm_vars$key$row_idx, -1],
+    sim$cbm_vars$pools[sim$cbm_vars$key$row_idx, -1]
+  )
   
   # 2. Replace above ground pools with the LandR biomass.
-  spinupOut$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+  spinupOut[sim$aboveGroundBiomass, 
+            c("Merch", "Foliage", "Other") := .(merch, foliage, other), 
+            on = c("pixelIndex", "speciesCode", "age")]
   
-  # 3. Update below ground live pools.
-  rootsC <- CBMutils::calcRootC(cbind(spinupOut$pools, sw = spinupOut$state$sw_hw == 0))[, .(
+  # 3. Regroup cohorts
+  spinupOut[, row_idx := .GRP, by = c("row_idx", "Merch", "Foliage", "Other")]
+  
+  sim$cbm_vars$key <- spinupOut[, .SD, .SDcols = cbm_vars_names$key]
+  data.table::setkey(sim$cbm_vars$key, cohortID)
+  
+  spinupOut[, setdiff(names(sim$cbm_vars$key), "row_idx") := NULL]
+  spinupOut <- unique(spinupOut)
+  data.table::setkey(spinupOut, row_idx)
+  
+  # 4. Update below ground live pools.
+  spinupOut[, sw := sw_hw == 0]
+  rootsC <- CBMutils::calcRootC(spinupOut)[, .(
     CoarseRoots = SoftwoodCoarseRoots + HardwoodCoarseRoots,
     FineRoots   = SoftwoodFineRoots   + HardwoodFineRoots
   )]
-  spinupOut$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
+  spinupOut[, c("CoarseRoots", "FineRoots")] <- rootsC
   
-  # 4. Update cbm_vars
-  sim$cbm_vars <- updateSpinupCohortGroups(spinupOut, sim$cbm_vars$key)
+  # 5. Set cbm_vars
+  sim$cbm_vars$state <- spinupOut[, .SD, .SDcols = cbm_vars_names$state]
+  sim$cbm_vars$pools <- spinupOut[, .SD, .SDcols = cbm_vars_names$pools]
+  
+  # Set flux pools to 0
+  sim$cbm_vars$flux <- sim$cbm_vars$state[, .(row_idx)][, c(cbm_vars_names$flux) := 0]
+  data.table::setkey(sim$cbm_vars$flux, row_idx)
   
   return(invisible(sim))
   

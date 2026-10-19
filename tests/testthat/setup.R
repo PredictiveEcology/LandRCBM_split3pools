@@ -20,6 +20,15 @@ spadesTestPaths <- SpaDEStestSetUpDirectories()
 lapply(list.files(file.path(spadesTestPaths$RProj, "R"), full.names = TRUE), source)
 Require::Require(c("data.table", "terra"))
 
+# Load the event functions from the module script
+modEnv <- new.env(parent = globalenv())
+for (e in parse(file.path(spadesTestPaths$RProj, "LandRCBM_split3pools.R"))){
+  if (is.call(e) && identical(e[[1]], as.name("<-")) && is.name(e[[2]]) &&
+      as.character(e[[2]]) %in% c(
+        "PostSpinupAdjustBiomass", "AnnualIncrements", "UpdateCohortGroups", "PrepareCBMvars"
+      )) eval(e, modEnv)
+}
+
 # Copy test modules
 moduleDirs <- list.files(file.path(spadesTestPaths$testdata, "modules"), full = TRUE)
 for (moduleDir in moduleDirs){
