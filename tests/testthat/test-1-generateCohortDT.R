@@ -20,10 +20,23 @@ test_that("generateCohortDT", {
     yieldTableIndex = c(1001, 1002, 1001) 
   )
   
-  ## Runs with yieldTablesId
+  # Set aboveGroundBiomass
+  aboveGroundBiomass <- {
+    
+    # get the pixelGroup for each pixelIndex
+    # `na.omit` removes pixels not forested.
+    cohortDT <- data.table(
+      pixelGroup = as.integer(pixelGroupMap[])
+    ) 
+    cohortDT <- cohortDT[, pixelIndex := .I] |> na.omit()
+    
+    # add cohort information for each pixelIndex
+    merge(cohortDT, cohortData, by = "pixelGroup", allow.cartesian = TRUE)
+  }
   
   # Run function
-  result <- generateCohortDT(cohortData, pixelGroupMap, standDT, yieldTablesId)
+  result <- generateCohortDT(aboveGroundBiomass, standDT, yieldTablesId)
+  
   # Tests
   expect_is(result, "data.table")
   expect_equal(nrow(result), 6)

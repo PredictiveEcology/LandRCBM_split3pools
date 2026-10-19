@@ -50,20 +50,9 @@ defineModule(sim, list(
       )
     ),
     expectsInput(
-      objectName = "cbm_vars",
-      objectClass = "list",
-      desc = paste("List of 5 data tables defining active cohorts in the current year:",
-                   "key, parameters, pools, flux, and state.",
-                   "This is created initially during the spinup and updated each year."),
-    ), 
-    expectsInput(
       objectName = "pixelGroupMap", objectClass = "SpatRaster",
       desc = paste("Map of pixel group from LandR. Group of pixels that shares the same ",
                    "cohort composition.")
-    ),
-    expectsInput(
-      objectName = "rasterToMatch", objectClass =  "SpatRaster",
-      desc = "Template raster to use for simulations; defaults is the RIA study area."
     ),
     expectsInput(
       objectName = "standDT", objectClass = "data.table",
@@ -75,6 +64,13 @@ defineModule(sim, list(
         eco_id       = "Canada ecozone ID"
       )
     ),
+    expectsInput(
+      objectName = "cbm_vars",
+      objectClass = "list",
+      desc = paste("List of 5 data tables defining active cohorts in the current year:",
+                   "key, parameters, pools, flux, and state.",
+                   "This is created initially during the spinup and updated each year."),
+    ), 
     expectsInput(
       objectName = "table6tb", objectClass = "data.table",
       desc = paste(
@@ -203,17 +199,6 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
     },
     splitInit = {
       
-      # split initial above ground biomass
-      sim$aboveGroundBiomass <- splitCohortData(
-        cohortData    = sim$cohortData,
-        pixelGroupMap = sim$pixelGroupMap,
-        standDT       = sim$standDT[, .(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
-        table6tb      = sim$table6tb,
-        table7tb      = sim$table7tb,
-        tableMerch    = sim$tableMerch,
-        sppEquiv      = sim$sppEquiv
-      )
-      
       # split yield tables into AGB pools
       sim <- SplitYieldTables(sim)
     },
@@ -226,25 +211,9 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       sim <- PlotYieldTablesPools(sim)
     },
     postSpinupAdjustBiomass = {
-      spinupOut <- sim$cbm_vars[c("pools", "flux", "parameters", "state")]
       
-      # 1. Expand spinup output to have 1 row per cohort
-      spinupOut <- lapply(spinupOut, function(tbl) {
-        tbl <- tbl[sim$cbm_vars$key$row_idx, ]
-      })
-      
-      # 2. Replace above ground pools with the LandR biomass.
-      spinupOut$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
-      
-      # 3. Update below ground live pools.
-      rootsC <- CBMutils::calcRootC(cbind(spinupOut$pools, sw = spinupOut$state$sw_hw == 0))[, .(
-        CoarseRoots = SoftwoodCoarseRoots + HardwoodCoarseRoots,
-        FineRoots   = SoftwoodFineRoots   + HardwoodFineRoots
-      )]
-      spinupOut$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
-      
-      # 4. Update cbm_vars
-      sim$cbm_vars <- updateSpinupCohortGroups(spinupOut, sim$cbm_vars$key)
+      # adjust that the live biomass post-CBM spinup with the biomass in LandR
+      sim <- PostSpinupAdjustBiomass(sim)
       
     }, 
     annualIncrements = {
@@ -288,11 +257,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
       # get the sum of each pool per pixelGroups
       poolSum <- sim$aboveGroundBiomass[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch", "foliage", "other")]
       # rasterize
-      merchRast <- rast(sim$rasterToMatch, names = "merchantable")
+      merchRast <- rast(sim$pixelGroupMap, names = "merchantable")
       merchRast[poolSum$pixelIndex] <- poolSum$merch
-      foliageRast <- rast(sim$rasterToMatch, names = "foliage")
+      foliageRast <- rast(sim$pixelGroupMap, names = "foliage")
       foliageRast[poolSum$pixelIndex] <- poolSum$foliage
-      otherRast <- rast(sim$rasterToMatch, names = "other")
+      otherRast <- rast(sim$pixelGroupMap, names = "other")
       otherRast[poolSum$pixelIndex] <- poolSum$other
       
       # plot
@@ -317,11 +286,11 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
         increments <- sim$cohortDT[sim$gcIncrements, on = c("gcID", "age")]
         incrementSum  <- increments[, lapply(.SD, sum, na.rm = TRUE), by = pixelIndex, .SDcols = c("merch_inc", "foliage_inc", "other_inc")]
         # rasterize
-        merchIncRast <- rast(sim$rasterToMatch, names = "merchantable increments")
+        merchIncRast <- rast(sim$pixelGroupMap, names = "merchantable increments")
         merchIncRast[incrementSum$pixelIndex] <- incrementSum$merch_inc
-        foliageIncRast <- rast(sim$rasterToMatch, names = "foliage increments")
+        foliageIncRast <- rast(sim$pixelGroupMap, names = "foliage increments")
         foliageIncRast[incrementSum$pixelIndex] <- incrementSum$foliage_inc
-        otherIncRast <- rast(sim$rasterToMatch, names = "other increments")
+        otherIncRast <- rast(sim$pixelGroupMap, names = "other increments")
         otherIncRast[incrementSum$pixelIndex] <- incrementSum$other_inc
         
         # plot
@@ -371,41 +340,30 @@ doEvent.LandRCBM_split3pools = function(sim, eventTime, eventType) {
   return(invisible(sim))
 }
 
-PlotYieldTables <- function(sim){
-  nPixGroups <- length(unique(sim$yieldTablesId$yieldTableIndex))
-  nPlots <- P(sim)$.plotNumPixGroup
-  if (nPlots <= 0){
-    stop("numPlots needs to be a positive integer")
-  } else if (nPlots > nPixGroups) {
-    message(".plotNumPixGroup is greater than the number of pixel groups, ",
-            "plotting all pixelgroups.")
-    nPlots <- nPixGroups
-  } 
-  pixGroupToPlot <- sample(unique(sim$yieldTablesId$yieldTableIndex), nPlots)
-  
-  mod$yieldTableIndexPlotted <- pixGroupToPlot
-  
-  # plot
-  Plots(sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot], 
-        fn = gg_yieldCurves,
-        types = P(sim)$.plots,
-        filename = paste("yieldCurves"),
-        title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
-  )
-  return(invisible(sim))
-}
-
+# Split yield tables into AGB pools
 SplitYieldTables <- function(sim) {
+  
   # Step 1: Spatial Matching and Cohort/Stand Data Preparation -----------------
   # Link yield curve IDs (yieldTableIndex) to CBM spatial units 
   # and generate initial cohort/stand data structures.
   
-  # 1.1. Generate the cohort-level attributes (`cohortDT`).
+  # 1.1. Split initial above ground biomass
+  sim$aboveGroundBiomass <- splitCohortData(
+    cohortData    = sim$cohortData,
+    pixelGroupMap = sim$pixelGroupMap,
+    standDT       = sim$standDT[, .(pixelIndex, juris_id = admin_abbrev, ecozone = eco_id)],
+    table6tb      = sim$table6tb,
+    table7tb      = sim$table7tb,
+    tableMerch    = sim$tableMerch,
+    sppEquiv      = sim$sppEquiv
+  )
+  
+  # 1.2. Generate the cohort-level attributes (`cohortDT`).
   #      This links individual cohorts (pixelGroup x species combinations)
   #      to their corresponding growth curve IDs (`gcID`).
-  cohortDT <- generateCohortDT(sim$cohortData, sim$pixelGroupMap, sim$standDT, sim$yieldTablesId)
+  cohortDT <- generateCohortDT(sim$aboveGroundBiomass, sim$standDT, sim$yieldTablesId)
   
-  # 1.2. Create and store metadata about growth curves (`sim$gcMeta`).
+  # 1.3. Create and store metadata about growth curves (`sim$gcMeta`).
   #      Links gcID to species information.
   sim$gcMeta <- unique(cohortDT[, .(gcID, admin_abbrev, eco_id, yieldTableIndex, speciesCode)])
   sim$gcMeta <- cbind(
@@ -418,7 +376,7 @@ SplitYieldTables <- function(sim) {
   setkey(sim$gcMeta, gcID)
   setcolorder(sim$gcMeta)
   
-  # 1.3. Store essential cohort information in simList.
+  # 1.4. Store essential cohort information in simList.
   cohortDT <- cohortDT[, .(cohortID, pixelIndex, age, speciesCode, gcID)]
   sim$cohortDT <- cohortDT
   
@@ -470,6 +428,56 @@ SplitYieldTables <- function(sim) {
   return(invisible(sim))
 }
 
+# Adjust that the live biomass post-CBM spinup with the biomass in LandR
+PostSpinupAdjustBiomass <- function(sim){
+  
+  # 1. Expand spinup output to have 1 row per cohort
+  spinupOut <- sim$cbm_vars[c("pools", "flux", "parameters", "state")]
+  spinupOut <- lapply(spinupOut, function(tbl) {
+    tbl <- tbl[sim$cbm_vars$key$row_idx, ]
+  })
+  
+  # 2. Replace above ground pools with the LandR biomass.
+  spinupOut$pools[, c("Merch", "Foliage", "Other")] <- sim$aboveGroundBiomass[, .(merch, foliage, other)]
+  
+  # 3. Update below ground live pools.
+  rootsC <- CBMutils::calcRootC(cbind(spinupOut$pools, sw = spinupOut$state$sw_hw == 0))[, .(
+    CoarseRoots = SoftwoodCoarseRoots + HardwoodCoarseRoots,
+    FineRoots   = SoftwoodFineRoots   + HardwoodFineRoots
+  )]
+  spinupOut$pools[, c("CoarseRoots", "FineRoots")] <- rootsC
+  
+  # 4. Update cbm_vars
+  sim$cbm_vars <- updateSpinupCohortGroups(spinupOut, sim$cbm_vars$key)
+  
+  return(invisible(sim))
+  
+}
+
+# Plot the yield tables
+PlotYieldTables <- function(sim){
+  nPixGroups <- length(unique(sim$yieldTablesId$yieldTableIndex))
+  nPlots <- P(sim)$.plotNumPixGroup
+  if (nPlots <= 0){
+    stop("numPlots needs to be a positive integer")
+  } else if (nPlots > nPixGroups) {
+    message(".plotNumPixGroup is greater than the number of pixel groups, ",
+            "plotting all pixelgroups.")
+    nPlots <- nPixGroups
+  } 
+  pixGroupToPlot <- sample(unique(sim$yieldTablesId$yieldTableIndex), nPlots)
+  
+  mod$yieldTableIndexPlotted <- pixGroupToPlot
+  
+  # plot
+  Plots(sim$yieldTablesCumulative[yieldTableIndex %in% pixGroupToPlot], 
+        fn = gg_yieldCurves,
+        types = P(sim)$.plots,
+        filename = paste("yieldCurves"),
+        title = paste("Yield curves for", nPlots, "randomly selected pixel groups")
+  )
+  return(invisible(sim))
+}
 
 # Plot the curves that are directly out of the Boudewyn-translation
 PlotYieldTablesPools <- function(sim){
@@ -518,15 +526,11 @@ PlotYieldTablesPools <- function(sim){
 # Process yearly vegetation inputs
 AnnualIncrements <- function(sim){
   # Step 1: Store the above ground biomass of the previous time step.-----------
-  biomassTminus1 <- copy(sim$aboveGroundBiomass)
-  # Increment age to match the *current* age for joining later
-  biomassTminus1[, age := age + 1L]
-  # Rename cols to indicate they are from the previous timestep
-  setnames(biomassTminus1, old = c("merch", "foliage", "other"), 
-           new = c("merchTminus1", "foliageTminus1", "otherTminus1"))
-  # Keep only necessary columns for merging
-  biomassTminus1 <- biomassTminus1[, .(pixelIndex, speciesCode, age,
-                                       merchTminus1, foliageTminus1, otherTminus1)]
+  # Keep only necessary columns for merging, renamed to indicate they are from
+  # the previous timestep, with age incremented to match the *current* age.
+  biomassTminus1 <- sim$aboveGroundBiomass[, .(
+    pixelIndex, speciesCode, age = age + 1L,
+    merchTminus1 = merch, foliageTminus1 = foliage, otherTminus1 = other)]
   setkey(biomassTminus1, pixelIndex, speciesCode, age)
   
   # Step 2: Split current total above ground.-----------------------------------
@@ -566,14 +570,15 @@ AnnualIncrements <- function(sim){
   # Create data.table with cohort-level information
   sim$cohortDT <- incrementsDT[, .(cohortID, pixelIndex, age, speciesCode, gcID)]
   # Create data.table with growth curve-level information
-  sim$gcMeta <- unique(incrementsDT, by = "gcID")[, .(gcID, speciesCode)]
+  gcRows <- unique(incrementsDT, by = "gcID")
+  sim$gcMeta <- gcRows[, .(gcID, speciesCode)]
   
   sim$gcMeta[, sw := !CBMutils::sppMatch(
     sim$gcMeta$speciesCode, sppEquiv = sim$sppEquiv,
     match = "LandR", return = "Broadleaf")$Broadleaf]
   
   # Create final growth increment data.table
-  sim$gcIncrements <- unique(incrementsDT, by = "gcID")[, .(gcID, age, merch_inc, foliage_inc, other_inc)]
+  sim$gcIncrements <- gcRows[, .(gcID, age, merch_inc, foliage_inc, other_inc)]
   setkey(sim$gcIncrements, gcID)
   
   return(invisible(sim))
@@ -602,8 +607,14 @@ UpdateCohortGroups <- function(sim){
     sort = FALSE
   )
   
-  # Add spatial unit
-  cohorts <- merge(cohorts, sim$standDT, by = "pixelIndex", sort = FALSE)
+  # Add spatial unit (only the columns used below, looked up by pixel)
+  standIdx <- match(cohorts$pixelIndex, sim$standDT$pixelIndex)
+  if(anyNA(standIdx)){
+    cohorts <- cohorts[!is.na(standIdx)]
+    standIdx <- standIdx[!is.na(standIdx)]
+  }
+  cohorts[, admin_abbrev := sim$standDT$admin_abbrev[standIdx]]
+  cohorts[, eco_id := sim$standDT$eco_id[standIdx]]
   # Cohort groups have the same increments and the same group in the previous timestep
   cohorts[, row_idx := NA_integer_]
   cohorts[!is.na(gcID), row_idx := .GRP, by = .(row_idx_prev, gcID, admin_abbrev, eco_id)]
@@ -620,22 +631,22 @@ UpdateCohortGroups <- function(sim){
     missingCohorts[, age := 0L]
     maxCohortGroupID <- max(cohorts$row_idx, na.rm = TRUE)
     missingCohorts[, row_idx := .GRP + maxCohortGroupID, by = pixelIndex]
-    cohorts[is.na(gcID), ] <- missingCohorts
+    set(cohorts, which(is.na(cohorts$gcID)), c("gcID", "cohortID", "age", "row_idx"),
+        missingCohorts[, .(gcID, cohortID, age, row_idx)])
   }
   
   # Update cbm_vars key
-  sim$cbm_vars$key <- merge(
-    sim$cbm_vars$key[, `:=`(row_idx = NULL, cohortID = NULL)],
-    cohorts[, .(pixelIndex, row_idx_prev, row_idx, cohortID)],
-    by = c("pixelIndex", "row_idx_prev"),
-    all.y = TRUE,
-    sort = FALSE
-  ) |> unique()
+  if ("disturbance_type_id" %in% names(sim$cbm_vars$key)){
+    cohorts[sim$cbm_vars$key, disturbance_type_id := disturbance_type_id, on = "pixelIndex"]
+  }
+  sim$cbm_vars$key <- cohorts[, .SD, .SDcols = names(sim$cbm_vars$key)]
   setkey(sim$cbm_vars$key, cohortID)
   
   # Update cbm_vars state.
+  # Keep the first cohort of each cohort group (as `unique(by = "row_idx")` below
+  # does) before merging, so the merge is not done for every cohort.
   sim$cbm_vars$state <- merge(
-    cohorts[, .(row_idx, gcID, age, speciesCode, row_idx_prev)],
+    unique(cohorts[, .(row_idx, gcID, age, speciesCode, row_idx_prev)], by = "row_idx"),
     sim$cbm_vars$state[, .(row_idx, delay, admin_name, eco_id, land_class_id, last_disturbance_type, time_since_last_disturbance, time_since_land_use_change, enabled)],
     by.x = "row_idx_prev",
     by.y = "row_idx",
@@ -650,9 +661,12 @@ UpdateCohortGroups <- function(sim){
   return(invisible(sim))
 }
 
+# Split AGB of cohorts into pools
 PrepareCBMvars <- function(sim){
+  
+  cohortGroupsKey <- unique(sim$cbm_vars$key[, .(row_idx, row_idx_prev)])
+  
   # 1. Prepare cbm pools
-  cohortGroupsKey <- unique(sim$cbm_vars$key, by = c("row_idx", "row_idx_prev"))[, .(row_idx, row_idx_prev)]
   # Get the pools of cohorts of the previous timestep
   new_cbm_pools <- merge(cohortGroupsKey,
                          sim$cbm_vars$pools,
@@ -678,7 +692,7 @@ PrepareCBMvars <- function(sim){
     new_cbm_pools[row_idx %in% DOMcohorts, c("Merch", "Foliage", "Other", "CoarseRoots", "FineRoots") := 0L]
   }
   setkey(new_cbm_pools, row_idx)
-  new_cbm_pools <- unique(new_cbm_pools, by = "row_idx")
+  if(anyDuplicated(new_cbm_pools$row_idx)) new_cbm_pools <- unique(new_cbm_pools, by = "row_idx")
   
   # 2. Prepare cbm flux
   # Get the flux of the cohorts of the previous timestep
@@ -691,7 +705,7 @@ PrepareCBMvars <- function(sim){
   new_cbm_flux[, row_idx_prev := NULL]
   
   # Fill fluxes of new cohorts with 0s.
-  if(any(is.na(new_cbm_flux))) {
+  if(anyNA(new_cbm_flux)) {
     setnafill(new_cbm_flux, fill = 0L)
   }
   
@@ -701,7 +715,7 @@ PrepareCBMvars <- function(sim){
     new_cbm_flux <- new_cbm_flux[, lapply(.SD, sum), by = row_idx, .SDcols = flux_columns]
   }
   setkey(new_cbm_flux, row_idx)
-  new_cbm_flux <- unique(new_cbm_flux, by = "row_idx")
+  if(anyDuplicated(new_cbm_flux$row_idx)) new_cbm_flux <- unique(new_cbm_flux, by = "row_idx")
   
   # 3. Prepare cbm parameters
   new_cbm_parameters <- sim$cbm_vars$state[, .(row_idx, admin_name, eco_id, gcID)]
@@ -758,7 +772,7 @@ PrepareCBMvars <- function(sim){
   }
   
   # Set the state of the new cohorts
-  if(any(is.na(new_cbm_state))) {
+  if(anyNA(new_cbm_state)) {
     
     newCohorts_cbm_state <- new_cbm_state[is.na(enabled), ]
     setnafill(newCohorts_cbm_state, fill = 1L, cols = c("last_disturbance_type", "enabled"))
@@ -780,15 +794,15 @@ PrepareCBMvars <- function(sim){
     )
   }
   setkey(new_cbm_state, row_idx)
-  new_cbm_state <- unique(new_cbm_state, by = "row_idx")
+  if(anyDuplicated(new_cbm_state$row_idx)) new_cbm_state <- unique(new_cbm_state, by = "row_idx")
   
   # 5. Put in cbm_vars
   sim$cbm_vars <- list(
-    key = sim$cbm_vars$key |> unique(by = c("row_idx", "cohortID")),
-    pools = new_cbm_pools[!is.na(row_idx)],
-    flux = new_cbm_flux[!is.na(row_idx)],
+    key        = unique(sim$cbm_vars$key[, row_idx_prev := NULL]),
+    pools      = new_cbm_pools[!is.na(row_idx)],
+    flux       = new_cbm_flux[!is.na(row_idx)],
     parameters = new_cbm_parameters[!is.na(row_idx)],
-    state = new_cbm_state[!is.na(row_idx)]
+    state      = new_cbm_state[!is.na(row_idx)]
   )
   
   return(invisible(sim))
