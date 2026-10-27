@@ -406,6 +406,9 @@ SplitYieldTables <- function(sim) {
 # Adjust biomass after CBM spinup
 PostSpinupAdjustBiomass <- function(sim){
   
+  if (!"pools.SoftwoodMerch" %in% names(sim$cohortDT)) stop(
+    "CBM_core parameter cohort_fixed must be FALSE to run LandRCBM_split3pools")
+  
   colJoin  <- c("pixelIndex", "speciesCode", "age")
   colAGB   <- do.call(c, lapply(c("Softwood", "Hardwood"), paste0, c("Merch", "Foliage", "Other")))
   colRoots <- do.call(c, lapply(c("Softwood", "Hardwood"), paste0, c("CoarseRoots", "FineRoots")))
@@ -500,9 +503,6 @@ AnnualIncrements <- function(sim){
     sim$cohortDT[sim$gcIncrements, speciesCode := speciesCode, on = "gcID"]
     on.exit(sim$cohortDT[, speciesCode := NULL])
   }
-  
-  if (!"pools.SoftwoodMerch" %in% names(sim$cohortDT)) stop(
-    "CBM_core parameter cohort_fixed must be FALSE to run LandRCBM_split3pools")
   
   cohortDT <- sim$cohortDT[, .(
     pixelIndex, gcID, speciesCode, age, 
