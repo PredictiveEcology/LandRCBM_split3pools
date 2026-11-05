@@ -17,7 +17,8 @@ defineModule(sim, list(
   citation = list("citation.bib"),
   documentation = list("README.md", "LandRCBM_split3pools.Rmd"), ## same file
   reqdPkgs = list("PredictiveEcology/SpaDES.core", "reproducible (>= 2.1.2)", 
-                  "cli", "data.table", "ggplot2", "googledrive", "RColorBrewer", "terra",
+                  "cli", "data.table", "ggplot2", "googledrive", "httr2", "RColorBrewer", "sf",
+                  "terra",
                   "tidyterra", "viridis",
                   "SpaDES.tools (>= 1.0.0.9001)", "PredictiveEcology/CBMutils@development (>= 2.5.6.9006)"),
   parameters = bindrows(
