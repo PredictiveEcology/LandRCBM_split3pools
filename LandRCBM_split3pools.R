@@ -351,7 +351,7 @@ SplitYieldTables <- function(sim) {
   setcolorder(sim$gcMeta)
   
   # 1.3. Store essential cohort information in simList.
-  cohortDT <- cohortDT[, .(pixelIndex, age, gcID, cohort_index = 0)]
+  cohortDT <- cohortDT[, .(pixelIndex, age, gcID)]
   sim$cohortDT <- cohortDT
   
   # Step 2: Splitting AGB Curves into CBM Pools --------------------------------
