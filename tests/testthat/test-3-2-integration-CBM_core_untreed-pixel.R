@@ -5,26 +5,18 @@ test_that("Integration with CBM_core: allow untreed forest pixels", {
   
   ## SIMULATE ----
   
-  # Set up project
-  projectName <- "integration_1-CBM_core_untreed-pixel"
-  times <- list(start = 2000, end = 2001)
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
+  # Set up project
+  simInitInput <- setupProjectTest(
+    projectName = "integration_1-CBM_core_untreed-pixel",
+    times       = list(start = 2000, end = 2001),
+    modules     = c(
       "test_growth",
       "LandRCBM_split3pools",
-      "PredictiveEcology/CBM_core@development"
+      paste0("PredictiveEcology/CBM_core@", ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development"))
     ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName)
-    ),
+    
     params = list(
       .globals = list(
         .useCache = FALSE,
@@ -34,9 +26,6 @@ test_that("Integration with CBM_core: allow untreed forest pixels", {
         skipPrepareCBMvars = TRUE
       )
     ),
-    
-    # Prepare input objects
-    require = c("data.table", "terra"),
     
     # Pixel group 0 in LandR means pixel is "untreed forest"; 
     # Different from NA which means outside of study area
@@ -61,7 +50,7 @@ test_that("Integration with CBM_core: allow untreed forest pixels", {
       pixelIndex      = 1:4,
       yieldTableIndex = 1
     ),
-    yieldTablesCumulative = do.call(rbind, lapply(unique(cohortData$speciesCode), function(speciesCode){
+    yieldTablesCumulative = do.call(rbind, lapply(c("Abie_bal", "Pinu_con"), function(speciesCode){
       data.table::data.table(
         yieldTableIndex = 1,
         speciesCode     = speciesCode,

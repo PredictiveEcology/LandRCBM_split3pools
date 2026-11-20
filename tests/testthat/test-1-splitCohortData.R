@@ -1,3 +1,4 @@
+
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("function to split cohortData works", {
@@ -23,7 +24,7 @@ test_that("function to split cohortData works", {
   table7tb <- fread("https://nfi.nfis.org/resources/biomass_models/appendix2_table7_tb.csv", showProgress = FALSE)
   tableMerch <- reproducible::prepInputs(url = "https://drive.google.com/file/d/1wa2QMd7Eo-bPpfigchdpPPPxo7NVpPiC",
                                          fun = data.table::fread(targetFile, verbose = FALSE),
-                                         destinationPath = spadesTestPaths$temp$inputs,
+                                         destinationPath = file.path(tempDir, "inputs"),
                                          targetFile = "merchantabilityParams.csv")
   tableMerch <- cbind(tableMerch, minAge = 15)
   

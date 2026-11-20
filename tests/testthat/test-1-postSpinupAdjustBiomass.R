@@ -1,3 +1,4 @@
+
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("PostSpinupAdjustBiomass", {
@@ -87,7 +88,7 @@ test_that("PostSpinupAdjustBiomass", {
   }
   
   # Run PostSpinupAdjustBiomass
-  sim <- modEnv$PostSpinupAdjustBiomass(sim)
+  sim <- PostSpinupAdjustBiomass(sim)
   
   # Expect 3 pixel groups
   expect_setequal(sim$cbm_vars$key$row_idx, 1:3)
