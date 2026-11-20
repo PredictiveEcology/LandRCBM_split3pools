@@ -1,9 +1,11 @@
+
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 # Set the `pixelGroup` key to be equal to the `pixelIndex` for simplification.
-{
-  pixelGroupMap <- terra::rast(file.path(spadesTestPaths$testdata, "LandR", "pixelGroupMap.tif"))
-  cohortData    <- data.table::fread(file.path(spadesTestPaths$testdata, "LandR", "cohortData.csv"))
+if (!file.exists(file.path(tempDir, "pixelIndexAsGroup"))){
+  
+  pixelGroupMap <- terra::rast(file.path(test_path("testdata"), "LandR", "pixelGroupMap.tif"))
+  cohortData    <- data.table::fread(file.path(test_path("testdata"), "LandR", "cohortData.csv"))
   
   pixelGroupKey <- terra::values(pixelGroupMap)[,1]
   cohortData[, pixelGroup := (1:length(pixelGroupKey))[match(cohortData$pixelGroup, pixelGroupKey)]]
@@ -12,38 +14,26 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
   pixelGroupMap <- terra::rast(pixelGroupMap, vals = 1:terra::ncell(pixelGroupMap))
   terra::set.values(pixelGroupMap, NA, cells = setdiff(1:terra::ncell(pixelGroupMap), cohortData$pixelGroup))
   
-  dir.create(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core"), showWarnings = FALSE)
-  terra::writeRaster(pixelGroupMap, file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "pixelGroupMap.tif"), overwrite = TRUE)
-  data.table::fwrite(cohortData, file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
-  rm(pixelGroupMap)
-  rm(cohortData)
+  dir.create(file.path(tempDir, "pixelIndexAsGroup"), recursive = TRUE, showWarnings = FALSE)
+  terra::writeRaster(pixelGroupMap, file.path(tempDir, "pixelIndexAsGroup", "pixelGroupMap.tif"))
+  data.table::fwrite(cohortData,    file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv"))
 }
 
 test_that("Integration with CBM_core: spinup", {
   
   ## SIMULATE ----
   
-  # Set up project
-  projectName <- "integration_1-CBM_core_1-spinup"
-  times <- list(start = 2000, end = 2000)
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
+  # Set up project
+  simInitInput <- setupProjectTest(
+    projectName = "integration_1-CBM_core_1-spinup",
+    times       = list(start = 2000, end = 2000),
+    modules     = c(
       "LandRCBM_split3pools",
-      "PredictiveEcology/CBM_core@development"
+      paste0("PredictiveEcology/CBM_core@", ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development"))
     ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata,
-      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
-    ),
+    
     params = list(
       .globals = list(
         .useCache = FALSE,
@@ -54,14 +44,11 @@ test_that("Integration with CBM_core: spinup", {
       )
     ),
     
-    # Prepare input objects
-    require = c("data.table", "terra"),
-    
-    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
-    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+    pixelGroupMap         = file.path(tempDir, "pixelIndexAsGroup", "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    standDT               = file.path(test_path("testdata"), "CBM", "standDT.csv") |> data.table::fread(),
+    yieldTablesCumulative = file.path(test_path("testdata"), "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(test_path("testdata"), "LandR", "yieldTablesId.csv") |> data.table::fread()
   )
   
   # Run simInit
@@ -91,28 +78,18 @@ test_that("Integration with CBM_core: step", {
   
   ## SIMULATE ----
   
-  # Set up project
-  projectName <- "integration_1-CBM_core_2-step"
-  times <- list(start = 2000, end = 2001)
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
+  # Set up project
+  simInitInput <- setupProjectTest(
+    projectName = "integration_1-CBM_core_2-step",
+    times       = list(start = 2000, end = 2001),
+    modules     = c(
       "test_growth",
       "LandRCBM_split3pools",
-      "PredictiveEcology/CBM_core@development"
+      paste0("PredictiveEcology/CBM_core@", ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development"))
     ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata,
-      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
-    ),
+    
     params = list(
       .globals = list(
         .useCache = FALSE,
@@ -123,14 +100,11 @@ test_that("Integration with CBM_core: step", {
       )
     ),
     
-    # Prepare input objects
-    require = c("data.table", "terra"),
-    
-    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
-    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+    pixelGroupMap         = file.path(tempDir, "pixelIndexAsGroup", "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    standDT               = file.path(test_path("testdata"), "CBM", "standDT.csv") |> data.table::fread(),
+    yieldTablesCumulative = file.path(test_path("testdata"), "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(test_path("testdata"), "LandR", "yieldTablesId.csv") |> data.table::fread(),
     
     # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
     cohortGrowth = 100
@@ -163,7 +137,7 @@ test_that("Integration with CBM_core: step", {
   expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that all input cohorts are still present
-  inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
+  inCohorts <- data.table::fread(file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT), nrow(inCohorts))
   
   ## Check cohort ages
@@ -180,29 +154,19 @@ test_that("Integration with CBM_core: step with new cohorts", {
   
   ## SIMULATE ----
   
-  # Set up project
-  projectName <- "integration_1-CBM_core_4-step-new"
-  times <- list(start = 2000, end = 2000)
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
+  # Set up project
+  simInitInput <- setupProjectTest(
+    projectName = "integration_1-CBM_core_3-step-new",
+    times       = list(start = 2000, end = 2000),
+    modules     = c(
       "test_growth",
       "test_recruitment",
       "LandRCBM_split3pools",
-      "PredictiveEcology/CBM_core@development"
+      paste0("PredictiveEcology/CBM_core@", ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development"))
     ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata,
-      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
-    ),
+    
     params = list(
       .globals = list(
         .useCache = FALSE,
@@ -213,14 +177,11 @@ test_that("Integration with CBM_core: step with new cohorts", {
       )
     ),
     
-    # Prepare input objects
-    require = c("data.table", "terra"),
-    
-    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
-    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+    pixelGroupMap         = file.path(tempDir, "pixelIndexAsGroup", "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    standDT               = file.path(test_path("testdata"), "CBM", "standDT.csv") |> data.table::fread(),
+    yieldTablesCumulative = file.path(test_path("testdata"), "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(test_path("testdata"), "LandR", "yieldTablesId.csv") |> data.table::fread(),
     
     # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
     cohortGrowth = 100,
@@ -270,7 +231,7 @@ test_that("Integration with CBM_core: step with new cohorts", {
   expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that 1 cohort has been added
-  inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
+  inCohorts <- data.table::fread(file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 3)
   expect_equal(nrow(simTest$cohortDT), nrow(inCohorts) + 1)
   
@@ -289,29 +250,19 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   
   ## SIMULATE ----
   
-  # Set up project
-  projectName <- "integration_1-CBM_core_3-step-DOM"
-  times <- list(start = 2000, end = 2002)
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
+  # Set up project
+  simInitInput <- setupProjectTest(
+    projectName = "integration_1-CBM_core_4-step-DOM",
+    times       = list(start = 2000, end = 2002),
+    modules     = c(
       "test_growth",
       "test_mortality",
       "LandRCBM_split3pools",
-      "PredictiveEcology/CBM_core@development"
+      paste0("PredictiveEcology/CBM_core@", ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development"))
     ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata,
-      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
-    ),
+    
     params = list(
       .globals = list(
         .useCache = FALSE,
@@ -322,14 +273,11 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
       )
     ),
     
-    # Prepare input objects
-    require = c("data.table", "terra"),    
-    
-    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
-    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+    pixelGroupMap         = file.path(tempDir, "pixelIndexAsGroup", "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    standDT               = file.path(test_path("testdata"), "CBM", "standDT.csv") |> data.table::fread(),
+    yieldTablesCumulative = file.path(test_path("testdata"), "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(test_path("testdata"), "LandR", "yieldTablesId.csv") |> data.table::fread(),
     
     # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
     cohortGrowth = 100,
@@ -377,7 +325,7 @@ test_that("Integration with CBM_core: step with DOM cohorts: mortality", {
   expect_in(simTest$gcMeta$sw, TRUE)
   
   ## Expect that 5 cohorts are gone
-  inCohorts <- data.table::fread(file.path(spadesTestPaths$temp$inputs, "intg-CBM_core", "cohortData.csv"))
+  inCohorts <- data.table::fread(file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv"))
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 1]), 1)
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 2]), 0)
   expect_equal(nrow(simTest$cohortDT[pixelIndex == 3]), 0)
@@ -409,29 +357,19 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
   
   ## SIMULATE ----
   
-  # Set up project
-  projectName <- "integration_1-CBM_core_3-step-DOM"
-  times <- list(start = 2000, end = 2000)
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
+  # Set up project
+  simInitInput <- setupProjectTest(
+    projectName = "integration_1-CBM_core_5-step-DOM-dist",
+    times       = list(start = 2000, end = 2000),
+    modules     = c(
       "test_growth",
       "test_disturbance",
       "LandRCBM_split3pools",
-      "PredictiveEcology/CBM_core@development"
+      paste0("PredictiveEcology/CBM_core@", ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development"))
     ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata,
-      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
-    ),
+    
     params = list(
       .globals = list(
         .useCache = FALSE,
@@ -442,14 +380,11 @@ test_that("Integration with CBM_core: step with DOM cohorts: disturbance", {
       )
     ),
     
-    # Prepare input objects
-    require = c("data.table", "terra"),    
-    
-    pixelGroupMap         = file.path(paths$tempdata, "pixelGroupMap.tif") |> terra::rast(),
-    cohortData            = file.path(paths$tempdata, "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread(),
+    pixelGroupMap         = file.path(tempDir, "pixelIndexAsGroup", "pixelGroupMap.tif") |> terra::rast(),
+    cohortData            = file.path(tempDir, "pixelIndexAsGroup", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    standDT               = file.path(test_path("testdata"), "CBM", "standDT.csv") |> data.table::fread(),
+    yieldTablesCumulative = file.path(test_path("testdata"), "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(test_path("testdata"), "LandR", "yieldTablesId.csv") |> data.table::fread(),
     
     # Increase biomass for all cohorts by 100 g/m^2 (1 tonnes/ha)
     cohortGrowth = 100,

@@ -1,0 +1,25 @@
+
+name: testthat-module
+
+on:
+  pull_request:
+    branches: [main, development]
+  push:
+    branches: [main, development]
+
+jobs:
+  testthat-module:
+    #uses: PredictiveEcology/actions/.github/workflows/testthat-module.yaml@main
+    uses: suz-estella/PredictiveEcology-actions/.github/workflows/testthat-module.yaml@suz-updates
+    with:
+      module: LandRCBM_split3pools
+      extra-config: >-
+        [
+        {"config":{"os":"windows-latest","r":"release"}},
+        {"config":{"os":"macOS-latest",  "r":"release"}}
+        ]
+      extra-packages: PredictiveEcology/SpaDES.project@development googledrive
+      coverage: false
+    secrets:
+      GOOGLEDRIVE_AUTH: ${{ secrets.GOOGLE_AUTH }}
+

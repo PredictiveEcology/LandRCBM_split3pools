@@ -1,28 +1,20 @@
+
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 test_that("module runs with Biomass_core and CBM_core when dynamic", {
   
-  # Set up project
-  projectName <- "integration_LandRCBM"
-  times <- list(start = 2000, end = 2021)
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
-      "PredictiveEcology/CBM_core@development",
-      "PredictiveEcology/Biomass_core@development",
+  # Set up project
+  simInitInput <- setupProjectTest(
+    projectName =  "integration_LandRCBM",
+    times       = list(start = 2000, end = 2021),
+    modules     = c(
+      paste0("PredictiveEcology/CBM_core@",     ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development")),
+      paste0("PredictiveEcology/Biomass_core@", ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development")),
       "LandRCBM_split3pools"
     ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata
-    ),
+    
     params = list(
       .globals = list(
         .plots = NA,
@@ -35,23 +27,20 @@ test_that("module runs with Biomass_core and CBM_core when dynamic", {
       )
     ),
     
-    # Prepare input objects
-    require = c("data.table", "terra"),
-    
-    rasterToMatch         = file.path(paths$testdata, "rasterToMatch.tif") |> terra::rast(),
-    studyArea             = file.path(paths$testdata, "studyArea.shp") |> terra::vect(),
-    standDT               = file.path(paths$testdata, "CBM", "standDT.csv") |> data.table::fread(),
-    biomassMap            = file.path(paths$testdata, "LandR", "biomassMap.tif") |> terra::rast(),
-    cohortData            = file.path(paths$testdata, "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    pixelGroupMap         = file.path(paths$testdata, "LandR", "pixelGroupMap.tif") |> terra::rast(),
-    speciesLayers         = file.path(paths$testdata, "LandR", "speciesLayers.tif") |> terra::rast(),
-    ecoregionMap          = file.path(paths$testdata, "LandR", "ecoregionMap.tif") |> terra::rast(),
-    minRelativeB          = file.path(paths$testdata, "LandR", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    ecoregion             = file.path(paths$testdata, "LandR", "ecoregion.csv") |> data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
-    species               = file.path(paths$testdata, "LandR", "species.csv") |> data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
-    speciesEcoregion      = file.path(paths$testdata, "LandR", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
-    yieldTablesCumulative = file.path(paths$testdata, "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
-    yieldTablesId         = file.path(paths$testdata, "LandR", "yieldTablesId.csv") |> data.table::fread()
+    rasterToMatch         = file.path(test_path("testdata"), "rasterToMatch.tif") |> terra::rast(),
+    studyArea             = file.path(test_path("testdata"), "studyArea.shp") |> terra::vect(),
+    standDT               = file.path(test_path("testdata"), "CBM", "standDT.csv") |> data.table::fread(),
+    biomassMap            = file.path(test_path("testdata"), "LandR", "biomassMap.tif") |> terra::rast(),
+    cohortData            = file.path(test_path("testdata"), "LandR", "cohortData.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    pixelGroupMap         = file.path(test_path("testdata"), "LandR", "pixelGroupMap.tif") |> terra::rast(),
+    speciesLayers         = file.path(test_path("testdata"), "LandR", "speciesLayers.tif") |> terra::rast(),
+    ecoregionMap          = file.path(test_path("testdata"), "LandR", "ecoregionMap.tif") |> terra::rast(),
+    minRelativeB          = file.path(test_path("testdata"), "LandR", "minRelativeB.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    ecoregion             = file.path(test_path("testdata"), "LandR", "ecoregion.csv") |> data.table::fread(colClasses = list(factor = c("ecoregionGroup"))),
+    species               = file.path(test_path("testdata"), "LandR", "species.csv") |> data.table::fread(colClasses = list(factor = c("Area", "postfireregen", "hardsoft", "speciesCode"))),
+    speciesEcoregion      = file.path(test_path("testdata"), "LandR", "speciesEcoregion.csv") |> data.table::fread(stringsAsFactors = TRUE),
+    yieldTablesCumulative = file.path(test_path("testdata"), "LandR", "yieldTablesCumulative.csv") |> data.table::fread(),
+    yieldTablesId         = file.path(test_path("testdata"), "LandR", "yieldTablesId.csv") |> data.table::fread()
   )
   
   # Run simInit

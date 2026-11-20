@@ -4,41 +4,20 @@ if (!testthat::is_testing()){
   testthat::source_test_helpers(env = globalenv())
 }
 
-# Source work in progress SpaDES module testing functions
-suppressPackageStartupMessages(library(SpaDES.core))
-tempScript <- tempfile(fileext = ".R")
-download.file(
-  "https://raw.githubusercontent.com/suz-estella/SpaDES.core/refs/heads/suz-testthat/R/testthat.R",
-  tempScript, quiet = TRUE)
-source(tempScript)
+# Set temporary directory
+tempDir <- file.path(tempdir(), "testthat-module")
+if (is_testing()) withr::defer(unlink(tempDir, recursive = TRUE), envir = teardown_env(), priority = "last")
 
-# Set up testing directories and global options
-SpaDEStestSetGlobalOptions()
-spadesTestPaths <- SpaDEStestSetUpDirectories()
+# Source module functions
+if (!as.logical(Sys.getenv("CI", FALSE))){
 
-# Source the functions
-lapply(list.files(file.path(spadesTestPaths$RProj, "R"), full.names = TRUE), source)
-Require::Require(c("data.table", "terra"))
-
-# Load the event functions from the module script
-modEnv <- new.env(parent = globalenv())
-for (e in parse(file.path(spadesTestPaths$RProj, "LandRCBM_split3pools.R"))){
-  if (is.call(e) && identical(e[[1]], as.name("<-")) && is.name(e[[2]]) &&
-      as.character(e[[2]]) %in% c(
-        "PostSpinupAdjustBiomass", "AnnualIncrements", "UpdateCohortGroups", "PrepareCBMvars"
-      )) eval(e, modEnv)
+  moduleDir  <- normalizePath(test_path("../.."), winslash = "/")
+  moduleName <- basename(moduleDir)
+  pkgs <- SpaDES.core::packages(modules = moduleName, paths = dirname(moduleDir))[[1]]
+  Require::Require(pkgs, verbose = FALSE)
+  lapply(list.files(file.path(moduleDir, "R"), pattern = "\\.R$", full.names = TRUE), source)
+  for (e in parse(file.path(moduleDir, paste0(moduleName, ".R")))){
+    if (is.call(e) && identical(e[[1]], as.name("<-")) && is.name(e[[2]])) eval(e)
+  }
 }
-
-# Copy test modules
-moduleDirs <- list.files(file.path(spadesTestPaths$testdata, "modules"), full = TRUE)
-for (moduleDir in moduleDirs){
-  file.copy(moduleDir, spadesTestPaths$temp$modules, recursive = TRUE, overwrite = TRUE)
-}
-
-# Install required packages
-withr::with_options(c(timeout = 600), Require::Install(
-  c(SpaDES.core::packages(modules = basename(getwd()), paths = "..")[[1]],
-    "SpaDES.project", "googledrive", "data.table"),
-  repos = unique(c("predictiveecology.r-universe.dev", getOption("repos")))
-))
 
