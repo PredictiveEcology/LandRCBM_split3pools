@@ -591,9 +591,6 @@ AnnualIncrements <- function(sim){
   
   # New cohorts: initiate pools
   sim$cohortDT[is.na(pools.SoftwoodMerch), (poolCols) := 0]
-
-  # Set cohort_index
-  sim$cohortDT[, cohort_index := .GRP, by = c("speciesCode", "age")]
   
   # Set gcIncrements
   sim$gcIncrements <- unique(
