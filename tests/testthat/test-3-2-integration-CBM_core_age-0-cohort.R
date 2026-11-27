@@ -5,28 +5,18 @@ test_that("Integration with CBM_core: allow age 0 cohorts", {
   
   ## SIMULATE ----
   
-  # Set up project
-  projectName <- "integration_1-CBM_core_age-0-cohorts"
-  times <- list(start = 2000, end = 2001)
+  skip_if(as.logical(Sys.getenv("CI", FALSE)) & !"main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")))
   
-  simInitInput <- SpaDES.project::setupProject(
-    
-    modules = c(
+  # Set up project
+  simInitInput <- setupProjectTest(
+    projectName = "integration_1-CBM_core_age-0-cohorts",
+    times       = list(start = 2000, end = 2001),
+    modules     = c(
       "test_growth",
       "LandRCBM_split3pools",
-      "PredictiveEcology/CBM_core@development"
+      paste0("PredictiveEcology/CBM_core@", ifelse("main" %in% Sys.getenv(c("GITHUB_BASE_REF", "GITHUB_REF_NAME")), "main", "development"))
     ),
-    times = times,
-    paths = list(
-      projectPath = spadesTestPaths$projectPath,
-      modulePath  = spadesTestPaths$temp$modules,
-      packagePath = spadesTestPaths$packagePath,
-      inputPath   = spadesTestPaths$inputPath,
-      cachePath   = spadesTestPaths$cachePath,
-      outputPath  = file.path(spadesTestPaths$temp$outputs, projectName),
-      testdata    = spadesTestPaths$testdata,
-      tempdata    = file.path(spadesTestPaths$temp$inputs, "intg-CBM_core")
-    ),
+    
     params = list(
       .globals = list(
         .useCache = FALSE,
@@ -36,9 +26,6 @@ test_that("Integration with CBM_core: allow age 0 cohorts", {
         skipPrepareCBMvars = TRUE
       )
     ),
-    
-    # Prepare input objects
-    require = c("data.table", "terra"),
     
     # Pixel group 30 holds only an age-0, B = 0 cohort, as LandR produces after a fire.
     pixelGroupMap = terra::rast(matrix(c(10, 20, 30, 30), nrow = 2, ncol = 2, byrow = TRUE)),
@@ -60,7 +47,7 @@ test_that("Integration with CBM_core: allow age 0 cohorts", {
       pixelIndex      = 1:4,
       yieldTableIndex = 1
     ),
-    yieldTablesCumulative = do.call(rbind, lapply(unique(cohortData$speciesCode), function(speciesCode){
+    yieldTablesCumulative = do.call(rbind, lapply(c("Abie_bal", "Pinu_con"), function(speciesCode){
       data.table::data.table(
         yieldTableIndex = 1,
         speciesCode     = speciesCode,

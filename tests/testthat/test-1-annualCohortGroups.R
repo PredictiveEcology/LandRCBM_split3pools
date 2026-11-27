@@ -1,3 +1,4 @@
+
 if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 
 # Regression test for annual event functions AnnualIncrements, UpdateCohortGroups, and PrepareCBMvars
@@ -6,7 +7,7 @@ if (!testthat::is_testing()) source(testthat::test_path("setup.R"))
 # - 2003: DOM cohorts and a disturbance
 # Outputs created at commit a15eb11 (2026-09-29): 
 # https://github.com/PredictiveEcology/LandRCBM_split3pools/commit/a15eb11 
-fixture <- readRDS(file.path(spadesTestPaths$testdata, "annualCohortGroups", "fixture.rds"))
+fixture <- readRDS(file.path(test_path("testdata"), "annualCohortGroups", "fixture.rds"))
 
 newSim <- function(inputs){
   sim <- new.env()
@@ -24,8 +25,8 @@ for (year in names(fixture)){
   test_that(paste("AnnualIncrements and UpdateCohortGroups give the same results:", year), {
     
     sim <- newSim(fixture[[year]]$pre)
-    modEnv$AnnualIncrements(sim)
-    modEnv$UpdateCohortGroups(sim)
+    AnnualIncrements(sim)
+    UpdateCohortGroups(sim)
     
     expected <- fixture[[year]]$expectA
     expect_equal(sim$aboveGroundBiomass, expected$agb)
@@ -45,7 +46,7 @@ for (year in names(fixture)){
   test_that(paste("PrepareCBMvars gives the same results:", year), {
     
     sim <- newSim(fixture[[year]]$mid)
-    modEnv$PrepareCBMvars(sim)
+    PrepareCBMvars(sim)
     
     expected <- fixture[[year]]$expectP
     for (tbl in names(expected$cbm_vars)){
